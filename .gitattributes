@@ -1,0 +1,4 @@
+# Statistiques de langages de GitHub (Linguist) désactivées : Linguist ne connaît pas ALEX et classe les
+# fichiers .al en Perl (lignes « use … ») ; les scripts annexes (Python, Shell, PowerShell) ne représentent pas
+# le projet. Aucun fichier n'est compté : GitHub n'affiche plus de barre de langages.
+* linguist-detectable=false
