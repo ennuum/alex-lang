@@ -180,6 +180,15 @@ func cache_root():
         return _os.join(_os.join(_os.join(h, ".cache"), "alex"), "sdk")
     return _os.join(_os.tmp_dir(), "alex-sdk")
 
+# Hors Windows, la machine virtuelle extraite doit être exécutable (io.write_file crée les fichiers en 0644) ;
+# corrige aussi un cache extrait par une version antérieure.
+func _executable_vm(dir):
+    if _os.platform() == "windows":
+        return null
+    vm := _os.join(dir, "alexvm")
+    if _os.isfile(vm):
+        _os.chmod(vm, "755")
+
 # Dossier du SDK embarqué dans `exe`, extrait au premier appel (dossier temporaire puis renommage : jamais de SDK
 # à moitié écrit, même avec plusieurs alexc lancés en même temps). "" si `exe` n'en porte pas ou si l'extraction
 # échoue (disque plein, droits...).
@@ -195,6 +204,7 @@ func extract(exe):
         root := cache_root()
         dir := _os.join(root, key)
         if _os.isfile(_os.join(dir, MARKER)):
+            _executable_vm(dir)
             return dir
         tmp := dir + ".tmp-" + str(_os.pid())
         if _os.isdir(tmp):
@@ -208,6 +218,7 @@ func extract(exe):
             _os.mkdir_all(_os.dirname(p))
             o := b + to_int(f[1])
             _io.write_file(p, _s.byte_slice(all, o, o + to_int(f[2])))
+        _executable_vm(tmp)
         _io.write_file(_os.join(tmp, MARKER), key + "\n")
         if _os.isdir(dir) and not _os.isfile(_os.join(dir, MARKER)):
             _os.rmdir(dir, true)
