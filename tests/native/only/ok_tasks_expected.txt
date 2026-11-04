@@ -1,0 +1,12 @@
+rattrapé dans la tâche :
+tâche 0
+rattrapé dans la tâche :
+tâche 2
+{x: 22537, y: 22537, z: 22537}
+5000
+true
+4
+[a0, b0, c0, a1, b1, c1, a2, c2, c3]
+1
+0
+fini

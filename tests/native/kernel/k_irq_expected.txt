@@ -1,0 +1,17 @@
+minuterie :
+true
+int3 :
+[1, 1]
+allocations :
+168890
+tick 99
+préemption :
+[400000, 400000, 400000]
+[0, 1, 2, 3, 0, 1, 2, 3]
+pages :
+0
+0
+0
+0
+0
+0

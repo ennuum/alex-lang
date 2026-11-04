@@ -1,0 +1,10 @@
+[simple]
+[deux mots]
+[]
+[guillemet " dedans]
+[barres \\ et fin\]
+[\"début]
+[accents été ☀ 😀]
+[a\\\"b]
+[	tab]
+10

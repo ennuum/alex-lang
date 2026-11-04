@@ -1,0 +1,78 @@
+# Stable semantic icon catalog.
+# Names are intentionally independent of a particular icon font.
+# The native backend maps them to the platform's professional icon set.
+
+use ui.icon as icon
+
+func home(size=20):
+    return icon.home(size)
+func settings(size=20):
+    return icon.settings(size)
+func user(size=20):
+    return icon.user(size)
+func search(size=20):
+    return icon.search(size)
+func menu(size=20):
+    return icon.menu(size)
+func close(size=20):
+    return icon.close(size)
+func check(size=20):
+    return icon.check(size)
+func add(size=20):
+    return icon.add(size)
+func edit(size=20):
+    return icon.edit(size)
+func save(size=20):
+    return icon.save(size)
+func delete(size=20):
+    return icon.delete(size)
+func folder(size=20):
+    return icon.folder(size)
+func file(size=20):
+    return icon.file(size)
+func download(size=20):
+    return icon.download(size)
+func upload(size=20):
+    return icon.upload(size)
+func refresh(size=20):
+    return icon.refresh(size)
+func info(size=20):
+    return icon.info(size)
+func warning(size=20):
+    return icon.warning(size)
+func error(size=20):
+    return icon.error(size)
+func lock(size=20):
+    return icon.lock(size)
+func unlock(size=20):
+    return icon.unlock(size)
+func eye(size=20):
+    return icon.eye(size)
+func star(size=20):
+    return icon.star(size)
+func heart(size=20):
+    return icon.heart(size)
+func calendar(size=20):
+    return icon.calendar(size)
+func clock(size=20):
+    return icon.clock(size)
+func mail(size=20):
+    return icon.mail(size)
+func phone(size=20):
+    return icon.phone(size)
+func link(size=20):
+    return icon.link(size)
+func play(size=20):
+    return icon.play(size)
+func pause(size=20):
+    return icon.pause(size)
+func stop(size=20):
+    return icon.stop(size)
+func arrow_left(size=20):
+    return icon.arrow_left(size)
+func arrow_right(size=20):
+    return icon.arrow_right(size)
+func chevron_down(size=20):
+    return icon.chevron_down(size)
+func more(size=20):
+    return icon.more(size)

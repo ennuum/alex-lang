@@ -1,0 +1,10 @@
+/dist/
+/bin/
+/build/
+/alex
+/alexc
+/.alex-build/
+# caches de compilation de modules (alex run / build), recréés à la demande
+*.albc
+*.meta
+!/bootstrap/*.albc

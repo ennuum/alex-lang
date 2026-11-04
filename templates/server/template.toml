@@ -1,0 +1,4 @@
+title = "Serveur web"
+description = "Serveur HTTP/1.1 (network.http) avec routes JSON ; la logique des routes est testée sans réseau."
+category = "Réseau"
+essai = "alexc run   puis http://127.0.0.1:8080/api/bonjour?nom=Alex"

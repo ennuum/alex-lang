@@ -1,0 +1,125 @@
+== 
+✓ tests/sub/b_test.al  (D)
+    ✓ enregistré
+    ○ sauté (ignoré : plus tard)
+✗ tests/test_a.al  (D)
+    ✓ test_ok
+    ✗ test_ko
+        obtenu 1, attendu 2 — un n'est pas deux
+        à tests/test_a.al:5
+    ✗ test_err  [erreur]
+        ValueError : boum
+        à tests/test_a.al:8
+    sortie :
+      sortie libre
+✗ tests/test_crash.al  (D)
+    ✗ test_crash  [erreur]
+        Trace (appel le plus récent en dernier) :
+          tests/test_crash.al:1, dans <module>
+        IndexError: index 5 hors limites (taille 1, §10)
+✗ tests/test_script.al  (D)
+    ✗ test_script
+        2 échecs
+✗ tests/test_syntax.al  (D)
+    ✗ test_syntax  [erreur]
+        SyntaxError: W/tt/tests/test_syntax.al:2:1: délimiteur non refermé à la fin du fichier (parenthèse, crochet ou accolade en attente)
+
+ÉCHEC : 2 réussi(s), 2 échec(s), 3 erreur(s), 1 ignoré(s) — 8 test(s) dans 5 fichier(s) (D)
+rc=1
+== --list
+tests/sub/b_test.al
+  enregistré (ligne 2)
+  sauté (ligne 3)
+tests/test_a.al
+  test_ok (ligne 2)
+  test_ko (ligne 5)
+  test_err (ligne 8)
+tests/test_crash.al
+tests/test_script.al
+tests/test_syntax.al
+rc=0
+== --json
+{"event":"test","file":"W/tt/tests/sub/b_test.al","name":"enregistré","line":2,"status":"passed","message":"","duration":D}
+{"event":"test","file":"W/tt/tests/sub/b_test.al","name":"sauté","line":3,"status":"skipped","message":"plus tard","duration":D}
+{"event":"file","file":"W/tt/tests/sub/b_test.al","status":"passed","duration":D,"exitCode":0}
+{"event":"test","file":"W/tt/tests/test_a.al","name":"test_ok","line":2,"status":"passed","message":"","duration":D}
+{"event":"test","file":"W/tt/tests/test_a.al","name":"test_ko","line":5,"status":"failed","message":"obtenu 1, attendu 2 — un n'est pas deux","duration":D}
+{"event":"test","file":"W/tt/tests/test_a.al","name":"test_err","line":8,"status":"error","message":"ValueError : boum","duration":D}
+{"event":"file","file":"W/tt/tests/test_a.al","status":"failed","duration":D,"exitCode":0,"output":"sortie libre"}
+{"event":"test","file":"W/tt/tests/test_crash.al","name":"test_crash","line":0,"status":"error","message":"Trace (appel le plus récent en dernier) :\n  tests/test_crash.al:1, dans <module>\nIndexError: index 5 hors limites (taille 1, §10)","duration":D}
+{"event":"file","file":"W/tt/tests/test_crash.al","status":"failed","duration":D,"exitCode":1,"output":"Trace (appel le plus récent en dernier) :\n  tests/test_crash.al:1, dans <module>\nIndexError: index 5 hors limites (taille 1, §10)"}
+{"event":"test","file":"W/tt/tests/test_script.al","name":"test_script","line":0,"status":"failed","message":"2 échecs","duration":D}
+{"event":"file","file":"W/tt/tests/test_script.al","status":"failed","duration":D,"exitCode":0,"output":"2 échecs"}
+{"event":"test","file":"W/tt/tests/test_syntax.al","name":"test_syntax","line":0,"status":"error","message":"SyntaxError: W/tt/tests/test_syntax.al:2:1: délimiteur non refermé à la fin du fichier (parenthèse, crochet ou accolade en attente)","duration":D}
+{"event":"file","file":"W/tt/tests/test_syntax.al","status":"failed","duration":D,"exitCode":1,"output":"SyntaxError: W/tt/tests/test_syntax.al:2:1: délimiteur non refermé à la fin du fichier (parenthèse, crochet ou accolade en attente)"}
+{"event":"summary","passed":2,"failed":2,"errors":3,"skipped":1,"files":5,"duration":D}
+rc=1
+== --list --json
+{"event":"file","file":"W/tt/tests/sub/b_test.al","tests":[{"name":"enregistré","line":2},{"name":"sauté","line":3}]}
+{"event":"file","file":"W/tt/tests/test_a.al","tests":[{"name":"test_ok","line":2},{"name":"test_ko","line":5},{"name":"test_err","line":8}]}
+{"event":"file","file":"W/tt/tests/test_crash.al","tests":[]}
+{"event":"file","file":"W/tt/tests/test_script.al","tests":[]}
+{"event":"file","file":"W/tt/tests/test_syntax.al","tests":[]}
+rc=0
+== -k ok
+✓ tests/sub/b_test.al  (D)
+    ✓ enregistré
+    ○ sauté (ignoré : plus tard)
+✓ tests/test_a.al  (D)
+    ✓ test_ok
+✗ tests/test_crash.al  (D)
+    ✗ test_crash  [erreur]
+        Trace (appel le plus récent en dernier) :
+          tests/test_crash.al:1, dans <module>
+        IndexError: index 5 hors limites (taille 1, §10)
+✗ tests/test_script.al  (D)
+    ✗ test_script
+        2 échecs
+✗ tests/test_syntax.al  (D)
+    ✗ test_syntax  [erreur]
+        SyntaxError: W/tt/tests/test_syntax.al:2:1: délimiteur non refermé à la fin du fichier (parenthèse, crochet ou accolade en attente)
+
+ÉCHEC : 2 réussi(s), 1 échec(s), 2 erreur(s), 1 ignoré(s) — 6 test(s) dans 5 fichier(s) (D)
+rc=1
+== tests/test_a.al
+✗ tests/test_a.al  (D)
+    ✓ test_ok
+    ✗ test_ko
+        obtenu 1, attendu 2 — un n'est pas deux
+        à tests/test_a.al:5
+    ✗ test_err  [erreur]
+        ValueError : boum
+        à tests/test_a.al:8
+    sortie :
+      sortie libre
+
+ÉCHEC : 1 réussi(s), 1 échec(s), 1 erreur(s), 0 ignoré(s) — 3 test(s) dans 1 fichier(s) (D)
+rc=1
+== -j1
+✓ tests/sub/b_test.al  (D)
+    ✓ enregistré
+    ○ sauté (ignoré : plus tard)
+✗ tests/test_a.al  (D)
+    ✓ test_ok
+    ✗ test_ko
+        obtenu 1, attendu 2 — un n'est pas deux
+        à tests/test_a.al:5
+    ✗ test_err  [erreur]
+        ValueError : boum
+        à tests/test_a.al:8
+    sortie :
+      sortie libre
+✗ tests/test_crash.al  (D)
+    ✗ test_crash  [erreur]
+        Trace (appel le plus récent en dernier) :
+          tests/test_crash.al:1, dans <module>
+        IndexError: index 5 hors limites (taille 1, §10)
+✗ tests/test_script.al  (D)
+    ✗ test_script
+        2 échecs
+✗ tests/test_syntax.al  (D)
+    ✗ test_syntax  [erreur]
+        SyntaxError: W/tt/tests/test_syntax.al:2:1: délimiteur non refermé à la fin du fichier (parenthèse, crochet ou accolade en attente)
+
+ÉCHEC : 2 réussi(s), 2 échec(s), 3 erreur(s), 1 ignoré(s) — 8 test(s) dans 5 fichier(s) (D)
+rc=1

@@ -1,0 +1,104 @@
+$ pkg init geometrie
+Créé ./alex.toml
+rc=0
+$ pkg publish
+Publié geometrie 0.1.0 -> PK/reg/geometrie/0.1.0
+rc=0
+$ pkg publish
+Publié geometrie 0.2.0 -> PK/reg/geometrie/0.2.0
+rc=0
+$ pkg publish
+PackageError: geometrie 0.2.0 est déjà publié (les versions publiées sont immuables : incrémentez `version`)
+rc=1
+$ pkg publish
+Publié geometrie 1.0.0-rc.1 -> PK/reg/geometrie/1.0.0-rc.1
+rc=0
+$ pkg init util
+Créé ./alex.toml
+rc=0
+$ pkg add geometrie ^0.1
+  + geometrie 0.1.0 (registry)
+1 package(s) installé(s) dans ./alex_packages
+rc=0
+$ pkg init app
+Créé ./alex.toml
+rc=0
+$ pkg add geometrie
+  + geometrie 0.2.0 (registry)
+1 package(s) installé(s) dans ./alex_packages
+rc=0
+$ pkg add util path:../util
+PackageError: aucune version de `geometrie` ne satisfait : ^0.1 (demandé par util), ^0.2.0 (demandé par app). Versions disponibles : 1.0.0-rc.1, 0.2.0, 0.1.0
+rc=1
+$ pkg list
+app 0.1.0
+  geometrie 0.2.0 (registry)
+rc=0
+[package]
+name = "app"
+version = "0.1.0"
+alex = ">=VERSION"
+
+[dependencies]
+geometrie = "^0.2.0"
+# Généré par `alexc pkg install` — ne pas modifier à la main.
+
+[[package]]
+name = "geometrie"
+version = "0.2.0"
+source = "registry"
+checksum = "sha256:H"
+$ pkg verify
+1 package(s) conformes à alex.lock
+rc=0
+$ pkg install --locked
+  = geometrie 0.2.0 (déjà à jour)
+1 package(s) installé(s) depuis alex.lock (verrou inchangé)
+rc=0
+$ pkg update
+  = geometrie 0.2.0 (déjà à jour)
+1 package(s) installé(s) dans ./alex_packages
+rc=0
+$ pkg update nope
+PackageError: `nope` n'est pas installé (absent de alex.lock) : rien à mettre à jour
+rc=1
+$ pkg remove util
+PackageError: `util` n'est pas une dépendance de ce projet
+rc=1
+$ pkg list
+app 0.1.0
+  geometrie 0.2.0 (registry)
+rc=0
+$ pkg remove nope
+PackageError: `nope` n'est pas une dépendance de ce projet
+rc=1
+$ pkg add bad-name
+PackageError: nom de package invalide `bad-name`
+rc=1
+$ pkg add zzz
+PackageError: package `zzz` introuvable dans le registre 'PK/reg'
+rc=1
+$ pkg verify
+PackageError: vérification échouée :
+  - geometrie : contenu modifié depuis l'installation
+rc=1
+$ pkg install
+  + geometrie 0.2.0 (registry)
+1 package(s) installé(s) dans ./alex_packages
+rc=0
+$ pkg verify
+1 package(s) conformes à alex.lock
+rc=0
+$ pkg
+usage: alexc pkg init <nom> | add <nom> [contrainte|path:dossier] | remove <nom> |
+                install [--locked] | update [nom...] | list | publish | verify
+                [--registry <dossier>] [--dir <projet>]
+rc=1
+$ pkg frob
+usage: alexc pkg init <nom> | add <nom> [contrainte|path:dossier] | remove <nom> |
+                install [--locked] | update [nom...] | list | publish | verify
+                [--registry <dossier>] [--dir <projet>]
+rc=1
+$ pkg init app
+PackageError: alex.toml existe déjà dans '.'
+rc=1

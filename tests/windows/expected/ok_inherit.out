@@ -1,0 +1,25 @@
+Base(b)
+0.0
+<Base instance>
+Rect(r)
+6.0
+<Rect instance>
+Carré/Rect(s)
+2.25
+<Square instance>
+Cercle
+3.0
+<Circle instance>
+11.25
+Carré/Rect(x) aire=4.0
+x
+true
+true
+false
+Rect(seul) aire=4.0
+1.0
+true
+Rect(a) aire=1.0
+Base(z) aire=0.0
+plus grande :
+Rect(r)

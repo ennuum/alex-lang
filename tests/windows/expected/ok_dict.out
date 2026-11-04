@@ -1,0 +1,33 @@
+{b: 1, a: 2}
+2
+2
+{b: 10, a: 7, c: 3}
+[b, a, c]
+[10, 7, 3]
+null
+7
+true
+false
+{b: 10, c: 3}
+2
+{b: 10, c: 3, a: 99}
+b
+10
+c
+3
+a
+99
+{le: 3, chat: 2, chien: 1}
+{0: [e0, e3], 1: [e1, e4], 2: [e2, e5]}
+x
+zéro
+{1.5: x, 0.0: zéro}
+10000
+100000000
+1
+null
+oui
+{true: oui, false: non}
+faux
+{}
+0

@@ -1,0 +1,1 @@
+ModuleNotFoundError: module 'tasks' introuvable (recherché sous stdlib, projet puis packages) — importé depuis '/home/claude/src/alex_lang/tests/native/only/err_tasks.al'

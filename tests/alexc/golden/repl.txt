@@ -1,0 +1,12 @@
+ALEX REPL (P9) — une instruction par ligne ; help pour l'aide, exit ou Ctrl+D pour quitter.
+>>> >>> 42
+>>> SyntaxError: <repl>:2:1: attendu une indentation pour ouvrir le bloc (obtenu EOF)
+>>> hi
+>>> ImportError: module 'math' introuvable ou invalide (§19)
+>>> [1, 2]
+>>> s
+>>> E: m
+>>> 41
+>>> >>> >>> bonjour
+>>> 
+rc=0

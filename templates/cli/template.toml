@@ -1,0 +1,4 @@
+title = "Outil en ligne de commande"
+description = "Commandes et options (argparse), aide, page de manuel et complétion shell générées."
+category = "Application"
+essai = "alexc run -- saluer Alex"

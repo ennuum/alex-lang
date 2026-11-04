@@ -1,0 +1,3 @@
+title = "Application console"
+description = "Programme en ligne de commande avec module, tests unitaires et intégration continue."
+category = "Application"

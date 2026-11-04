@@ -1,0 +1,23 @@
+disque :
+true
+cœurs :
+4
+processus lancés ensemble :
+6
+[1] code 0, graine 11 : 749810712
+[2] code 0, graine 22 : 749332368
+[3] code 0, graine 33 : 749232576
+[4] code 0, graine 44 : 748685840
+[5] code 0, graine 55 : 748762912
+[6] code 0, graine 66 : 749096808
+exécutés sur plusieurs cœurs :
+true
+processus restants :
+0
+LIT_NOYAU : code 139 Erreur de segmentation (adresse 1048576)
+CLI : code 139 Erreur de protection générale
+UD2 : code 132 Instruction invalide
+DIV0 : code 136 Erreur de division
+SA_PAGE : code 42 
+le noyau continue :
+true

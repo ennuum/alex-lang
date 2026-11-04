@@ -1,0 +1,10 @@
+lu : message de l'enfant
+waitpid -> enfant : true, code 7
+capturé : via dup2
+
+execv absent -> code 42
+SIGKILL -> code 137
+SIGINT ignoré -> code 3
+nohang : 0
+puis code 1
+entrées : 2

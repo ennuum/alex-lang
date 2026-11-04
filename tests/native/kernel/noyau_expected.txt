@@ -1,0 +1,9 @@
+Alex : noyau 64 bits démarré sans système d'exploitation
+mémoire physique : 127 Mio
+horloge CMOS lue : true
+2262 nombres premiers < 20000, le dernier : 19997
+compteur de cycles croissant : true
+octets alloués puis récupérés : 3488890
+NoyauError : exception levée et rattrapée
+écran : dernière ligne = 32, empreinte 819862090
+arrêt.

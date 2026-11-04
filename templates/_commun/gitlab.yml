@@ -1,0 +1,17 @@
+# Intégration continue GitLab pour {{nom}} (généré par alexc new).
+stages: [verifier, tester]
+variables:
+  ALEX_DIST_URL: ""   # archive .tar.gz de « make package » (dossier dist/ du SDK)
+before_script:
+  - curl -fsSL "$ALEX_DIST_URL" -o alex.tar.gz
+  - mkdir -p /opt/alex && tar -xzf alex.tar.gz -C /opt/alex --strip-components=1
+  - export PATH=/opt/alex/bin:$PATH
+format:
+  stage: verifier
+  script: alexc fmt --check .
+tests:
+  stage: tester
+  script: alexc test --json . | tee resultats-tests.jsonl
+  artifacts:
+    when: always
+    paths: [resultats-tests.jsonl]

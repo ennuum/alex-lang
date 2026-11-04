@@ -1,0 +1,3 @@
+nom ?
+âge ?
+bonjour Ada, 37 ans l'an prochain

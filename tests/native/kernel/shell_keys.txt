@@ -1,0 +1,34 @@
+aide
+pci
+mem
+xyz
+taches
+ls
+cat hello.txt
+taille hello.txt
+lancer bonjour.elf un deux
+cat trace.txt
+lancer carres.elf
+3
+12
+
+lancer erreur.elf
+ecrire note.txt Alex OS ecrit sur son disque
+cat note.txt
+rm hello.txt
+ls
+mkdir projets
+cd projets
+pwd
+ecrire "notes du jour.txt" Repertoires et noms longs
+mkdir "Sous dossier"
+ls
+cat "notes du jour.txt"
+cd ..
+ls projets
+lancer fichiers.elf
+ls "mes documents"
+rmdir projets
+cd absent
+lancer absent.elf
+quitter

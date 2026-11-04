@@ -1,0 +1,3 @@
+title = "Noyau de système d'exploitation"
+description = "Noyau démarrable sans OS (Multiboot, x86-64) : écran VGA, port série, horloge ; démarré dans QEMU."
+category = "Système"

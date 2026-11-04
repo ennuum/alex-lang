@@ -1,0 +1,20 @@
+{
+    "programs": [
+
+    ],
+    "streams": [
+        {
+            "index": 0,
+            "codec_name": "speex",
+            "sample_rate": "16000",
+            "channels": 1,
+            "duration": "1.000000",
+            "tags": {
+                "encoder": "Lavc60.31.102 libspeex"
+            }
+        }
+    ],
+    "format": {
+        "duration": "1.000000"
+    }
+}

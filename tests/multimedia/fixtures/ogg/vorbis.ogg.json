@@ -1,0 +1,23 @@
+{
+    "programs": [
+
+    ],
+    "streams": [
+        {
+            "index": 0,
+            "codec_name": "vorbis",
+            "sample_rate": "44100",
+            "channels": 2,
+            "duration": "1.500000",
+            "tags": {
+                "encoder": "Lavc60.31.102 libvorbis",
+                "title": "Essai",
+                "artist": "ALEX",
+                "album": "Ogg"
+            }
+        }
+    ],
+    "format": {
+        "duration": "1.500000"
+    }
+}

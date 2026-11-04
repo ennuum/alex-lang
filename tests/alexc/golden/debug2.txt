@@ -1,0 +1,47 @@
+{"event":"started"}
+{"event":"paused","reason":"entry","file":"tests/tooling/dbg/prog.al","line":13,"frames":[{"function":"<module>","file":"tests/tooling/dbg/prog.al","line":13,"locals":[]}],"globals":[]}
+{"event":"ack","command":"breakpoints.set","id":1,"lines":[10,18]}
+{"event":"ack","command":"continue"}
+{"event":"paused","reason":"breakpoint","file":"tests/tooling/dbg/prog.al","line":10,"frames":[{"function":"<module>","file":"tests/tooling/dbg/prog.al","line":32,"locals":[]},{"function":"main","file":"tests/tooling/dbg/prog.al","line":25,"locals":[{"name":"c","type":"Compte","value":"Compte{historique: [0, 10, 20], nom: \"Alice\", solde: 20}","ref":1},{"name":"notes","type":"dict","value":"{\"maths\": 15, \"info\": 18}","ref":2},{"name":"i","type":"int","value":"2"},{"name":"t","type":"null","value":"null"},{"name":"nom","type":"null","value":"null"},{"name":"x","type":"null","value":"null"}]},{"function":"Compte.deposer","file":"tests/tooling/dbg/prog.al","line":10,"locals":[{"name":"self","type":"Compte","value":"Compte{historique: [0, 10, 20], nom: \"Alice\", solde: 20}","ref":3},{"name":"montant","type":"int","value":"20"}]}],"globals":[{"name":"LIMITE","type":"int","value":"100"}]}
+{"event":"evaluate","id":"self","expression":"self","result":"Compte{historique: [0, 10, 20], nom: \"Alice\", solde: 20}","type":"Compte","ref":4}
+{"event":"evaluate","id":"self.historique","expression":"self.historique","result":"[0, 10, 20]","type":"list","ref":5}
+{"event":"evaluate","id":"len(self.historique) * 2.5","expression":"len(self.historique) * 2.5","result":"7.5","type":"float"}
+{"event":"evaluate","id":"montant // 3","expression":"montant // 3","result":"6","type":"int"}
+{"event":"evaluate","id":"-montant % 7","expression":"-montant % 7","result":"1","type":"int"}
+{"event":"evaluate","id":"\"a\" + self.nom","expression":"\"a\" + self.nom","result":"\"aAlice\"","type":"str"}
+{"event":"evaluate","id":"self.nom[0]","expression":"self.nom[0]","result":"\"A\"","type":"str"}
+{"event":"evaluate","id":"type(self)","expression":"type(self)","result":"\"Compte\"","type":"str"}
+{"event":"evaluate","id":"str(self.historique)","expression":"str(self.historique)","result":"\"[0, 10, 20]\"","type":"str"}
+{"event":"evaluate","id":"1 +","expression":"1 +","error":"expression attendue"}
+{"event":"evaluate","id":"notes","expression":"notes","error":"'notes' n'est pas défini ici"}
+{"event":"evaluate","id":"10 / 4","expression":"10 / 4","result":"2.5","type":"float"}
+{"event":"evaluate","id":"2 ** 10","expression":"2 ** 10","result":"1024","type":"int"}
+{"event":"evaluate","id":"x.y(","expression":"x.y(","error":"délimiteur non refermé à la fin du fichier (parenthèse, crochet ou accolade en attente)"}
+{"event":"evaluate","id":"self.inconnu","expression":"self.inconnu","error":"l'objet Compte n'a pas de champ 'inconnu'"}
+{"event":"evaluate","id":"montant.x","expression":"montant.x","error":"membre 'x' inaccessible sur une valeur de type int"}
+{"event":"evaluate","id":"c","expression":"c","error":"'c' n'est pas défini ici"}
+{"event":"evaluate","expression":"notes","result":"{\"maths\": 15, \"info\": 18}","type":"dict","ref":6}
+{"event":"variables","ref":1,"variables":[{"name":"historique","type":"list","value":"[0, 10, 20]","ref":7},{"name":"nom","type":"str","value":"\"Alice\""},{"name":"solde","type":"int","value":"20"}]}
+{"event":"variables","ref":2,"variables":[{"name":"\"maths\"","type":"int","value":"15"},{"name":"\"info\"","type":"int","value":"18"}]}
+{"event":"variables","ref":3,"variables":[{"name":"historique","type":"list","value":"[0, 10, 20]","ref":8},{"name":"nom","type":"str","value":"\"Alice\""},{"name":"solde","type":"int","value":"20"}]}
+{"event":"variables","ref":4,"variables":[{"name":"historique","type":"list","value":"[0, 10, 20]","ref":9},{"name":"nom","type":"str","value":"\"Alice\""},{"name":"solde","type":"int","value":"20"}]}
+{"event":"variables","ref":5,"variables":[{"name":"[0]","type":"int","value":"0"},{"name":"[1]","type":"int","value":"10"},{"name":"[2]","type":"int","value":"20"}]}
+{"event":"variables","ref":6,"variables":[{"name":"\"maths\"","type":"int","value":"15"},{"name":"\"info\"","type":"int","value":"18"}]}
+{"event":"variables","ref":7,"variables":[{"name":"[0]","type":"int","value":"0"},{"name":"[1]","type":"int","value":"10"},{"name":"[2]","type":"int","value":"20"}]}
+{"event":"ack","command":"step"}
+{"event":"paused","reason":"step","file":"tests/tooling/dbg/prog.al","line":11,"frames":[{"function":"<module>","file":"tests/tooling/dbg/prog.al","line":32,"locals":[]},{"function":"main","file":"tests/tooling/dbg/prog.al","line":25,"locals":[{"name":"c","type":"Compte","value":"Compte{historique: [0, 10, 20], nom: \"Alice\", solde: 40}","ref":1},{"name":"notes","type":"dict","value":"{\"maths\": 15, \"info\": 18}","ref":2},{"name":"i","type":"int","value":"2"},{"name":"t","type":"null","value":"null"},{"name":"nom","type":"null","value":"null"},{"name":"x","type":"null","value":"null"}]},{"function":"Compte.deposer","file":"tests/tooling/dbg/prog.al","line":11,"locals":[{"name":"self","type":"Compte","value":"Compte{historique: [0, 10, 20], nom: \"Alice\", solde: 40}","ref":3},{"name":"montant","type":"int","value":"20"}]}],"globals":[{"name":"LIMITE","type":"int","value":"100"}]}
+{"event":"ack","command":"step"}
+{"event":"paused","reason":"step","file":"tests/tooling/dbg/prog.al","line":24,"frames":[{"function":"<module>","file":"tests/tooling/dbg/prog.al","line":32,"locals":[]},{"function":"main","file":"tests/tooling/dbg/prog.al","line":24,"locals":[{"name":"c","type":"Compte","value":"Compte{historique: [0, 10, 20], nom: \"Alice\", solde: 40}","ref":1},{"name":"notes","type":"dict","value":"{\"maths\": 15, \"info\": 18}","ref":2},{"name":"i","type":"int","value":"2"},{"name":"t","type":"null","value":"null"},{"name":"nom","type":"null","value":"null"},{"name":"x","type":"null","value":"null"}]}],"globals":[{"name":"LIMITE","type":"int","value":"100"}]}
+{"event":"ack","command":"breakpoints.set","lines":[]}
+{"event":"error","command":"frob","id":9,"message":"commande inconnue : frob"}
+{"event":"ack","command":"continue"}
+{"event":"input"}
+{"event":"ack","command":"input"}
+{"event":"output","category":"stdout","text":"bonjour Zoé\n"}
+{"event":"output","category":"stdout","text":"6\n"}
+{"event":"paused","reason":"exception","file":"tests/tooling/dbg/prog.al","line":30,"exception":{"type":"ZeroDivisionError","message":"division par zéro (int / 0)"},"frames":[{"function":"<module>","file":"tests/tooling/dbg/prog.al","line":32,"locals":[]},{"function":"main","file":"tests/tooling/dbg/prog.al","line":30,"locals":[{"name":"c","type":"Compte","value":"Compte{historique: [0, 10, 20, 30, 40], nom: \"Alice\", solde: 110}","ref":1},{"name":"notes","type":"dict","value":"{\"maths\": 15, \"info\": 18}","ref":2},{"name":"i","type":"int","value":"4"},{"name":"t","type":"int","value":"6"},{"name":"nom","type":"str","value":"\"Zoé\""},{"name":"x","type":"null","value":"null"}]}],"globals":[{"name":"LIMITE","type":"int","value":"100"}]}
+{"event":"ack","command":"exceptions"}
+{"event":"ack","command":"continue"}
+{"event":"exception","message":"ZeroDivisionError: division par zéro (int / 0)","exitCode":1}
+rc 1
+STDERR 

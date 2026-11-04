@@ -1,0 +1,13 @@
+cœurs en service :
+4
+identifiants APIC distincts :
+true
+chaque cœur reçoit les tics de sa minuterie APIC :
+true
+0
+5
+5
+5
+8
+verrou tournant pris :
+true

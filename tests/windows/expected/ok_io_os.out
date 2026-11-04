@@ -1,0 +1,36 @@
+ligne 1
+été
+fin
+true
+false
+false
+false
+Windows
+windows
+x86_64
+[]
+1
+null
+null
+def
+false
+true
+true
+true
+true
+false
+true
+/tmp
+true
+true
+IoError: read_file('/nope/x') : impossible d'ouvrir le fichier
+IoError: chdir('/nonexistent') : No such file or directory
+true
+false
+IoError: mkdir('/tmp/alex_native_dir_test') : File exists
+IoError: rmdir('/tmp/alex_native_dir_test') : Directory not empty
+IoError: remove('/tmp/alex_native_dir_test') : est un dossier (utiliser rmdir)
+IoError: rmdir('/tmp/alex_native_dir_test/f.txt') : n'est pas un dossier
+IoError: mkdir('/nope/a/b') : No such file or directory
+IoError: remove('/tmp/alex_native_dir_test/absent') : No such file or directory
+false

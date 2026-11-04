@@ -1,0 +1,115 @@
+Alex OS - interpréteur de commandes
+disque FAT16 : 16 Mio (virtio-blk)
+commandes : aide, pci, mem, taches, temps, ls, cd, pwd, mkdir, rmdir, taille, cat, ecrire, rm,
+            lancer, quitter (chemins relatifs au répertoire courant ; "..." pour les espaces)
+> aide
+commandes : aide, pci, mem, taches, temps, ls, cd, pwd, mkdir, rmdir, taille, cat, ecrire, rm,
+            lancer, quitter (chemins relatifs au répertoire courant ; "..." pour les espaces)
+> pci
+  0:0.0  8086:1237  pont hôte
+  0:1.0  8086:7000  pont ISA
+  0:1.1  8086:7010  contrôleur IDE
+  0:1.3  8086:7113  pont
+  0:2.0  1234:1111  carte graphique
+  0:3.0  8086:100e  carte réseau
+  0:4.0  1af4:1001  contrôleur SCSI / virtio
+> mem
+mémoire physique : 255 Mio
+> xyz
+commande inconnue : xyz
+> taches
+3 tâches préemptées terminées : [44999850000, 89999700000, 134999550000]
+> ls
+  HELLO.TXT
+  BONJOUR.ELF
+  CALCUL.ELF
+  CARRES.ELF
+  ERREUR.ELF
+  FICHIERS.ELF
+> cat hello.txt
+Bonjour depuis le disque !
+
+> taille hello.txt
+HELLO.TXT : 27 octets
+> lancer bonjour.elf un deux
+Bonjour de AlexOS ! arguments : [un, deux]
+20000
+mot19999
+écrit par le processus 1
+
+[bonjour.elf terminé, code 0]
+> cat trace.txt
+écrit par le processus 1
+
+> lancer carres.elf
+nombre ?
+3² = 9
+nombre ?
+12² = 144
+nombre ?
+somme des carrés : 153
+[carres.elf terminé, code 0]
+> lancer erreur.elf
+avant l'erreur
+Trace (appel le plus récent en dernier) :
+  examples/noyau/programmes/erreur.al:5, dans <module>
+  examples/noyau/programmes/erreur.al:3, dans division
+ZeroDivisionError: division entière par zéro (int // 0)
+[erreur.elf terminé, code 1]
+> ecrire note.txt Alex OS ecrit sur son disque
+écrit
+> cat note.txt
+Alex OS ecrit sur son disque
+
+> rm hello.txt
+supprimé
+> ls
+  BONJOUR.ELF
+  CALCUL.ELF
+  CARRES.ELF
+  ERREUR.ELF
+  FICHIERS.ELF
+  trace.txt
+  note.txt
+> mkdir projets
+créé
+> cd projets
+> pwd
+/projets
+> ecrire "notes du jour.txt" Repertoires et noms longs
+écrit
+> mkdir "Sous dossier"
+créé
+> ls
+  notes du jour.txt
+  Sous dossier/
+> cat "notes du jour.txt"
+Repertoires et noms longs
+
+> cd ..
+> ls projets
+  notes du jour.txt
+  Sous dossier/
+> lancer fichiers.elf
+départ :
+/
+ici :
+/Mes documents
+pain
+lait
+
+true
+true
+IoError: rmdir('Mes documents/Archives 2026') : Directory not empty
+false
+[fichiers.elf terminé, code 0]
+> ls "mes documents"
+  Liste de courses.txt
+> rmdir projets
+FatError : répertoire non vide : projets
+> cd absent
+répertoire introuvable : absent
+> lancer absent.elf
+FatError : fichier introuvable : absent.elf
+> quitter
+au revoir

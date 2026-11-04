@@ -1,0 +1,6 @@
+Trace (appel le plus récent en dernier) :
+  tests/lang/trace_fixture.al:12, dans <module>
+  tests/lang/trace_fixture.al:10, dans run
+  tests/lang/trace_fixture.al:6, dans Calc.div
+  tests/lang/trace_fixture.al:5, dans <lambda>
+ZeroDivisionError: division entière par zéro (int // 0)

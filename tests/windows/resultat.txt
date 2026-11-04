@@ -1,0 +1,186 @@
+== ALEX sous Windows : alex 1.3.0-beta.2 (bêta)
+   Windows 10.0.26200, x86_64, dossier temporaire C:\Users\HP\AppData\Local\Temp\alex_suite_12020
+
+== 1. VM sous Windows (alex.exe run) contre les références Linux
+ok    vm err_async (code 1)
+ok    vm err_divzero (code 1)
+ok    vm err_floatdiv (code 1)
+ok    vm err_index (code 1)
+ok    vm err_keyerror (code 1)
+ok    vm err_module (code 1)
+ok    vm err_modzero (code 1)
+ok    vm err_noreturn (code 1)
+ok    vm err_recursion (code 1)
+ok    vm err_rethrow_runtime (code 1)
+ok    vm err_runtime_through_try (code 0)
+ok    vm err_shift (code 1)
+ok    vm err_strindex (code 1)
+ok    vm err_tuple_index (code 1)
+ok    vm err_uncaught (code 1)
+ok    vm ok_arith (code 0)
+ok    vm ok_async (code 0)
+ok    vm ok_bytes (code 0)
+ok    vm ok_chars (code 0)
+ok    vm ok_closures (code 0)
+ok    vm ok_comprehensions (code 0)
+ok    vm ok_control (code 0)
+ok    vm ok_convert (code 0)
+ok    vm ok_dict (code 0)
+ok    vm ok_enums (code 0)
+ok    vm ok_exceptions (code 0)
+ok    vm ok_floats (code 0)
+ok    vm ok_functions (code 0)
+ok    vm ok_gc (code 0)
+ok    vm ok_generic (code 0)
+ok    vm ok_inherit (code 0)
+ÉCHEC vm ok_io_os : sortie standard
+        ligne 22 :
+          attendu : true
+          obtenu  : false
+ok    vm ok_lists (code 0)
+ok    vm ok_math (code 0)
+ok    vm ok_modules (code 0)
+ok    vm ok_null (code 0)
+ok    vm ok_print (code 0)
+ok    vm ok_string (code 0)
+ok    vm ok_strings (code 0)
+ok    vm ok_structs (code 0)
+ok    vm ok_tuples (code 0)
+ÉCHEC vm err_tasks : sortie d'erreur
+        ligne 1 :
+          attendu : ModuleNotFoundError: module 'tasks' introuvable (recherché sous stdlib, projet puis packages) — importé depuis '/home/claude/src/alex_lang/tests/native/only/err_tasks.al'
+          obtenu  : ModuleNotFoundError: module 'tasks' introuvable (recherché sous stdlib, projet puis packages) — importé depuis 'C:\Users\HP\Documents\alex_pur\tests\native\only\err_tasks.al'
+ÉCHEC vm ok_tasks : sortie d'erreur
+        ligne 1 :
+          attendu : ModuleNotFoundError: module 'tasks' introuvable (recherché sous stdlib, projet puis packages) — importé depuis '/home/claude/src/alex_lang/tests/native/only/ok_tasks.al'
+          obtenu  : ModuleNotFoundError: module 'tasks' introuvable (recherché sous stdlib, projet puis packages) — importé depuis 'C:\Users\HP\Documents\alex_pur\tests\native\only\ok_tasks.al'
+
+== 2. compilateur natif sous Windows (alex.exe build --native --windows)
+ÉCHEC natif err_async : exécutable différent de celui produit sous Linux (13b39abf4410)
+ÉCHEC natif err_divzero : exécutable différent de celui produit sous Linux (cfaa8dfc680d)
+ÉCHEC natif err_floatdiv : exécutable différent de celui produit sous Linux (ea79d07b3d38)
+ÉCHEC natif err_index : exécutable différent de celui produit sous Linux (29cb6a9cd254)
+ÉCHEC natif err_keyerror : exécutable différent de celui produit sous Linux (ef02a47d0c43)
+ÉCHEC natif err_module : exécutable différent de celui produit sous Linux (4f6e6b70e9c5)
+ÉCHEC natif err_modzero : exécutable différent de celui produit sous Linux (1ea73581e25b)
+ÉCHEC natif err_noreturn : exécutable différent de celui produit sous Linux (04ce8e47ed92)
+ÉCHEC natif err_recursion : exécutable différent de celui produit sous Linux (bdd916d89586)
+ÉCHEC natif err_rethrow_runtime : exécutable différent de celui produit sous Linux (52dd475813d3)
+ÉCHEC natif err_runtime_through_try : exécutable différent de celui produit sous Linux (1ab8518c147a)
+ÉCHEC natif err_shift : exécutable différent de celui produit sous Linux (a4c6dc6ebf2e)
+ÉCHEC natif err_strindex : exécutable différent de celui produit sous Linux (60dd342dfc05)
+ÉCHEC natif err_tuple_index : exécutable différent de celui produit sous Linux (ffba97546912)
+ÉCHEC natif err_uncaught : exécutable différent de celui produit sous Linux (eb634cd3cbe2)
+ÉCHEC natif ok_arith : exécutable différent de celui produit sous Linux (68b7a558c539)
+ÉCHEC natif ok_async : exécutable différent de celui produit sous Linux (60820ce7e543)
+ÉCHEC natif ok_bytes : exécutable différent de celui produit sous Linux (4f69f3c2fd8f)
+ÉCHEC natif ok_chars : exécutable différent de celui produit sous Linux (ac351e03e157)
+ÉCHEC natif ok_closures : exécutable différent de celui produit sous Linux (9308f68f3310)
+ÉCHEC natif ok_comprehensions : exécutable différent de celui produit sous Linux (e52fc8190bda)
+ÉCHEC natif ok_control : exécutable différent de celui produit sous Linux (48385d5feafb)
+ÉCHEC natif ok_convert : exécutable différent de celui produit sous Linux (7ae474a35a05)
+ÉCHEC natif ok_dict : exécutable différent de celui produit sous Linux (09320124580a)
+ÉCHEC natif ok_enums : exécutable différent de celui produit sous Linux (0904725fbc6b)
+ÉCHEC natif ok_exceptions : exécutable différent de celui produit sous Linux (ce97f0be4d66)
+ÉCHEC natif ok_floats : exécutable différent de celui produit sous Linux (b65873a3ea5a)
+ÉCHEC natif ok_functions : exécutable différent de celui produit sous Linux (d5915ff04a96)
+ÉCHEC natif ok_gc : exécutable différent de celui produit sous Linux (0edae5f652e7)
+ÉCHEC natif ok_generic : exécutable différent de celui produit sous Linux (ada0ccdccbd8)
+ÉCHEC natif ok_inherit : exécutable différent de celui produit sous Linux (ec2f0ec82270)
+ÉCHEC natif ok_io_os
+        sortie standard : ligne 31 :
+          attendu : IoError: rmdir('/tmp/alex_native_dir_test') : Acc�s refus�
+          obtenu  : IoError: rmdir('/tmp/alex_native_dir_test') : Directory not empty
+ÉCHEC natif ok_lists : exécutable différent de celui produit sous Linux (7961d74d858f)
+ÉCHEC natif ok_math : exécutable différent de celui produit sous Linux (7e5e017c8291)
+ÉCHEC natif ok_modules : exécutable différent de celui produit sous Linux (01cb24c20159)
+ÉCHEC natif ok_null : exécutable différent de celui produit sous Linux (6f24925f47ce)
+ÉCHEC natif ok_print : exécutable différent de celui produit sous Linux (b30d98c0f927)
+ÉCHEC natif ok_string : exécutable différent de celui produit sous Linux (37c3e2a82bfb)
+ÉCHEC natif ok_strings : exécutable différent de celui produit sous Linux (1290c085b933)
+ÉCHEC natif ok_structs : exécutable différent de celui produit sous Linux (b2f35902d3e6)
+ÉCHEC natif ok_tuples : exécutable différent de celui produit sous Linux (9e5dfcfa782e)
+ÉCHEC natif err_tasks
+        sortie standard : ligne 1 :
+          attendu : 
+          obtenu  : 5
+ÉCHEC natif ok_tasks
+        sortie standard : ligne 1 :
+          attendu : 
+          obtenu  : rattrapé dans la tâche :
+
+== 3. spécificités Windows
+ok    win_args (ligne de commande CreateProcess / CommandLineToArgvW)
+ok    win_input (entrée par tube, CRLF)
+ok    win_os (os et io sous Windows, chemins UTF-16)
+ok    refus de posix avec --windows
+ok    calculatrice : application graphique (--gui) compilée sous Windows
+ok    bytecode : alex build + alexvm.exe prog.albc
+ok    exécutable autonome (--standalone)
+
+== 4. bibliothèque standard (VM)
+ok    tests/test_path.al
+ok    tests/test_csv.al
+ok    tests/test_xml.al
+ok    tests/test_regex.al
+ok    tests/test_crypto.al
+ok    tests/test_json.al
+ÉCHEC tests/test_filesystem.al (code 1)
+          [OK]      kind_of / exists / is_file / is_dir
+          [OK]      liens symboliques
+          [OK]      is_readable / is_writable / is_executable
+          [OK]      same_file / is_inside
+          [OK]      stat
+          [OK]      is_empty / tree_size
+          [OK]      tree_size ignore les liens (pas de cycle)
+          [ÉCHEC]  list_dir / list_files / list_dirs
+              obtenu [C:\Users\HP\AppData\Local\Temp\alex_test_fs_6188_1793013391623515_8\a\b, C:\Users\HP\AppData\Local\Temp\alex_test_fs_6188_1793013391623515_8\a\one.txt, C:\Users\HP\AppData\Local\Temp\alex_test_fs_6188_1793013391623515_8\a\x], attendu [C:\Users\HP\AppData\Local\Temp\alex_test_fs_6188_1793013391623515_8\a/b, C:\Users\HP\AppData\Local\Temp\alex_test_fs_6188_1793013391623515_8\a/one.txt, C:\Users\HP\AppData\Local\Temp\alex_test_fs_6188_1793013391623515_8\a/x]
+          [ÉCHEC]  walk
+              obtenu [C:\Users\HP\AppData\Local\Temp\alex_test_fs_6188_1793013391629563_9\a\b, [c], [two.al]], attendu [C:\Users\HP\AppData\Local\Temp\alex_test_fs_6188_1793013391629563_9\a/b, [c], [two.al]]
+          [OK]      walk : liens et cycles
+ok    tests/test_file.al
+ok    tests/test_time.al
+ok    tests/test_datetime.al
+ok    tests/test_string_chr_ord_slice.al
+ok    tests/test_testing_logging.al
+ok    tests/test_functional.al
+ÉCHEC tests/test_os.al (code 1)
+        === Résultat os ===
+        Vérifications : 317 réussies, 4 en échec (sur 321) ; 3 ignorée(s)
+          ECHEC : join ne normalise pas : obtenu a\../b, attendu a\..\b
+          ECHEC : copy dans un dossier : chemin : obtenu C:\Users\HP\AppData\Local\Temp\alex_os_test_19372\cp/dest\file.txt, attendu C:\Users\HP\AppData\Local\Temp\alex_os_test_19372\cp/dest/file.txt
+          ECHEC : copy dossier dans dossier : chemin : obtenu C:\Users\HP\AppData\Local\Temp\alex_os_test_19372\cp/into\src, attendu C:\Users\HP\AppData\Local\Temp\alex_os_test_19372\cp/into/src
+          ECHEC : move dans un dossier : chemin : obtenu C:\Users\HP\AppData\Local\Temp\alex_os_test_19372\mv/target\g.txt, attendu C:\Users\HP\AppData\Local\Temp\alex_os_test_19372\mv/target/g.txt
+        Groupes en échec : [chemins publics, copy, move]
+        Trace (appel le plus récent en dernier) :
+          tests/test_os.al:876, dans <module>
+        AssertionError: 4 vérification(s) en échec
+ok    tests/test_pure_stdlib.al
+ok    tests/test_constants.al
+ok    tests/test_units.al
+ok    tests/test_array.al
+ok    tests/test_linalg.al
+ok    tests/test_stats.al
+ok    tests/lang/test_language.al
+ok    tests/lang/test_runtime.al
+ok    tests/lang/test_closures.al
+ok    tests/lang/test_oop.al
+ok    tests/lang/test_exceptions.al
+ok    tests/lang/test_comprehensions.al
+ok    tests/lang/test_async.al
+ok    tests/lang/test_builtins.al
+ok    tests/lang/test_pythonic.al
+ok    tests/lang/test_gc.al
+ok    tests/lang/test_dict_order.al
+
+== 5. interface graphique
+ÉCHEC backend Win32 du module ui (code 1)
+        ok backend win32 (obtenu win32)
+        ok écran 1920x1080
+        ok dpi 96
+        événement 'resize' non reçu ; reçus : [move]
+ok    tests/ui/test_ui_headless.al (headless)
+ok    tests/ui/test_interact.al (headless)
+ok    tests/ui/test_edit.al (headless)
+
+== bilan : 79 réussis, 49 échecs

@@ -1,0 +1,10 @@
+cœurs en service :
+4
+mode parallèle :
+true
+résultats corrects :
+true
+travail réparti sur plusieurs cœurs :
+true
+ramasse-miettes pendant le travail parallèle :
+true

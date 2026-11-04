@@ -1,0 +1,9 @@
+NativeError: tests/native/unsupported_fixture.al:5:12: valeur de retour de untyped : attendu int, obtenu str
+  tests/native/unsupported_fixture.al:7:13: variable 'x' : attendu float, obtenu int (en natif, un int n'est pas converti implicitement : écrire 3.0 ou to_float(…))
+  tests/native/unsupported_fixture.al:8:7: paramètre 'n' : type requis (annotation, ou type fonction attendu connu)
+  tests/native/unsupported_fixture.al:9:14: élément de liste (en natif, une liste est homogène) : attendu int, obtenu float
+  tests/native/unsupported_fixture.al:10:6: liste vide : son type doit être connu (xs: list[int] := [])
+  tests/native/unsupported_fixture.al:11:6: '**' sur des flottants : non supporté en natif (utiliser math.pow)
+  tests/native/unsupported_fixture.al:14:8: index non constant sur un tuple hétérogène (tuple[int, str])
+  tests/native/unsupported_fixture.al:21:16: paramètre 'k' de la fonction locale inner : type requis en natif
+  tests/native/unsupported_fixture.al:24:6: await attend une tâche ou un futur (obtenu int)

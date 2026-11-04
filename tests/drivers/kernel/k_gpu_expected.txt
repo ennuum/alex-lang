@@ -1,0 +1,9 @@
+Bochs VGA DISPI 5, 16 Mio
+Bochs / QEMU VGA (DISPI 5) : 16 Mio de mémoire vidéo, jusqu'à 16000x12000, double tampon, 2D logicielle, 9 modes
+meilleur mode sous 1000x700 : 800x600x32
+Bochs VGA DISPI 5, 16 Mio, mode 640x480x32 (double tampon) ; activé true
+commandes : 6, barrières [1]
+points : 16746496 16777215 65280 16746496 64
+flip : décalage 0 -> 480
+image affichée = image dessinée : true
+hors écran : 1193046 ; VRAM : 16384 Kio, réservés 2400, utilisés 16, libres 13968 (plus grand bloc 13968)

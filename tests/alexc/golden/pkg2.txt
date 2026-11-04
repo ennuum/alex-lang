@@ -1,0 +1,93 @@
+$ pkg init geometrie
+Créé ./alex.toml
+rc=0
+$ pkg publish
+Publié geometrie 0.1.0 -> PK/reg/geometrie/0.1.0
+rc=0
+$ pkg publish
+Publié geometrie 0.2.0 -> PK/reg/geometrie/0.2.0
+rc=0
+$ pkg init util
+Créé ./alex.toml
+rc=0
+$ pkg add geometrie ~0.2
+  + geometrie 0.2.0 (registry)
+1 package(s) installé(s) dans ./alex_packages
+rc=0
+[package]
+name = "util"
+version = "0.1.0"
+alex = ">=VERSION"
+
+[dependencies]
+geometrie = "~0.2"
+# commentaire
+$ pkg init app
+Créé ./alex.toml
+rc=0
+$ pkg add util path:../util
+  + geometrie 0.2.0 (registry)
+  + util 0.1.0 (path:../util)
+2 package(s) installé(s) dans ./alex_packages
+rc=0
+$ pkg list
+app 0.1.0
+  geometrie 0.2.0 (registry) [transitif]
+  util 0.1.0 (path:../util)
+rc=0
+# Généré par `alexc pkg install` — ne pas modifier à la main.
+
+[[package]]
+name = "geometrie"
+version = "0.2.0"
+source = "registry"
+checksum = "sha256:H"
+
+[[package]]
+name = "util"
+version = "0.1.0"
+source = "path:../util"
+checksum = "sha256:H"
+$ pkg add geometrie 0.1
+PackageError: aucune version de `geometrie` ne satisfait : 0.1 (demandé par app), ~0.2 (demandé par util). Versions disponibles : 0.2.0, 0.1.0
+rc=1
+$ pkg add geometrie >=0.1
+  = geometrie 0.2.0 (déjà à jour)
+  = util 0.1.0 (déjà à jour)
+2 package(s) installé(s) dans ./alex_packages
+rc=0
+[package]
+name = "app"
+version = "0.1.0"
+alex = ">=VERSION"
+
+[dependencies]
+util = { path = "../util" }
+geometrie = ">=0.1"
+$ pkg list
+app 0.1.0
+  geometrie 0.2.0 (registry)
+  util 0.1.0 (path:../util)
+rc=0
+$ pkg remove util
+  = geometrie 0.2.0 (déjà à jour)
+  - util 0.1.0 (retiré)
+1 package(s) installé(s) dans ./alex_packages
+rc=0
+$ pkg list
+app 0.1.0
+  geometrie 0.2.0 (registry)
+rc=0
+# Généré par `alexc pkg install` — ne pas modifier à la main.
+
+[[package]]
+name = "geometrie"
+version = "0.2.0"
+source = "registry"
+checksum = "sha256:H"
+$ pkg list
+PackageError: ./alex.toml: version invalide `x` (attendu MAJOR.MINOR.PATCH)
+rc=1
+$ pkg install
+PackageError: ./alex.toml : le package `app` exige le compilateur ALEX >=99.0, or ce compilateur est en version VERSION (bêta) — mettez alex à jour (alex --version)
+rc=1

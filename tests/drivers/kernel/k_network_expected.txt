@@ -1,0 +1,8 @@
+carte : eth0 52:54:00:12:34:56 lien true
+ARP 10.0.2.2 -> 52:55:0a:00:02:02
+ping 10.0.2.2 : true
+ping 10.0.2.2 : true
+journal : écho de 10.0.2.2 seq 1
+UDP vers 10.0.2.2:9 : true
+émission terminée : true
+compteurs : émis 4, reçus 3, erreurs 0

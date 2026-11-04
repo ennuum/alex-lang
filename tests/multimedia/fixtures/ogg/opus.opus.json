@@ -1,0 +1,23 @@
+{
+    "programs": [
+
+    ],
+    "streams": [
+        {
+            "index": 0,
+            "codec_name": "opus",
+            "sample_rate": "48000",
+            "channels": 2,
+            "duration": "1.256500",
+            "tags": {
+                "encoder": "Lavc60.31.102 libopus",
+                "title": "Essai",
+                "artist": "ALEX",
+                "album": "Ogg"
+            }
+        }
+    ],
+    "format": {
+        "duration": "1.256500"
+    }
+}

@@ -1,0 +1,13 @@
+  [ok]     bases
+  [ok]     entrelacement
+  [ok]     exceptions
+  [ok]     annulation
+  [ok]     délais et course
+  [ok]     promesses
+  [ok]     méthodes, fermetures, récursion
+  [ok]     erreurs
+  [ok]     abandon
+
+=== ASYNC / AWAIT ===
+Vérifications : 68 réussies, 0 en échec (sur 68)
+TOUS LES TESTS ASYNC PASSENT

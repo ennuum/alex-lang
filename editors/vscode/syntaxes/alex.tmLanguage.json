@@ -1,0 +1,287 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "ALEX",
+  "scopeName": "source.alex",
+  "fileTypes": [
+    "al"
+  ],
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#declarations"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#constants"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#calls"
+    },
+    {
+      "include": "#operators"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.alex",
+          "begin": "/\\*",
+          "end": "\\*/"
+        },
+        {
+          "name": "comment.line.number-sign.alex",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.triple.alex",
+          "begin": "f?\"\"\"",
+          "end": "\"\"\"",
+          "patterns": [
+            {
+              "include": "#escapes"
+            },
+            {
+              "include": "#interp"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.double.alex",
+          "begin": "f\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "include": "#escapes"
+            },
+            {
+              "include": "#interp"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.double.alex",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "include": "#escapes"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.alex",
+          "match": "'(\\\\.|[^'\\\\])'"
+        }
+      ]
+    },
+    "escapes": {
+      "name": "constant.character.escape.alex",
+      "match": "\\\\(u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|x[0-9A-Fa-f]{2}|.)"
+    },
+    "interp": {
+      "name": "meta.interpolation.alex",
+      "begin": "\\{",
+      "end": "\\}",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.interpolation.begin.alex"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.interpolation.end.alex"
+        }
+      },
+      "patterns": [
+        {
+          "include": "$self"
+        }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "match": "\\b(async\\s+)?(func)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.modifier.async.alex"
+            },
+            "2": {
+              "name": "storage.type.function.alex"
+            },
+            "3": {
+              "name": "entity.name.function.alex"
+            }
+          }
+        },
+        {
+          "match": "\\b(class|struct|interface|enum)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.class.alex"
+            },
+            "2": {
+              "name": "entity.name.type.class.alex"
+            }
+          }
+        },
+        {
+          "match": "\\b(extends|implements)\\s+([A-Za-z_][A-Za-z0-9_.]*)",
+          "captures": {
+            "1": {
+              "name": "storage.modifier.alex"
+            },
+            "2": {
+              "name": "entity.other.inherited-class.alex"
+            }
+          }
+        },
+        {
+          "match": "\\b(use)\\s+([A-Za-z_][A-Za-z0-9_.]*)(\\s+(as)\\s+([A-Za-z_][A-Za-z0-9_]*))?",
+          "captures": {
+            "1": {
+              "name": "keyword.control.import.alex"
+            },
+            "2": {
+              "name": "entity.name.namespace.alex"
+            },
+            "4": {
+              "name": "keyword.control.import.alex"
+            },
+            "5": {
+              "name": "entity.name.namespace.alex"
+            }
+          }
+        },
+        {
+          "match": "\\b(from)\\s+([A-Za-z_][A-Za-z0-9_.]*)\\s+(use)\\b",
+          "captures": {
+            "1": {
+              "name": "keyword.control.import.alex"
+            },
+            "2": {
+              "name": "entity.name.namespace.alex"
+            },
+            "3": {
+              "name": "keyword.control.import.alex"
+            }
+          }
+        },
+        {
+          "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\s*(:=)",
+          "captures": {
+            "1": {
+              "name": "variable.other.declaration.alex"
+            },
+            "2": {
+              "name": "keyword.operator.assignment.alex"
+            }
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.alex",
+          "match": "\\b(if|elif|else|for|while|break|continue|return|try|catch|finally|match|await|async|in|and|or|not)\\b"
+        },
+        {
+          "name": "storage.type.alex",
+          "match": "\\b(func|class|struct|interface|enum|extends|implements|const|use|from|as)\\b"
+        },
+        {
+          "name": "variable.language.self.alex",
+          "match": "\\b(self|super)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.alex",
+          "match": "\\b(true|false|null)\\b"
+        },
+        {
+          "name": "constant.other.alex",
+          "match": "\\b[A-Z][A-Z0-9_]{2,}\\b"
+        },
+        {
+          "name": "support.type.alex",
+          "match": "\\b(int|float|str|bool|char|byte|list|dict|tuple|any|u8|u16|u32|u64|i8|i16|i32|i64)\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.alex",
+          "match": "\\b0[xX][0-9A-Fa-f_]+\\b"
+        },
+        {
+          "name": "constant.numeric.binary.alex",
+          "match": "\\b0[bB][01_]+\\b"
+        },
+        {
+          "name": "constant.numeric.float.alex",
+          "match": "\\b[0-9][0-9_]*\\.[0-9_]+([eE][+-]?[0-9]+)?\\b"
+        },
+        {
+          "name": "constant.numeric.integer.alex",
+          "match": "\\b[0-9][0-9_]*\\b"
+        }
+      ]
+    },
+    "calls": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.alex",
+          "match": "\\b(print|input|str|raise|isinstance|len|type|append|keys|values|contains_key)\\b(?=\\s*\\()"
+        },
+        {
+          "name": "entity.name.function.call.alex",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b(?=\\s*\\()"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.arrow.alex",
+          "match": "=>|->"
+        },
+        {
+          "name": "keyword.operator.assignment.alex",
+          "match": ":=|\\+=|-=|\\*=|/=|%=|="
+        },
+        {
+          "name": "keyword.operator.comparison.alex",
+          "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.arithmetic.alex",
+          "match": "\\*\\*|//|[+\\-*/%]"
+        },
+        {
+          "name": "keyword.operator.bitwise.alex",
+          "match": "<<|>>|[&|^~]"
+        }
+      ]
+    }
+  }
+}

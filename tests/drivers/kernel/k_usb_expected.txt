@@ -1,0 +1,25 @@
+UHCI (ports 49216)
+  adresse 1 (port 0, pleine vitesse (12 Mbit/s)) [0627:0001] QEMU USB Keyboard
+  adresse 2 (port 1, pleine vitesse (12 Mbit/s)) [46f4:0001] QEMU USB HARDDRIVE
+clavier USB (EP 81), 0 rapports
+usb0 : 8192 blocs de 512 octets (4 Mio), QEMU QEMU HARDDISK (USB)
+
+adresse 1 (port 0, pleine vitesse (12 Mbit/s)) [0627:0001] QEMU USB Keyboard interface 0 -> clavier HID
+adresse 2 (port 1, pleine vitesse (12 Mbit/s)) [46f4:0001] QEMU USB HARDDRIVE interface 0 -> usb0
+USB 2.00 [0627:0001] classe par interface, EP0 8 octets, 1 configuration(s)
+configuration 1 : 1 interface(s), 100 mA
+  interface 0 : hid 1/1
+    EP 0x81 entrée interruption 8 octets / 10
+USB 2.00 [46f4:0001] classe par interface, EP0 8 octets, 1 configuration(s)
+configuration 1 : 1 interface(s), 0 mA, autoalimenté
+  interface 0 : stockage de masse 6/80
+    EP 0x81 entrée bloc 64 octets
+    EP 0x02 sortie bloc 64 octets
+usb0 : 8192 blocs de 512 octets (4 Mio), QEMU QEMU HARDDISK (USB)
+signature : DISQUE-USBK
+motif : 200
+relu : USB écrit
+usb0 : 8192 blocs de 512 octets (4 Mio), table mbr
+  1 : FAT32 (LBA) début 2048, 4096 blocs, amorçable
+  2 : Linux début 6144, 2048 blocs
+clavier : Alex 42!

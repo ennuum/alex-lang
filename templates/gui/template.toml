@@ -1,0 +1,6 @@
+title = "Application graphique"
+description = "Application de bureau ui.view (Windows, X11, ou terminal) : sources en couches (modèles, services, vues), données persistantes, ressources, tests, scripts de construction."
+category = "Application"
+entry = "src/main.al"
+sources = "src"
+essai = "alexc run"

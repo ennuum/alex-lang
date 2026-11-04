@@ -1,0 +1,4319 @@
+{
+ "cases": [
+  [
+   "basic",
+   [
+    "x"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "-v",
+    "x"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "x",
+    "-v"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "--verbose",
+    "--num",
+    "5",
+    "x"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "--num=5",
+    "x"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "-n5",
+    "x"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "-n",
+    "5",
+    "x",
+    "a",
+    "b"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "-n",
+    "z",
+    "x"
+   ]
+  ],
+  [
+   "basic",
+   []
+  ],
+  [
+   "basic",
+   [
+    "x",
+    "y",
+    "z"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "-q",
+    "x"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "--name=",
+    "x"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "--nam",
+    "k",
+    "x"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "--bogus",
+    "x"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "-x"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "--",
+    "x"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "--",
+    "-v"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "x",
+    "--",
+    "-v",
+    "y"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "-n"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "-n",
+    "--verbose",
+    "x"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "-vn3",
+    "x"
+   ]
+  ],
+  [
+   "basic",
+   [
+    "-nv",
+    "x"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-abc"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-ab",
+    "-c"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-an5"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-ans"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-n5",
+    "-a"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-s",
+    "-a"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-sfoo"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-vvv"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-v",
+    "-v"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-a",
+    "-v",
+    "-a"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-ac",
+    "-v"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-abz"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-b=1"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-n=5"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-s=x"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-s",
+    "-"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-s",
+    "--"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-n",
+    "-5"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-vn-5"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-"
+   ]
+  ],
+  [
+   "flags",
+   [
+    "-",
+    "-a"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "x"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "x",
+    "y"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "x",
+    "y",
+    "z",
+    "w"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "--two",
+    "1",
+    "2",
+    "x"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "--two",
+    "1",
+    "x"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "--two",
+    "1",
+    "2",
+    "3",
+    "x"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "--many",
+    "a",
+    "b",
+    "x"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "--many",
+    "x"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "--many",
+    "a",
+    "--any",
+    "b",
+    "c",
+    "x"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "--opt",
+    "x"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "--opt",
+    "--any",
+    "x"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "x",
+    "--opt"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "x",
+    "--opt",
+    "v"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "--opt",
+    "v"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "x",
+    "--any"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "x",
+    "--any",
+    "a",
+    "b"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "x",
+    "y",
+    "--any",
+    "a",
+    "z"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "x",
+    "--many",
+    "a",
+    "y",
+    "z"
+   ]
+  ],
+  [
+   "nargs",
+   [
+    "x",
+    "--two",
+    "1",
+    "2",
+    "y",
+    "z",
+    "w"
+   ]
+  ],
+  [
+   "bt",
+   [
+    "1"
+   ]
+  ],
+  [
+   "bt",
+   [
+    "1",
+    "2"
+   ]
+  ],
+  [
+   "bt",
+   [
+    "1",
+    "2",
+    "3"
+   ]
+  ],
+  [
+   "bt",
+   [
+    "1",
+    "2",
+    "3",
+    "4"
+   ]
+  ],
+  [
+   "bt",
+   []
+  ],
+  [
+   "bt2",
+   [
+    "1",
+    "2"
+   ]
+  ],
+  [
+   "bt2",
+   [
+    "1",
+    "2",
+    "3"
+   ]
+  ],
+  [
+   "bt2",
+   [
+    "1",
+    "2",
+    "3",
+    "4"
+   ]
+  ],
+  [
+   "bt2",
+   [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+   ]
+  ],
+  [
+   "bt2",
+   [
+    "1"
+   ]
+  ],
+  [
+   "interleave",
+   [
+    "a",
+    "b"
+   ]
+  ],
+  [
+   "interleave",
+   [
+    "a",
+    "-f",
+    "b"
+   ]
+  ],
+  [
+   "interleave",
+   [
+    "-f",
+    "a",
+    "b"
+   ]
+  ],
+  [
+   "interleave",
+   [
+    "a",
+    "b",
+    "-f"
+   ]
+  ],
+  [
+   "interleave",
+   [
+    "a",
+    "--o",
+    "1",
+    "b"
+   ]
+  ],
+  [
+   "interleave",
+   [
+    "a"
+   ]
+  ],
+  [
+   "interleave",
+   [
+    "a",
+    "b",
+    "c"
+   ]
+  ],
+  [
+   "interleave",
+   [
+    "--o",
+    "1",
+    "a",
+    "b"
+   ]
+  ],
+  [
+   "interleave",
+   [
+    "--o",
+    "a",
+    "b"
+   ]
+  ],
+  [
+   "neg",
+   [
+    "-1"
+   ]
+  ],
+  [
+   "neg",
+   [
+    "-1",
+    "2"
+   ]
+  ],
+  [
+   "neg",
+   [
+    "-x",
+    "-5"
+   ]
+  ],
+  [
+   "neg",
+   [
+    "-x",
+    "-5",
+    "-3"
+   ]
+  ],
+  [
+   "neg",
+   [
+    "-3.5"
+   ]
+  ],
+  [
+   "neg",
+   [
+    "-x",
+    "-.5"
+   ]
+  ],
+  [
+   "neg",
+   [
+    "-f",
+    "-4"
+   ]
+  ],
+  [
+   "neg",
+   [
+    "-1.5",
+    "-f"
+   ]
+  ],
+  [
+   "neg",
+   [
+    "-x5",
+    "-f",
+    "-2"
+   ]
+  ],
+  [
+   "neg",
+   [
+    "-e"
+   ]
+  ],
+  [
+   "neg",
+   [
+    "-1e5"
+   ]
+  ],
+  [
+   "negopt",
+   [
+    "-1"
+   ]
+  ],
+  [
+   "negopt",
+   [
+    "-2"
+   ]
+  ],
+  [
+   "negopt",
+   [
+    "-1",
+    "a"
+   ]
+  ],
+  [
+   "negopt",
+   [
+    "a",
+    "-1"
+   ]
+  ],
+  [
+   "negopt",
+   [
+    "-12"
+   ]
+  ],
+  [
+   "append",
+   []
+  ],
+  [
+   "append",
+   [
+    "-i",
+    "a",
+    "-i",
+    "b"
+   ]
+  ],
+  [
+   "append",
+   [
+    "-I",
+    "1",
+    "-I",
+    "2"
+   ]
+  ],
+  [
+   "append",
+   [
+    "--k",
+    "--k"
+   ]
+  ],
+  [
+   "append",
+   [
+    "--e",
+    "a",
+    "b",
+    "--e",
+    "c"
+   ]
+  ],
+  [
+   "append",
+   [
+    "-i",
+    "a",
+    "p",
+    "q"
+   ]
+  ],
+  [
+   "append",
+   [
+    "-I",
+    "x"
+   ]
+  ],
+  [
+   "append",
+   [
+    "--e"
+   ]
+  ],
+  [
+   "choices",
+   [
+    "--c",
+    "a"
+   ]
+  ],
+  [
+   "choices",
+   [
+    "--c",
+    "z"
+   ]
+  ],
+  [
+   "choices",
+   [
+    "--n",
+    "2"
+   ]
+  ],
+  [
+   "choices",
+   [
+    "--n",
+    "9"
+   ]
+  ],
+  [
+   "choices",
+   [
+    "--n",
+    "x"
+   ]
+  ],
+  [
+   "choices",
+   [
+    "x"
+   ]
+  ],
+  [
+   "choices",
+   [
+    "z"
+   ]
+  ],
+  [
+   "choices",
+   [
+    "--m",
+    "a",
+    "b"
+   ]
+  ],
+  [
+   "choices",
+   [
+    "--m",
+    "a",
+    "z"
+   ]
+  ],
+  [
+   "choices",
+   []
+  ],
+  [
+   "req",
+   [
+    "--r",
+    "1",
+    "p"
+   ]
+  ],
+  [
+   "req",
+   [
+    "p"
+   ]
+  ],
+  [
+   "req",
+   [
+    "--r",
+    "1"
+   ]
+  ],
+  [
+   "req",
+   []
+  ],
+  [
+   "req",
+   [
+    "--r"
+   ]
+  ],
+  [
+   "req",
+   [
+    "p",
+    "--r",
+    "1"
+   ]
+  ],
+  [
+   "const",
+   []
+  ],
+  [
+   "const",
+   [
+    "--x"
+   ]
+  ],
+  [
+   "const",
+   [
+    "--t",
+    "3"
+   ]
+  ],
+  [
+   "const",
+   [
+    "--f",
+    "1.5"
+   ]
+  ],
+  [
+   "const",
+   [
+    "--f",
+    "1e2"
+   ]
+  ],
+  [
+   "const",
+   [
+    "--f",
+    ".5"
+   ]
+  ],
+  [
+   "const",
+   [
+    "--f",
+    "x"
+   ]
+  ],
+  [
+   "const",
+   [
+    "--f",
+    "5."
+   ]
+  ],
+  [
+   "const",
+   [
+    "--t",
+    "1_0"
+   ]
+  ],
+  [
+   "const",
+   [
+    "--t",
+    " 4"
+   ]
+  ],
+  [
+   "const",
+   [
+    "--t",
+    "+4"
+   ]
+  ],
+  [
+   "const",
+   [
+    "--d",
+    "z"
+   ]
+  ],
+  [
+   "remainder",
+   [
+    "run"
+   ]
+  ],
+  [
+   "remainder",
+   [
+    "run",
+    "a",
+    "b"
+   ]
+  ],
+  [
+   "remainder",
+   [
+    "-v",
+    "run",
+    "a"
+   ]
+  ],
+  [
+   "remainder",
+   [
+    "run",
+    "-v"
+   ]
+  ],
+  [
+   "remainder",
+   [
+    "run",
+    "--",
+    "a"
+   ]
+  ],
+  [
+   "remainder",
+   [
+    "run",
+    "--x",
+    "y"
+   ]
+  ],
+  [
+   "remainder",
+   [
+    "-v"
+   ]
+  ],
+  [
+   "remainder",
+   []
+  ],
+  [
+   "remainder",
+   [
+    "--",
+    "run",
+    "a"
+   ]
+  ],
+  [
+   "mutex",
+   []
+  ],
+  [
+   "mutex",
+   [
+    "--a"
+   ]
+  ],
+  [
+   "mutex",
+   [
+    "--b"
+   ]
+  ],
+  [
+   "mutex",
+   [
+    "--a",
+    "--b"
+   ]
+  ],
+  [
+   "mutex",
+   [
+    "--a",
+    "p"
+   ]
+  ],
+  [
+   "mutex",
+   [
+    "p",
+    "--b"
+   ]
+  ],
+  [
+   "mutex",
+   [
+    "--a",
+    "--a"
+   ]
+  ],
+  [
+   "mutexr",
+   []
+  ],
+  [
+   "mutexr",
+   [
+    "--a"
+   ]
+  ],
+  [
+   "mutexr",
+   [
+    "--b",
+    "1"
+   ]
+  ],
+  [
+   "mutexr",
+   [
+    "--a",
+    "--b",
+    "1"
+   ]
+  ],
+  [
+   "mutexr",
+   [
+    "--b"
+   ]
+  ],
+  [
+   "abbrev",
+   [
+    "--verb"
+   ]
+  ],
+  [
+   "abbrev",
+   [
+    "--ver"
+   ]
+  ],
+  [
+   "abbrev",
+   [
+    "--version"
+   ]
+  ],
+  [
+   "abbrev",
+   [
+    "--version2"
+   ]
+  ],
+  [
+   "abbrev",
+   [
+    "--v"
+   ]
+  ],
+  [
+   "abbrev",
+   [
+    "--out",
+    "x"
+   ]
+  ],
+  [
+   "abbrev",
+   [
+    "--out=x"
+   ]
+  ],
+  [
+   "abbrev",
+   [
+    "--outp",
+    "x"
+   ]
+  ],
+  [
+   "abbrev",
+   [
+    "--out2",
+    "x"
+   ]
+  ],
+  [
+   "abbrev",
+   [
+    "--o",
+    "x"
+   ]
+  ],
+  [
+   "noabbrev",
+   [
+    "--verb"
+   ]
+  ],
+  [
+   "noabbrev",
+   [
+    "--verbose"
+   ]
+  ],
+  [
+   "noabbrev",
+   [
+    "--out",
+    "x"
+   ]
+  ],
+  [
+   "noabbrev",
+   [
+    "--output",
+    "x"
+   ]
+  ],
+  [
+   "noabbrev",
+   [
+    "--output=x"
+   ]
+  ],
+  [
+   "bool",
+   []
+  ],
+  [
+   "bool",
+   [
+    "--color"
+   ]
+  ],
+  [
+   "bool",
+   [
+    "--no-color"
+   ]
+  ],
+  [
+   "bool",
+   [
+    "--no-k"
+   ]
+  ],
+  [
+   "bool",
+   [
+    "--k"
+   ]
+  ],
+  [
+   "bool",
+   [
+    "--color",
+    "--no-color"
+   ]
+  ],
+  [
+   "sub",
+   []
+  ],
+  [
+   "sub",
+   [
+    "add",
+    "x"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "add",
+    "x",
+    "y",
+    "-f"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "a",
+    "x"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "add"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "rm",
+    "n"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "remove",
+    "n",
+    "--hard"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "r",
+    "n"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "--g",
+    "add",
+    "x"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "add",
+    "--g",
+    "x"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "add",
+    "x",
+    "--g"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "--lvl",
+    "5",
+    "add",
+    "x"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "add",
+    "--lvl",
+    "6",
+    "x"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "--lvl",
+    "5",
+    "rm",
+    "n"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "remote",
+    "add",
+    "n",
+    "u"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "remote",
+    "show"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "remote",
+    "show",
+    "n"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "remote"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "remote",
+    "zzz"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "zzz"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "add",
+    "x",
+    "--",
+    "-f"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "add",
+    "--",
+    "x"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "--",
+    "add",
+    "x"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "add",
+    "x",
+    "--bogus"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "rm"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "rm",
+    "a",
+    "b"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "-x"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "--g"
+   ]
+  ],
+  [
+   "sub",
+   [
+    "add",
+    "-f",
+    "x",
+    "-f"
+   ]
+  ],
+  [
+   "subreq",
+   []
+  ],
+  [
+   "subreq",
+   [
+    "go"
+   ]
+  ],
+  [
+   "subreq",
+   [
+    "go",
+    "t"
+   ]
+  ],
+  [
+   "subreq",
+   [
+    "x"
+   ]
+  ],
+  [
+   "pre",
+   [
+    "x",
+    "go",
+    "t"
+   ]
+  ],
+  [
+   "pre",
+   [
+    "go",
+    "t"
+   ]
+  ],
+  [
+   "pre",
+   [
+    "x"
+   ]
+  ],
+  [
+   "pre",
+   [
+    "-q",
+    "x",
+    "go",
+    "t"
+   ]
+  ],
+  [
+   "pre",
+   [
+    "x",
+    "-q",
+    "go",
+    "t"
+   ]
+  ],
+  [
+   "pre",
+   [
+    "x",
+    "go",
+    "-q"
+   ]
+  ],
+  [
+   "dup",
+   [
+    "-a",
+    "v"
+   ]
+  ],
+  [
+   "dup",
+   [
+    "-av"
+   ]
+  ],
+  [
+   "dup",
+   [
+    "-ab"
+   ]
+  ],
+  [
+   "dup",
+   [
+    "-ba"
+   ]
+  ],
+  [
+   "dup",
+   [
+    "-bav"
+   ]
+  ],
+  [
+   "dup",
+   [
+    "-a"
+   ]
+  ],
+  [
+   "dup",
+   [
+    "-b",
+    "-a",
+    "x"
+   ]
+  ],
+  [
+   "dup",
+   [
+    "-ax"
+   ]
+  ]
+ ],
+ "expected": [
+  {
+   "ok": {
+    "name": "x",
+    "num": null,
+    "pos": "x",
+    "quiet": true,
+    "rest": [],
+    "verbose": false
+   }
+  },
+  {
+   "ok": {
+    "name": "x",
+    "num": null,
+    "pos": "x",
+    "quiet": true,
+    "rest": [],
+    "verbose": true
+   }
+  },
+  {
+   "ok": {
+    "name": "x",
+    "num": null,
+    "pos": "x",
+    "quiet": true,
+    "rest": [],
+    "verbose": true
+   }
+  },
+  {
+   "ok": {
+    "name": "x",
+    "num": 5,
+    "pos": "x",
+    "quiet": true,
+    "rest": [],
+    "verbose": true
+   }
+  },
+  {
+   "ok": {
+    "name": "x",
+    "num": 5,
+    "pos": "x",
+    "quiet": true,
+    "rest": [],
+    "verbose": false
+   }
+  },
+  {
+   "ok": {
+    "name": "x",
+    "num": 5,
+    "pos": "x",
+    "quiet": true,
+    "rest": [],
+    "verbose": false
+   }
+  },
+  {
+   "ok": {
+    "name": "x",
+    "num": 5,
+    "pos": "x",
+    "quiet": true,
+    "rest": [
+     "a",
+     "b"
+    ],
+    "verbose": false
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "name": "x",
+    "num": null,
+    "pos": "x",
+    "quiet": true,
+    "rest": [
+     "y",
+     "z"
+    ],
+    "verbose": false
+   }
+  },
+  {
+   "ok": {
+    "name": "x",
+    "num": null,
+    "pos": "x",
+    "quiet": false,
+    "rest": [],
+    "verbose": false
+   }
+  },
+  {
+   "ok": {
+    "name": "",
+    "num": null,
+    "pos": "x",
+    "quiet": true,
+    "rest": [],
+    "verbose": false
+   }
+  },
+  {
+   "ok": {
+    "name": "k",
+    "num": null,
+    "pos": "x",
+    "quiet": true,
+    "rest": [],
+    "verbose": false
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "name": "x",
+    "num": null,
+    "pos": "x",
+    "quiet": true,
+    "rest": [],
+    "verbose": false
+   }
+  },
+  {
+   "ok": {
+    "name": "x",
+    "num": null,
+    "pos": "-v",
+    "quiet": true,
+    "rest": [],
+    "verbose": false
+   }
+  },
+  {
+   "ok": {
+    "name": "x",
+    "num": null,
+    "pos": "x",
+    "quiet": true,
+    "rest": [
+     "-v",
+     "y"
+    ],
+    "verbose": false
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "name": "x",
+    "num": 3,
+    "pos": "x",
+    "quiet": true,
+    "rest": [],
+    "verbose": true
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "a": true,
+    "b": true,
+    "c": true,
+    "n": null,
+    "s": null,
+    "v": 0
+   }
+  },
+  {
+   "ok": {
+    "a": true,
+    "b": true,
+    "c": true,
+    "n": null,
+    "s": null,
+    "v": 0
+   }
+  },
+  {
+   "ok": {
+    "a": true,
+    "b": false,
+    "c": false,
+    "n": 5,
+    "s": null,
+    "v": 0
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "a": true,
+    "b": false,
+    "c": false,
+    "n": 5,
+    "s": null,
+    "v": 0
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "a": false,
+    "b": false,
+    "c": false,
+    "n": null,
+    "s": "foo",
+    "v": 0
+   }
+  },
+  {
+   "ok": {
+    "a": false,
+    "b": false,
+    "c": false,
+    "n": null,
+    "s": null,
+    "v": 3
+   }
+  },
+  {
+   "ok": {
+    "a": false,
+    "b": false,
+    "c": false,
+    "n": null,
+    "s": null,
+    "v": 2
+   }
+  },
+  {
+   "ok": {
+    "a": true,
+    "b": false,
+    "c": false,
+    "n": null,
+    "s": null,
+    "v": 1
+   }
+  },
+  {
+   "ok": {
+    "a": true,
+    "b": false,
+    "c": true,
+    "n": null,
+    "s": null,
+    "v": 1
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "a": false,
+    "b": false,
+    "c": false,
+    "n": 5,
+    "s": null,
+    "v": 0
+   }
+  },
+  {
+   "ok": {
+    "a": false,
+    "b": false,
+    "c": false,
+    "n": null,
+    "s": "x",
+    "v": 0
+   }
+  },
+  {
+   "ok": {
+    "a": false,
+    "b": false,
+    "c": false,
+    "n": null,
+    "s": "-",
+    "v": 0
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "a": false,
+    "b": false,
+    "c": false,
+    "n": -5,
+    "s": null,
+    "v": 0
+   }
+  },
+  {
+   "ok": {
+    "a": false,
+    "b": false,
+    "c": false,
+    "n": -5,
+    "s": null,
+    "v": 1
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "any": null,
+    "many": null,
+    "opt": "D",
+    "two": null,
+    "x": "x",
+    "y": null,
+    "z": []
+   }
+  },
+  {
+   "ok": {
+    "any": null,
+    "many": null,
+    "opt": "D",
+    "two": null,
+    "x": "x",
+    "y": "y",
+    "z": []
+   }
+  },
+  {
+   "ok": {
+    "any": null,
+    "many": null,
+    "opt": "D",
+    "two": null,
+    "x": "x",
+    "y": "y",
+    "z": [
+     "z",
+     "w"
+    ]
+   }
+  },
+  {
+   "ok": {
+    "any": null,
+    "many": null,
+    "opt": "D",
+    "two": [
+     1,
+     2
+    ],
+    "x": "x",
+    "y": null,
+    "z": []
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "any": null,
+    "many": null,
+    "opt": "D",
+    "two": [
+     1,
+     2
+    ],
+    "x": "3",
+    "y": "x",
+    "z": []
+   }
+  },
+  "ERR",
+  "ERR",
+  "ERR",
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "any": null,
+    "many": null,
+    "opt": "C",
+    "two": null,
+    "x": "x",
+    "y": null,
+    "z": []
+   }
+  },
+  {
+   "ok": {
+    "any": null,
+    "many": null,
+    "opt": "v",
+    "two": null,
+    "x": "x",
+    "y": null,
+    "z": []
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "any": [],
+    "many": null,
+    "opt": "D",
+    "two": null,
+    "x": "x",
+    "y": null,
+    "z": []
+   }
+  },
+  {
+   "ok": {
+    "any": [
+     "a",
+     "b"
+    ],
+    "many": null,
+    "opt": "D",
+    "two": null,
+    "x": "x",
+    "y": null,
+    "z": []
+   }
+  },
+  {
+   "ok": {
+    "any": [
+     "a",
+     "z"
+    ],
+    "many": null,
+    "opt": "D",
+    "two": null,
+    "x": "x",
+    "y": "y",
+    "z": []
+   }
+  },
+  {
+   "ok": {
+    "any": null,
+    "many": [
+     "a",
+     "y",
+     "z"
+    ],
+    "opt": "D",
+    "two": null,
+    "x": "x",
+    "y": null,
+    "z": []
+   }
+  },
+  {
+   "ok": {
+    "any": null,
+    "many": null,
+    "opt": "D",
+    "two": [
+     1,
+     2
+    ],
+    "x": "x",
+    "y": "y",
+    "z": [
+     "z",
+     "w"
+    ]
+   }
+  },
+  {
+   "ok": {
+    "a": [],
+    "b": "1",
+    "c": null
+   }
+  },
+  {
+   "ok": {
+    "a": [
+     "1"
+    ],
+    "b": "2",
+    "c": null
+   }
+  },
+  {
+   "ok": {
+    "a": [
+     "1",
+     "2"
+    ],
+    "b": "3",
+    "c": null
+   }
+  },
+  {
+   "ok": {
+    "a": [
+     "1",
+     "2",
+     "3"
+    ],
+    "b": "4",
+    "c": null
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "a": "1",
+    "b": [
+     "2"
+    ],
+    "c": "3"
+   }
+  },
+  {
+   "ok": {
+    "a": "1",
+    "b": [
+     "2",
+     "3"
+    ],
+    "c": "4"
+   }
+  },
+  {
+   "ok": {
+    "a": "1",
+    "b": [
+     "2",
+     "3",
+     "4"
+    ],
+    "c": "5"
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "f": false,
+    "o": null,
+    "x": "a",
+    "y": "b"
+   }
+  },
+  {
+   "ok": {
+    "f": true,
+    "o": null,
+    "x": "a",
+    "y": "b"
+   }
+  },
+  {
+   "ok": {
+    "f": true,
+    "o": null,
+    "x": "a",
+    "y": "b"
+   }
+  },
+  {
+   "ok": {
+    "f": true,
+    "o": null,
+    "x": "a",
+    "y": "b"
+   }
+  },
+  {
+   "ok": {
+    "f": false,
+    "o": "1",
+    "x": "a",
+    "y": "b"
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "f": false,
+    "o": "1",
+    "x": "a",
+    "y": "b"
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "f": false,
+    "p": [
+     -1
+    ],
+    "x": null
+   }
+  },
+  {
+   "ok": {
+    "f": false,
+    "p": [
+     -1,
+     2
+    ],
+    "x": null
+   }
+  },
+  {
+   "ok": {
+    "f": false,
+    "p": [],
+    "x": -5
+   }
+  },
+  {
+   "ok": {
+    "f": false,
+    "p": [
+     -3
+    ],
+    "x": -5
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "f": true,
+    "p": [
+     -4
+    ],
+    "x": null
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "f": true,
+    "p": [
+     -2
+    ],
+    "x": 5
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "one": true,
+    "p": []
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "one": true,
+    "p": [
+     "a"
+    ]
+   }
+  },
+  {
+   "ok": {
+    "one": true,
+    "p": [
+     "a"
+    ]
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "I": null,
+    "e": null,
+    "i": null,
+    "ks": null,
+    "p": []
+   }
+  },
+  {
+   "ok": {
+    "I": null,
+    "e": null,
+    "i": [
+     "a",
+     "b"
+    ],
+    "ks": null,
+    "p": []
+   }
+  },
+  {
+   "ok": {
+    "I": [
+     1,
+     2
+    ],
+    "e": null,
+    "i": null,
+    "ks": null,
+    "p": []
+   }
+  },
+  {
+   "ok": {
+    "I": null,
+    "e": null,
+    "i": null,
+    "ks": [
+     7,
+     7
+    ],
+    "p": []
+   }
+  },
+  {
+   "ok": {
+    "I": null,
+    "e": [
+     "a",
+     "b",
+     "c"
+    ],
+    "i": null,
+    "ks": null,
+    "p": []
+   }
+  },
+  {
+   "ok": {
+    "I": null,
+    "e": null,
+    "i": [
+     "a"
+    ],
+    "ks": null,
+    "p": [
+     "p",
+     "q"
+    ]
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "c": "a",
+    "m": null,
+    "n": null,
+    "p": null
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "c": null,
+    "m": null,
+    "n": 2,
+    "p": null
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "c": null,
+    "m": null,
+    "n": null,
+    "p": "x"
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "c": null,
+    "m": [
+     "a",
+     "b"
+    ],
+    "n": null,
+    "p": null
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "c": null,
+    "m": null,
+    "n": null,
+    "p": null
+   }
+  },
+  {
+   "ok": {
+    "p": "p",
+    "r": "1"
+   }
+  },
+  "ERR",
+  "ERR",
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "p": "p",
+    "r": "1"
+   }
+  },
+  {
+   "ok": {
+    "d": "dv",
+    "f": null,
+    "t": 12,
+    "x": null
+   }
+  },
+  {
+   "ok": {
+    "d": "dv",
+    "f": null,
+    "t": 12,
+    "x": 5
+   }
+  },
+  {
+   "ok": {
+    "d": "dv",
+    "f": null,
+    "t": 3,
+    "x": null
+   }
+  },
+  {
+   "ok": {
+    "d": "dv",
+    "f": 1.5,
+    "t": 12,
+    "x": null
+   }
+  },
+  {
+   "ok": {
+    "d": "dv",
+    "f": 100.0,
+    "t": 12,
+    "x": null
+   }
+  },
+  {
+   "ok": {
+    "d": "dv",
+    "f": 0.5,
+    "t": 12,
+    "x": null
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "d": "dv",
+    "f": 5.0,
+    "t": 12,
+    "x": null
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "d": "dv",
+    "f": null,
+    "t": 4,
+    "x": null
+   }
+  },
+  {
+   "ok": {
+    "d": "z",
+    "f": null,
+    "t": 12,
+    "x": null
+   }
+  },
+  {
+   "ok": {
+    "args": [],
+    "cmd": "run",
+    "v": false
+   }
+  },
+  {
+   "ok": {
+    "args": [
+     "a",
+     "b"
+    ],
+    "cmd": "run",
+    "v": false
+   }
+  },
+  {
+   "ok": {
+    "args": [
+     "a"
+    ],
+    "cmd": "run",
+    "v": true
+   }
+  },
+  {
+   "ok": {
+    "args": [
+     "-v"
+    ],
+    "cmd": "run",
+    "v": false
+   }
+  },
+  {
+   "ok": {
+    "args": [
+     "a"
+    ],
+    "cmd": "run",
+    "v": false
+   }
+  },
+  {
+   "ok": {
+    "args": [
+     "--x",
+     "y"
+    ],
+    "cmd": "run",
+    "v": false
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "args": [
+     "a"
+    ],
+    "cmd": "run",
+    "v": false
+   }
+  },
+  {
+   "ok": {
+    "a": false,
+    "b": false,
+    "p": null
+   }
+  },
+  {
+   "ok": {
+    "a": true,
+    "b": false,
+    "p": null
+   }
+  },
+  {
+   "ok": {
+    "a": false,
+    "b": true,
+    "p": null
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "a": true,
+    "b": false,
+    "p": "p"
+   }
+  },
+  {
+   "ok": {
+    "a": false,
+    "b": true,
+    "p": "p"
+   }
+  },
+  {
+   "ok": {
+    "a": true,
+    "b": false,
+    "p": null
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "a": true,
+    "b": null
+   }
+  },
+  {
+   "ok": {
+    "a": false,
+    "b": "1"
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "out2": null,
+    "output": null,
+    "verbose": true,
+    "version2": false
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "out2": null,
+    "output": null,
+    "verbose": false,
+    "version2": true
+   }
+  },
+  {
+   "ok": {
+    "out2": null,
+    "output": null,
+    "verbose": false,
+    "version2": true
+   }
+  },
+  "ERR",
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "out2": null,
+    "output": "x",
+    "verbose": false,
+    "version2": false
+   }
+  },
+  {
+   "ok": {
+    "out2": "x",
+    "output": null,
+    "verbose": false,
+    "version2": false
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "output": null,
+    "verbose": true
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "output": "x",
+    "verbose": false
+   }
+  },
+  {
+   "ok": {
+    "output": "x",
+    "verbose": false
+   }
+  },
+  {
+   "ok": {
+    "color": null,
+    "k": true
+   }
+  },
+  {
+   "ok": {
+    "color": true,
+    "k": true
+   }
+  },
+  {
+   "ok": {
+    "color": false,
+    "k": true
+   }
+  },
+  {
+   "ok": {
+    "color": null,
+    "k": false
+   }
+  },
+  {
+   "ok": {
+    "color": null,
+    "k": true
+   }
+  },
+  {
+   "ok": {
+    "color": false,
+    "k": true
+   }
+  },
+  {
+   "ok": {
+    "cmd": null,
+    "g": false,
+    "lvl": "0"
+   }
+  },
+  {
+   "ok": {
+    "cmd": "add",
+    "f": false,
+    "g": false,
+    "lvl": "sub",
+    "paths": [
+     "x"
+    ]
+   }
+  },
+  {
+   "ok": {
+    "cmd": "add",
+    "f": true,
+    "g": false,
+    "lvl": "sub",
+    "paths": [
+     "x",
+     "y"
+    ]
+   }
+  },
+  {
+   "ok": {
+    "cmd": "add",
+    "f": false,
+    "g": false,
+    "lvl": "sub",
+    "paths": [
+     "x"
+    ]
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "cmd": "rm",
+    "g": false,
+    "hard": false,
+    "lvl": "0",
+    "name": "n"
+   }
+  },
+  {
+   "ok": {
+    "cmd": "rm",
+    "g": false,
+    "hard": true,
+    "lvl": "0",
+    "name": "n"
+   }
+  },
+  {
+   "ok": {
+    "cmd": "rm",
+    "g": false,
+    "hard": false,
+    "lvl": "0",
+    "name": "n"
+   }
+  },
+  {
+   "ok": {
+    "cmd": "add",
+    "f": false,
+    "g": true,
+    "lvl": "sub",
+    "paths": [
+     "x"
+    ]
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "cmd": "add",
+    "f": false,
+    "g": false,
+    "lvl": "5",
+    "paths": [
+     "x"
+    ]
+   }
+  },
+  {
+   "ok": {
+    "cmd": "add",
+    "f": false,
+    "g": false,
+    "lvl": "6",
+    "paths": [
+     "x"
+    ]
+   }
+  },
+  {
+   "ok": {
+    "cmd": "rm",
+    "g": false,
+    "hard": false,
+    "lvl": "5",
+    "name": "n"
+   }
+  },
+  {
+   "ok": {
+    "cmd": "remote",
+    "g": false,
+    "lvl": "0",
+    "n": "n",
+    "rcmd": "add",
+    "u": "u"
+   }
+  },
+  {
+   "ok": {
+    "cmd": "remote",
+    "g": false,
+    "lvl": "0",
+    "n": null,
+    "rcmd": "show"
+   }
+  },
+  {
+   "ok": {
+    "cmd": "remote",
+    "g": false,
+    "lvl": "0",
+    "n": "n",
+    "rcmd": "show"
+   }
+  },
+  {
+   "ok": {
+    "cmd": "remote",
+    "g": false,
+    "lvl": "0",
+    "rcmd": null
+   }
+  },
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "cmd": "add",
+    "f": false,
+    "g": false,
+    "lvl": "sub",
+    "paths": [
+     "x",
+     "-f"
+    ]
+   }
+  },
+  {
+   "ok": {
+    "cmd": "add",
+    "f": false,
+    "g": false,
+    "lvl": "sub",
+    "paths": [
+     "x"
+    ]
+   }
+  },
+  {
+   "ok": {
+    "cmd": "add",
+    "f": false,
+    "g": false,
+    "lvl": "sub",
+    "paths": [
+     "x"
+    ]
+   }
+  },
+  "ERR",
+  "ERR",
+  "ERR",
+  "ERR",
+  {
+   "ok": {
+    "cmd": null,
+    "g": true,
+    "lvl": "0"
+   }
+  },
+  {
+   "ok": {
+    "cmd": "add",
+    "f": true,
+    "g": false,
+    "lvl": "sub",
+    "paths": [
+     "x"
+    ]
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "cmd": "go",
+    "t": null
+   }
+  },
+  {
+   "ok": {
+    "cmd": "go",
+    "t": "t"
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "c": "go",
+    "q": false,
+    "t": "t",
+    "x": "x"
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "c": null,
+    "q": false,
+    "x": "x"
+   }
+  },
+  {
+   "ok": {
+    "c": "go",
+    "q": true,
+    "t": "t",
+    "x": "x"
+   }
+  },
+  {
+   "ok": {
+    "c": "go",
+    "q": true,
+    "t": "t",
+    "x": "x"
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "a": "v",
+    "b": false
+   }
+  },
+  {
+   "ok": {
+    "a": "v",
+    "b": false
+   }
+  },
+  {
+   "ok": {
+    "a": "b",
+    "b": false
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "a": "v",
+    "b": true
+   }
+  },
+  "ERR",
+  {
+   "ok": {
+    "a": "x",
+    "b": true
+   }
+  },
+  {
+   "ok": {
+    "a": "x",
+    "b": false
+   }
+  }
+ ],
+ "help_expected": {
+  "defaults": "usage: t [-h] [--n N] [--c {a,b}] [--m MM] [--pct PCT]\n\noptions:\n  -h, --help  show this help message and exit\n  --n N       n is 5 and type int\n  --c {a,b}   from a, b\n  --m MM      metavar MM dest m\n  --pct PCT   100% sure\n",
+  "groups": "usage: t [-h] [--top TOP] [--host HOST] [--port PORT] [--out OUT]\n\noptions:\n  -h, --help   show this help message and exit\n  --top TOP    top level\n\nNetwork:\n  Network related options.\n\n  --host HOST  host name\n  --port PORT  port number\n\nFiles:\n  --out OUT    output\n",
+  "hidden": "usage: t [-h] [--shown SHOWN] vis\n\npositional arguments:\n  vis\n\noptions:\n  -h, --help     show this help message and exit\n  --shown SHOWN  visible\n",
+  "longprog": "usage: a-very-long-program-name-that-takes-up-lots-of-room-in-the-usage-line-yes\n       [-h] [--alpha-option ALPHA] [--beta-option BETA] pos\n\npositional arguments:\n  pos\n\noptions:\n  -h, --help            show this help message and exit\n  --alpha-option ALPHA\n  --beta-option BETA\n",
+  "mutex": "usage: t [-h] [--a | --b B] (-x | -y) pos\n\npositional arguments:\n  pos\n\noptions:\n  -h, --help  show this help message and exit\n  --a         a flag\n  --b B       b value\n  -x\n  -y\n",
+  "nargs": "usage: t [-h] [--two A B] [--opt [OPT]] [--many [MANY ...]]\n         [--plus PLUS [PLUS ...]] [--cnt] [--k K] [--bo | --no-bo]\n\noptions:\n  -h, --help            show this help message and exit\n  --two A B             two things\n  --opt [OPT]           optional value\n  --many [MANY ...]\n  --plus PLUS [PLUS ...]\n  --cnt                 counter\n  --k K                 repeat me\n  --bo, --no-bo         toggle\n",
+  "simple": "usage: t [-h] [-v] [-n NUM] [--name NAME] [--very-long-option-name VALUE]\n         [-c {alpha,beta,gamma}]\n         src [dst] [files ...] others [others ...]\n\nA simple tool that does things, with a fairly long description that must wrap\nacross several lines of output text.\n\npositional arguments:\n  src                   source file\n  dst                   optional destination\n  files                 more files\n  others                at least one\n\noptions:\n  -h, --help            show this help message and exit\n  -v, --verbose         be more verbose\n  -n NUM, --num NUM     number of things\n  --name NAME           a name (default: bob)\n  --very-long-option-name VALUE\n                        this option has a very long invocation string\n  -c {alpha,beta,gamma}, --choice {alpha,beta,gamma}\n                        pick one\n\nEpilog text here that is also fairly long and should wrap nicely at the width\nwe configured for the test.\n",
+  "sub": "usage: t [-h] [--g] {add,remove,remote} ...\n\nTop.\n\npositional arguments:\n  {add,remove,remote}  sub-command help\n    add (a)            Add things to the thing\n    remove (rm, r)     Remove things\n    remote             Manage a remote that has a very long help string which\n                       should wrap onto a second line okay\n\noptions:\n  -h, --help           show this help message and exit\n  --g                  global\n",
+  "subtitle": "usage: t [-h] {go,stop} ...\n\noptions:\n  -h, --help  show this help message and exit\n\ncommands:\n  available commands\n\n  {go,stop}\n    go        go somewhere\n    stop      stop\n",
+  "usagewrap": "usage: t [-h] [--alpha-option ALPHA] [--beta-option BETA]\n         [--gamma-option GAMMA] [--delta-option DELTA]\n         [--epsilon-option EPSILON] [-x]\n         first second third [third ...]\n\npositional arguments:\n  first\n  second\n  third\n\noptions:\n  -h, --help            show this help message and exit\n  --alpha-option ALPHA\n  --beta-option BETA\n  --gamma-option GAMMA\n  --delta-option DELTA\n  --epsilon-option EPSILON\n  -x\n"
+ },
+ "help_specs": {
+  "defaults": {
+   "args": [
+    {
+     "names": [
+      "--n"
+     ],
+     "opts": {
+      "default": 5,
+      "help": "n is %(default)s and type %(type)s",
+      "type": "int"
+     }
+    },
+    {
+     "names": [
+      "--c"
+     ],
+     "opts": {
+      "choices": [
+       "a",
+       "b"
+      ],
+      "help": "from %(choices)s"
+     }
+    },
+    {
+     "names": [
+      "--m"
+     ],
+     "opts": {
+      "help": "metavar %(metavar)s dest %(dest)s",
+      "metavar": "MM"
+     }
+    },
+    {
+     "names": [
+      "--pct"
+     ],
+     "opts": {
+      "help": "100%% sure"
+     }
+    }
+   ]
+  },
+  "groups": {
+   "args": [
+    {
+     "names": [
+      "--top"
+     ],
+     "opts": {
+      "help": "top level"
+     }
+    }
+   ],
+   "groups": [
+    {
+     "args": [
+      {
+       "names": [
+        "--host"
+       ],
+       "opts": {
+        "help": "host name"
+       }
+      },
+      {
+       "names": [
+        "--port"
+       ],
+       "opts": {
+        "help": "port number",
+        "type": "int"
+       }
+      }
+     ],
+     "description": "Network related options.",
+     "title": "Network"
+    },
+    {
+     "args": [
+      {
+       "names": [
+        "--out"
+       ],
+       "opts": {
+        "help": "output"
+       }
+      }
+     ],
+     "title": "Files"
+    }
+   ]
+  },
+  "hidden": {
+   "args": [
+    {
+     "names": [
+      "--shown"
+     ],
+     "opts": {
+      "help": "visible"
+     }
+    },
+    {
+     "names": [
+      "--secret"
+     ],
+     "opts": {
+      "help": "==SUPPRESS=="
+     }
+    },
+    {
+     "names": [
+      "hid"
+     ],
+     "opts": {
+      "help": "==SUPPRESS=="
+     }
+    },
+    {
+     "names": [
+      "vis"
+     ],
+     "opts": {}
+    }
+   ]
+  },
+  "longprog": {
+   "args": [
+    {
+     "names": [
+      "--alpha-option"
+     ],
+     "opts": {
+      "metavar": "ALPHA"
+     }
+    },
+    {
+     "names": [
+      "--beta-option"
+     ],
+     "opts": {
+      "metavar": "BETA"
+     }
+    },
+    {
+     "names": [
+      "pos"
+     ],
+     "opts": {}
+    }
+   ],
+   "prog": "a-very-long-program-name-that-takes-up-lots-of-room-in-the-usage-line-yes"
+  },
+  "mutex": {
+   "args": [
+    {
+     "names": [
+      "pos"
+     ],
+     "opts": {}
+    }
+   ],
+   "mutex": [
+    {
+     "args": [
+      {
+       "names": [
+        "--a"
+       ],
+       "opts": {
+        "action": "store_true",
+        "help": "a flag"
+       }
+      },
+      {
+       "names": [
+        "--b"
+       ],
+       "opts": {
+        "help": "b value"
+       }
+      }
+     ],
+     "required": false
+    },
+    {
+     "args": [
+      {
+       "names": [
+        "-x"
+       ],
+       "opts": {
+        "action": "store_true"
+       }
+      },
+      {
+       "names": [
+        "-y"
+       ],
+       "opts": {
+        "action": "store_true"
+       }
+      }
+     ],
+     "required": true
+    }
+   ]
+  },
+  "nargs": {
+   "args": [
+    {
+     "names": [
+      "--two"
+     ],
+     "opts": {
+      "help": "two things",
+      "metavar": [
+       "A",
+       "B"
+      ],
+      "nargs": 2
+     }
+    },
+    {
+     "names": [
+      "--opt"
+     ],
+     "opts": {
+      "help": "optional value",
+      "nargs": "?"
+     }
+    },
+    {
+     "names": [
+      "--many"
+     ],
+     "opts": {
+      "nargs": "*"
+     }
+    },
+    {
+     "names": [
+      "--plus"
+     ],
+     "opts": {
+      "nargs": "+"
+     }
+    },
+    {
+     "names": [
+      "--cnt"
+     ],
+     "opts": {
+      "action": "count",
+      "help": "counter"
+     }
+    },
+    {
+     "names": [
+      "--k"
+     ],
+     "opts": {
+      "action": "append",
+      "help": "repeat me"
+     }
+    },
+    {
+     "names": [
+      "--bo"
+     ],
+     "opts": {
+      "action": "boolean_optional",
+      "help": "toggle"
+     }
+    }
+   ]
+  },
+  "simple": {
+   "args": [
+    {
+     "names": [
+      "-v",
+      "--verbose"
+     ],
+     "opts": {
+      "action": "store_true",
+      "help": "be more verbose"
+     }
+    },
+    {
+     "names": [
+      "-n",
+      "--num"
+     ],
+     "opts": {
+      "help": "number of things",
+      "type": "int"
+     }
+    },
+    {
+     "names": [
+      "--name"
+     ],
+     "opts": {
+      "default": "bob",
+      "help": "a name (default: %(default)s)"
+     }
+    },
+    {
+     "names": [
+      "--very-long-option-name"
+     ],
+     "opts": {
+      "help": "this option has a very long invocation string",
+      "metavar": "VALUE"
+     }
+    },
+    {
+     "names": [
+      "-c",
+      "--choice"
+     ],
+     "opts": {
+      "choices": [
+       "alpha",
+       "beta",
+       "gamma"
+      ],
+      "help": "pick one"
+     }
+    },
+    {
+     "names": [
+      "src"
+     ],
+     "opts": {
+      "help": "source file"
+     }
+    },
+    {
+     "names": [
+      "dst"
+     ],
+     "opts": {
+      "help": "optional destination",
+      "nargs": "?"
+     }
+    },
+    {
+     "names": [
+      "files"
+     ],
+     "opts": {
+      "help": "more files",
+      "nargs": "*"
+     }
+    },
+    {
+     "names": [
+      "others"
+     ],
+     "opts": {
+      "help": "at least one",
+      "nargs": "+"
+     }
+    }
+   ],
+   "description": "A simple tool that does things, with a fairly long description that must wrap across several lines of output text.",
+   "epilog": "Epilog text here that is also fairly long and should wrap nicely at the width we configured for the test."
+  },
+  "sub": {
+   "args": [
+    {
+     "names": [
+      "--g"
+     ],
+     "opts": {
+      "action": "store_true",
+      "help": "global"
+     }
+    }
+   ],
+   "description": "Top.",
+   "sub": {
+    "commands": [
+     {
+      "aliases": [
+       "a"
+      ],
+      "args": [
+       {
+        "names": [
+         "paths"
+        ],
+        "opts": {
+         "nargs": "+"
+        }
+       }
+      ],
+      "help": "Add things to the thing",
+      "name": "add"
+     },
+     {
+      "aliases": [
+       "rm",
+       "r"
+      ],
+      "args": [],
+      "help": "Remove things",
+      "name": "remove"
+     },
+     {
+      "args": [],
+      "help": "Manage a remote that has a very long help string which should wrap onto a second line okay",
+      "name": "remote"
+     }
+    ],
+    "dest": "cmd",
+    "help": "sub-command help"
+   }
+  },
+  "subtitle": {
+   "args": [],
+   "sub": {
+    "commands": [
+     {
+      "args": [],
+      "help": "go somewhere",
+      "name": "go"
+     },
+     {
+      "args": [],
+      "help": "stop",
+      "name": "stop"
+     }
+    ],
+    "description": "available commands",
+    "dest": "cmd",
+    "title": "commands"
+   }
+  },
+  "usagewrap": {
+   "args": [
+    {
+     "names": [
+      "--alpha-option"
+     ],
+     "opts": {
+      "metavar": "ALPHA"
+     }
+    },
+    {
+     "names": [
+      "--beta-option"
+     ],
+     "opts": {
+      "metavar": "BETA"
+     }
+    },
+    {
+     "names": [
+      "--gamma-option"
+     ],
+     "opts": {
+      "metavar": "GAMMA"
+     }
+    },
+    {
+     "names": [
+      "--delta-option"
+     ],
+     "opts": {
+      "metavar": "DELTA"
+     }
+    },
+    {
+     "names": [
+      "--epsilon-option"
+     ],
+     "opts": {
+      "metavar": "EPSILON"
+     }
+    },
+    {
+     "names": [
+      "-x"
+     ],
+     "opts": {
+      "action": "store_true"
+     }
+    },
+    {
+     "names": [
+      "first"
+     ],
+     "opts": {}
+    },
+    {
+     "names": [
+      "second"
+     ],
+     "opts": {}
+    },
+    {
+     "names": [
+      "third"
+     ],
+     "opts": {
+      "nargs": "+"
+     }
+    }
+   ]
+  }
+ },
+ "overrides_help": [
+  "sub"
+ ],
+ "overrides_parse": [
+  61,
+  129,
+  130,
+  186,
+  197
+ ],
+ "parsers": {
+  "abbrev": {
+   "args": [
+    {
+     "names": [
+      "--verbose"
+     ],
+     "opts": {
+      "action": "store_true"
+     }
+    },
+    {
+     "names": [
+      "--version2"
+     ],
+     "opts": {
+      "action": "store_true"
+     }
+    },
+    {
+     "names": [
+      "--output"
+     ],
+     "opts": {}
+    },
+    {
+     "names": [
+      "--out2"
+     ],
+     "opts": {}
+    }
+   ]
+  },
+  "append": {
+   "args": [
+    {
+     "names": [
+      "-i"
+     ],
+     "opts": {
+      "action": "append"
+     }
+    },
+    {
+     "names": [
+      "-I"
+     ],
+     "opts": {
+      "action": "append",
+      "type": "int"
+     }
+    },
+    {
+     "names": [
+      "--k"
+     ],
+     "opts": {
+      "action": "append_const",
+      "const": 7,
+      "dest": "ks"
+     }
+    },
+    {
+     "names": [
+      "--e"
+     ],
+     "opts": {
+      "action": "extend",
+      "nargs": "+"
+     }
+    },
+    {
+     "names": [
+      "p"
+     ],
+     "opts": {
+      "nargs": "*"
+     }
+    }
+   ]
+  },
+  "basic": {
+   "args": [
+    {
+     "names": [
+      "-v",
+      "--verbose"
+     ],
+     "opts": {
+      "action": "store_true"
+     }
+    },
+    {
+     "names": [
+      "-q"
+     ],
+     "opts": {
+      "action": "store_false",
+      "dest": "quiet"
+     }
+    },
+    {
+     "names": [
+      "-n",
+      "--num"
+     ],
+     "opts": {
+      "type": "int"
+     }
+    },
+    {
+     "names": [
+      "--name"
+     ],
+     "opts": {
+      "default": "x"
+     }
+    },
+    {
+     "names": [
+      "pos"
+     ],
+     "opts": {}
+    },
+    {
+     "names": [
+      "rest"
+     ],
+     "opts": {
+      "nargs": "*"
+     }
+    }
+   ]
+  },
+  "bool": {
+   "args": [
+    {
+     "names": [
+      "--color"
+     ],
+     "opts": {
+      "action": "boolean_optional"
+     }
+    },
+    {
+     "names": [
+      "--k"
+     ],
+     "opts": {
+      "action": "boolean_optional",
+      "default": true
+     }
+    }
+   ]
+  },
+  "bt": {
+   "args": [
+    {
+     "names": [
+      "a"
+     ],
+     "opts": {
+      "nargs": "*"
+     }
+    },
+    {
+     "names": [
+      "b"
+     ],
+     "opts": {}
+    },
+    {
+     "names": [
+      "c"
+     ],
+     "opts": {
+      "nargs": "?"
+     }
+    }
+   ]
+  },
+  "bt2": {
+   "args": [
+    {
+     "names": [
+      "a"
+     ],
+     "opts": {}
+    },
+    {
+     "names": [
+      "b"
+     ],
+     "opts": {
+      "nargs": "+"
+     }
+    },
+    {
+     "names": [
+      "c"
+     ],
+     "opts": {}
+    }
+   ]
+  },
+  "choices": {
+   "args": [
+    {
+     "names": [
+      "--c"
+     ],
+     "opts": {
+      "choices": [
+       "a",
+       "b"
+      ]
+     }
+    },
+    {
+     "names": [
+      "--n"
+     ],
+     "opts": {
+      "choices": [
+       1,
+       2,
+       3
+      ],
+      "type": "int"
+     }
+    },
+    {
+     "names": [
+      "p"
+     ],
+     "opts": {
+      "choices": [
+       "x",
+       "y"
+      ],
+      "nargs": "?"
+     }
+    },
+    {
+     "names": [
+      "--m"
+     ],
+     "opts": {
+      "choices": [
+       "a",
+       "b"
+      ],
+      "nargs": "+"
+     }
+    }
+   ]
+  },
+  "const": {
+   "args": [
+    {
+     "names": [
+      "--x"
+     ],
+     "opts": {
+      "action": "store_const",
+      "const": 5
+     }
+    },
+    {
+     "names": [
+      "--d"
+     ],
+     "opts": {
+      "default": "dv"
+     }
+    },
+    {
+     "names": [
+      "--t"
+     ],
+     "opts": {
+      "default": "12",
+      "type": "int"
+     }
+    },
+    {
+     "names": [
+      "--f"
+     ],
+     "opts": {
+      "type": "float"
+     }
+    }
+   ]
+  },
+  "dup": {
+   "args": [
+    {
+     "names": [
+      "-a"
+     ],
+     "opts": {}
+    },
+    {
+     "names": [
+      "-b"
+     ],
+     "opts": {
+      "action": "store_true"
+     }
+    }
+   ]
+  },
+  "flags": {
+   "args": [
+    {
+     "names": [
+      "-a"
+     ],
+     "opts": {
+      "action": "store_true"
+     }
+    },
+    {
+     "names": [
+      "-b"
+     ],
+     "opts": {
+      "action": "store_true"
+     }
+    },
+    {
+     "names": [
+      "-c"
+     ],
+     "opts": {
+      "action": "store_true"
+     }
+    },
+    {
+     "names": [
+      "-n"
+     ],
+     "opts": {
+      "type": "int"
+     }
+    },
+    {
+     "names": [
+      "-s"
+     ],
+     "opts": {}
+    },
+    {
+     "names": [
+      "-v"
+     ],
+     "opts": {
+      "action": "count",
+      "default": 0
+     }
+    }
+   ]
+  },
+  "interleave": {
+   "args": [
+    {
+     "names": [
+      "x"
+     ],
+     "opts": {}
+    },
+    {
+     "names": [
+      "y"
+     ],
+     "opts": {}
+    },
+    {
+     "names": [
+      "--o"
+     ],
+     "opts": {}
+    },
+    {
+     "names": [
+      "-f"
+     ],
+     "opts": {
+      "action": "store_true"
+     }
+    }
+   ]
+  },
+  "mutex": {
+   "args": [
+    {
+     "names": [
+      "p"
+     ],
+     "opts": {
+      "nargs": "?"
+     }
+    }
+   ],
+   "mutex": [
+    {
+     "args": [
+      {
+       "names": [
+        "--a"
+       ],
+       "opts": {
+        "action": "store_true"
+       }
+      },
+      {
+       "names": [
+        "--b"
+       ],
+       "opts": {
+        "action": "store_true"
+       }
+      }
+     ],
+     "required": false
+    }
+   ]
+  },
+  "mutexr": {
+   "args": [],
+   "mutex": [
+    {
+     "args": [
+      {
+       "names": [
+        "--a"
+       ],
+       "opts": {
+        "action": "store_true"
+       }
+      },
+      {
+       "names": [
+        "--b"
+       ],
+       "opts": {}
+      }
+     ],
+     "required": true
+    }
+   ]
+  },
+  "nargs": {
+   "args": [
+    {
+     "names": [
+      "--two"
+     ],
+     "opts": {
+      "nargs": 2,
+      "type": "int"
+     }
+    },
+    {
+     "names": [
+      "--many"
+     ],
+     "opts": {
+      "nargs": "+"
+     }
+    },
+    {
+     "names": [
+      "--any"
+     ],
+     "opts": {
+      "nargs": "*"
+     }
+    },
+    {
+     "names": [
+      "--opt"
+     ],
+     "opts": {
+      "const": "C",
+      "default": "D",
+      "nargs": "?"
+     }
+    },
+    {
+     "names": [
+      "x"
+     ],
+     "opts": {}
+    },
+    {
+     "names": [
+      "y"
+     ],
+     "opts": {
+      "nargs": "?"
+     }
+    },
+    {
+     "names": [
+      "z"
+     ],
+     "opts": {
+      "nargs": "*"
+     }
+    }
+   ]
+  },
+  "neg": {
+   "args": [
+    {
+     "names": [
+      "-x"
+     ],
+     "opts": {
+      "type": "int"
+     }
+    },
+    {
+     "names": [
+      "p"
+     ],
+     "opts": {
+      "nargs": "*",
+      "type": "int"
+     }
+    },
+    {
+     "names": [
+      "-f"
+     ],
+     "opts": {
+      "action": "store_true"
+     }
+    }
+   ]
+  },
+  "negopt": {
+   "args": [
+    {
+     "names": [
+      "-1"
+     ],
+     "opts": {
+      "action": "store_true",
+      "dest": "one"
+     }
+    },
+    {
+     "names": [
+      "p"
+     ],
+     "opts": {
+      "nargs": "*"
+     }
+    }
+   ]
+  },
+  "noabbrev": {
+   "allow_abbrev": false,
+   "args": [
+    {
+     "names": [
+      "--verbose"
+     ],
+     "opts": {
+      "action": "store_true"
+     }
+    },
+    {
+     "names": [
+      "--output"
+     ],
+     "opts": {}
+    }
+   ]
+  },
+  "pre": {
+   "args": [
+    {
+     "names": [
+      "x"
+     ],
+     "opts": {}
+    },
+    {
+     "names": [
+      "-q"
+     ],
+     "opts": {
+      "action": "store_true"
+     }
+    }
+   ],
+   "sub": {
+    "commands": [
+     {
+      "args": [
+       {
+        "names": [
+         "t"
+        ],
+        "opts": {}
+       }
+      ],
+      "name": "go"
+     }
+    ],
+    "dest": "c"
+   }
+  },
+  "remainder": {
+   "args": [
+    {
+     "names": [
+      "-v"
+     ],
+     "opts": {
+      "action": "store_true"
+     }
+    },
+    {
+     "names": [
+      "cmd"
+     ],
+     "opts": {}
+    },
+    {
+     "names": [
+      "args"
+     ],
+     "opts": {
+      "nargs": "remainder"
+     }
+    }
+   ]
+  },
+  "req": {
+   "args": [
+    {
+     "names": [
+      "--r"
+     ],
+     "opts": {
+      "required": true
+     }
+    },
+    {
+     "names": [
+      "p"
+     ],
+     "opts": {}
+    }
+   ]
+  },
+  "sub": {
+   "args": [
+    {
+     "names": [
+      "--g"
+     ],
+     "opts": {
+      "action": "store_true"
+     }
+    },
+    {
+     "names": [
+      "--lvl"
+     ],
+     "opts": {
+      "default": "0"
+     }
+    }
+   ],
+   "sub": {
+    "commands": [
+     {
+      "aliases": [
+       "a"
+      ],
+      "args": [
+       {
+        "names": [
+         "paths"
+        ],
+        "opts": {
+         "nargs": "+"
+        }
+       },
+       {
+        "names": [
+         "-f"
+        ],
+        "opts": {
+         "action": "store_true"
+        }
+       },
+       {
+        "names": [
+         "--lvl"
+        ],
+        "opts": {
+         "default": "sub"
+        }
+       }
+      ],
+      "name": "add"
+     },
+     {
+      "aliases": [
+       "remove",
+       "r"
+      ],
+      "args": [
+       {
+        "names": [
+         "name"
+        ],
+        "opts": {}
+       },
+       {
+        "names": [
+         "--hard"
+        ],
+        "opts": {
+         "action": "store_true"
+        }
+       }
+      ],
+      "name": "rm"
+     },
+     {
+      "args": [],
+      "name": "remote",
+      "sub": {
+       "commands": [
+        {
+         "args": [
+          {
+           "names": [
+            "n"
+           ],
+           "opts": {}
+          },
+          {
+           "names": [
+            "u"
+           ],
+           "opts": {}
+          }
+         ],
+         "name": "add"
+        },
+        {
+         "args": [
+          {
+           "names": [
+            "n"
+           ],
+           "opts": {
+            "nargs": "?"
+           }
+          }
+         ],
+         "name": "show"
+        }
+       ],
+       "dest": "rcmd"
+      }
+     }
+    ],
+    "dest": "cmd"
+   }
+  },
+  "subreq": {
+   "args": [],
+   "sub": {
+    "commands": [
+     {
+      "args": [
+       {
+        "names": [
+         "t"
+        ],
+        "opts": {
+         "nargs": "?"
+        }
+       }
+      ],
+      "name": "go"
+     }
+    ],
+    "dest": "cmd",
+    "required": true
+   }
+  }
+ }
+}

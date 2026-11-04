@@ -1,0 +1,9 @@
+[MessageBox] Erreur ALEX : Trace (appel le plus récent en dernier) :
+  <stdlib natif>/wingui.al:210, dans _wndproc
+  tests/native/windows/win_gui_err.al:9, dans <lambda>
+  tests/native/windows/win_gui_err.al:7, dans profond
+  tests/native/windows/win_gui_err.al:7, dans profond
+  tests/native/windows/win_gui_err.al:7, dans profond
+  tests/native/windows/win_gui_err.al:6, dans profond
+Panne: dans le gestionnaire du clic
+

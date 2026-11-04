@@ -1,0 +1,99 @@
+{
+  "Fonction": {
+    "prefix": "func",
+    "body": [
+      "func ${1:nom}(${2}):",
+      "    ${0}"
+    ],
+    "description": "Déclaration de fonction"
+  },
+  "Classe": {
+    "prefix": "class",
+    "body": [
+      "class ${1:Nom}:",
+      "    func init(${2}):",
+      "        ${0}"
+    ],
+    "description": "Classe avec constructeur"
+  },
+  "Si": {
+    "prefix": "if",
+    "body": [
+      "if ${1:condition}:",
+      "    ${0}"
+    ]
+  },
+  "Si / sinon": {
+    "prefix": "ifelse",
+    "body": [
+      "if ${1:condition}:",
+      "    ${2}",
+      "else:",
+      "    ${0}"
+    ]
+  },
+  "Pour": {
+    "prefix": "for",
+    "body": [
+      "for ${1:x} in ${2:liste}:",
+      "    ${0}"
+    ]
+  },
+  "Tant que": {
+    "prefix": "while",
+    "body": [
+      "while ${1:condition}:",
+      "    ${0}"
+    ]
+  },
+  "Essayer": {
+    "prefix": "try",
+    "body": [
+      "try:",
+      "    ${1}",
+      "catch ${2:e}:",
+      "    ${0:print(e.message)}"
+    ]
+  },
+  "Filtrage": {
+    "prefix": "match",
+    "body": [
+      "match ${1:valeur}:",
+      "    ${2:Cas}:",
+      "        ${0}"
+    ]
+  },
+  "Programme principal": {
+    "prefix": "main",
+    "body": [
+      "func main():",
+      "    ${0}",
+      "",
+      "main()"
+    ]
+  },
+  "Test": {
+    "prefix": "test",
+    "body": [
+      "func test_${1:nom}():",
+      "    testing.assert_eq(${2:obtenu}, ${3:attendu})"
+    ]
+  },
+  "Application graphique": {
+    "prefix": "gui",
+    "body": [
+      "use ui.view as v",
+      "use gui",
+      "",
+      "etat := {\"n\": 0}",
+      "",
+      "func vue():",
+      "    return v.column([v.text(\"Compteur : \" + str(etat[\"n\"])), v.button(\"+1\", () => plus())], padding=2)",
+      "",
+      "func plus():",
+      "    etat[\"n\"] += 1",
+      "",
+      "gui.run(vue, \"${1:Mon application}\", 480, 320)"
+    ]
+  }
+}

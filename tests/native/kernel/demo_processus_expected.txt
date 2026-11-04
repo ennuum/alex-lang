@@ -1,0 +1,52 @@
+disque :
+true
+code :
+Bonjour de AlexOS ! arguments : [a, b]
+20000
+mot19999
+écrit par le processus 1
+
+0
+code :
+avant l'erreur
+Trace (appel le plus récent en dernier) :
+  examples/noyau/programmes/erreur.al:5, dans <module>
+  examples/noyau/programmes/erreur.al:3, dans division
+ZeroDivisionError: division entière par zéro (int // 0)
+1
+code :
+nombre ?
+5² = 25
+nombre ?
+6² = 36
+nombre ?
+somme des carrés : 61
+0
+Bonjour de AlexOS ! arguments : []
+20000
+mot19999
+écrit par le processus 4
+
+Bonjour de AlexOS ! arguments : []
+20000
+mot19999
+écrit par le processus 5
+
+Bonjour de AlexOS ! arguments : []
+20000
+mot19999
+écrit par le processus 6
+
+Bonjour de AlexOS ! arguments : []
+20000
+mot19999
+écrit par le processus 7
+
+Bonjour de AlexOS ! arguments : []
+20000
+mot19999
+écrit par le processus 8
+
+pages libres réutilisées :
+true
+ProcessError: HELLO.TXT : pas un exécutable ELF

@@ -1,0 +1,156 @@
+{
+ "width": 6,
+ "height": 4,
+ "tilewidth": 16,
+ "tileheight": 16,
+ "orientation": "orthogonal",
+ "infinite": false,
+ "properties": [
+  {
+   "name": "gravite",
+   "type": "float",
+   "value": 9.5
+  }
+ ],
+ "tilesets": [
+  {
+   "firstgid": 1,
+   "name": "base",
+   "tilewidth": 16,
+   "tileheight": 16,
+   "tilecount": 4,
+   "columns": 4,
+   "image": "tuiles.png",
+   "imagewidth": 64,
+   "imageheight": 16,
+   "margin": 0,
+   "spacing": 0,
+   "tiles": [
+    {
+     "id": 0,
+     "properties": [
+      {
+       "name": "solide",
+       "type": "bool",
+       "value": true
+      }
+     ]
+    },
+    {
+     "id": 3,
+     "animation": [
+      {
+       "tileid": 2,
+       "duration": 100
+      },
+      {
+       "tileid": 3,
+       "duration": 100
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "layers": [
+  {
+   "type": "tilelayer",
+   "name": "sol",
+   "width": 6,
+   "height": 4,
+   "data": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    2,
+    0,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "visible": true,
+   "opacity": 1
+  },
+  {
+   "type": "tilelayer",
+   "name": "deco",
+   "width": 6,
+   "height": 4,
+   "data": "eJxjYWBgYGZgaGBmYFBgoAEAADscAKs=",
+   "encoding": "base64",
+   "compression": "zlib",
+   "visible": true,
+   "opacity": 1
+  },
+  {
+   "type": "group",
+   "name": "g",
+   "offsetx": 5,
+   "offsety": 0,
+   "layers": [
+    {
+     "type": "objectgroup",
+     "name": "objets",
+     "objects": [
+      {
+       "id": 1,
+       "name": "depart",
+       "type": "joueur",
+       "x": 20,
+       "y": 30,
+       "width": 0,
+       "height": 0,
+       "point": true,
+       "properties": [
+        {
+         "name": "vies",
+         "type": "int",
+         "value": 3
+        }
+       ]
+      },
+      {
+       "id": 2,
+       "name": "zone",
+       "class": "piege",
+       "x": 0,
+       "y": 0,
+       "width": 10,
+       "height": 10,
+       "polygon": [
+        {
+         "x": 0,
+         "y": 0
+        },
+        {
+         "x": 10,
+         "y": 0
+        },
+        {
+         "x": 5,
+         "y": 8
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

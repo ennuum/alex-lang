@@ -1,0 +1,25 @@
+PIC : minuterie
+true
+true
+int3 :
+1
+1
+APIC présent :
+true
+APIC local actif :
+true
+id
+0
+LVT
+true
+IO-APIC : entrées
+24
+IO-APIC : minuterie sur la GSI 2
+true
+IPI vers soi : vecteur
+80
+true
+minuterie de l'APIC local :
+true
+EOI APIC :
+true

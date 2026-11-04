@@ -1,0 +1,8 @@
+tampon : 0 3 true
+chaîne : 7 Bonjour
+rebond : true true données hautes 389120
+zone basse rendue : 393216
+segments : 5 32768 32768
+réserve : true 0
+anneau : 0 0 0
+moteur : 1 7 terminé

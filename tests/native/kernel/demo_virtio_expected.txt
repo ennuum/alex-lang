@@ -1,0 +1,29 @@
+pilote :
+virtio-blk
+secteurs :
+32768
+périphérique PCI virtio :
+1001
+contrôleur SCSI / virtio
+ 
+HELLO.TXT
+ 
+BONJOUR.ELF
+ 
+CALCUL.ELF
+ 
+CARRES.ELF
+ 
+ERREUR.ELF
+ 
+FICHIERS.ELF
+Bonjour depuis le disque !
+écrit puis relu :
+12790
+octets, identique :
+true
+cœurs :
+4
+code 0, graine 7 : 249603280
+code 0, graine 14 : 249824048
+code 0, graine 21 : 249686424

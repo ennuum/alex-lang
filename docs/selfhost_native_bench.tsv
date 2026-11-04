@@ -1,0 +1,284 @@
+programme	statut	taille	cpp_ms	alex_ms	execution
+examples/async_demo.al	MÊME-REFUS	-	16	1365	-
+examples/channel_demo.al	MÊME-REFUS	-	6	55	-
+examples/cli_demo.al	MÊME-REFUS	-	6	46	-
+examples/comprehensions.al	IDENTIQUE	71048	16	2030	même sortie
+examples/core_valid.al	MÊME-REFUS	-	22	1686	-
+examples/debugger_step.al	IDENTIQUE	59152	16	1970	même sortie
+examples/extended.al	MÊME-REFUS	-	7	198	-
+examples/ffi_demo.al	MÊME-REFUS	-	7	68	-
+examples/functional_demo.al	MÊME-REFUS	-	6	70	-
+examples/json_demo.al	MÊME-REFUS	-	8	44	-
+examples/math_basics.al	MÊME-REFUS	-	15	1825	-
+examples/math_combinatorics.al	MÊME-REFUS	-	19	1741	-
+examples/math_geometry.al	MÊME-REFUS	-	23	1822	-
+examples/math_number_theory.al	MÊME-REFUS	-	7	234	-
+examples/math_physics.al	MÊME-REFUS	-	18	1677	-
+examples/math_scientific.al	MÊME-REFUS	-	18	1848	-
+examples/math_statistics.al	MÊME-REFUS	-	22	1725	-
+examples/math_test_suite.al	MÊME-REFUS	-	18	2192	-
+examples/math_trigonometry.al	MÊME-REFUS	-	26	2140	-
+examples/memory_demo.al	MÊME-REFUS	-	7	52	-
+examples/oop_demo.al	MÊME-REFUS	-	13	1737	-
+examples/print.al	IDENTIQUE	58680	17	1651	même sortie
+examples/process_demo.al	MÊME-REFUS	-	5	63	-
+examples/reference.al	IDENTIQUE	65336	24	1996	même sortie
+examples/test_enum_match.al	MÊME-REFUS	-	14	1312	-
+examples/test_os.al	MÊME-REFUS	-	18	2663	-
+examples/test_ui.al	MÊME-REFUS	-	7	51	-
+examples/time_demo.al	MÊME-REFUS	-	7	58	-
+examples/ui_animation_logic_test.al	MÊME-REFUS	-	7	44	-
+examples/ui_animation_smoke.al	MÊME-REFUS	-	5	61	-
+examples/ui_canvas_smoke.al	MÊME-REFUS	-	7	65	-
+examples/ui_gestures_demo.al	MÊME-REFUS	-	6	101	-
+examples/ui_layout_smoke.al	MÊME-REFUS	-	7	51	-
+examples/ui_layout_v10.al	MÊME-REFUS	-	8	79	-
+examples/ui_smoke.al	MÊME-REFUS	-	6	42	-
+examples/ui_state_canvas.al	MÊME-REFUS	-	6	66	-
+examples/ui_state_demo.al	MÊME-REFUS	-	5	61	-
+examples/ui_theme_smoke.al	MÊME-REFUS	-	6	44	-
+examples/ui_tween_canvas.al	MÊME-REFUS	-	7	78	-
+examples/ui_tween_demo.al	MÊME-REFUS	-	6	57	-
+examples/ui_v05_import.al	MÊME-REFUS	-	7	41	-
+examples/ui_v05_smoke.al	MÊME-REFUS	-	6	49	-
+examples/ui_widgets_smoke.al	MÊME-REFUS	-	7	50	-
+tests/app/app.al	MÊME-REFUS	-	7	101	-
+tests/app/greet.al	IDENTIQUE	58608	15	2028	même sortie
+tests/argparse/app_fixture.al	MÊME-REFUS	-	7	63	-
+tests/argparse/cli_fixture.al	MÊME-REFUS	-	7	64	-
+tests/argparse/test_argparse.al	MÊME-REFUS	-	12	880	-
+tests/concurrency/test_concurrency.al	MÊME-REFUS	-	9	203	-
+tests/concurrency/test_thread.al	MÊME-REFUS	-	8	105	-
+tests/concurrency/thread_workers.al	MÊME-REFUS	-	6	51	-
+tests/concurrency2/test_concurrency_pkgs.al	MÊME-REFUS	-	7	183	-
+tests/drivers/kernel/k_dma.al	MÊME-REFUS	-	8	85	-
+tests/drivers/kernel/k_gpu.al	MÊME-REFUS	-	6	77	-
+tests/drivers/kernel/k_interrupt.al	MÊME-REFUS	-	7	66	-
+tests/drivers/kernel/k_network.al	MÊME-REFUS	-	5	42	-
+tests/drivers/kernel/k_storage.al	MÊME-REFUS	-	6	62	-
+tests/drivers/kernel/k_usb.al	MÊME-REFUS	-	6	44	-
+tests/drivers/test_dma_sim.al	MÊME-REFUS	-	7	85	-
+tests/drivers/test_driver_sim.al	MÊME-REFUS	-	6	112	-
+tests/drivers/test_gpu_sim.al	MÊME-REFUS	-	7	71	-
+tests/drivers/test_interrupt_sim.al	MÊME-REFUS	-	7	103	-
+tests/drivers/test_network_sim.al	MÊME-REFUS	-	6	88	-
+tests/drivers/test_pci_sim.al	MÊME-REFUS	-	7	96	-
+tests/drivers/test_storage_sim.al	MÊME-REFUS	-	9	93	-
+tests/ffi/test_ffi.al	MÊME-REFUS	-	9	318	-
+tests/hardware/test_hardware.al	MÊME-REFUS	-	9	426	-
+tests/hardware/test_hardware_ext.al	MÊME-REFUS	-	6	163	-
+tests/io/console_keys.al	MÊME-REFUS	-	7	42	-
+tests/io/io_workers.al	MÊME-REFUS	-	6	43	-
+tests/io/test_io.al	MÊME-REFUS	-	8	254	-
+tests/lang/closure_fixture.al	IDENTIQUE	58616	16	1552	même sortie
+tests/lang/lang_fixture_shapes.al	MÊME-REFUS	-	13	1231	-
+tests/lang/oop_fixture_zoo.al	MÊME-REFUS	-	14	1501	-
+tests/lang/test_async.al	MÊME-REFUS	-	20	1737	-
+tests/lang/test_builtins.al	MÊME-REFUS	-	6	125	-
+tests/lang/test_channel.al	MÊME-REFUS	-	8	182	-
+tests/lang/test_closures.al	MÊME-REFUS	-	16	1578	-
+tests/lang/test_comprehensions.al	MÊME-REFUS	-	16	1936	-
+tests/lang/test_dict_order.al	MÊME-REFUS	-	6	96	-
+tests/lang/test_exceptions.al	MÊME-REFUS	-	14	1676	-
+tests/lang/test_gc.al	MÊME-REFUS	-	7	192	-
+tests/lang/test_language.al	MÊME-REFUS	-	25	1686	-
+tests/lang/test_oop.al	MÊME-REFUS	-	16	1788	-
+tests/lang/test_pythonic.al	MÊME-REFUS	-	9	329	-
+tests/lang/test_runtime.al	MÊME-REFUS	-	30	2289	-
+tests/lang/test_syntax_ui.al	MÊME-REFUS	-	19	1801	-
+tests/lang/test_types.al	MÊME-REFUS	-	20	1927	-
+tests/lang/trace_fixture.al	MÊME-REFUS	-	22	1535	-
+tests/lang/trace_import_fixture.al	IDENTIQUE	59176	19	1947	même sortie
+tests/lang/trace_lib.al	IDENTIQUE	58608	15	1736	même sortie
+tests/lang/types_errors_fixture.al	MÊME-REFUS	-	7	133	-
+tests/media/test_audio.al	MÊME-REFUS	-	7	176	-
+tests/media/test_camera.al	MÊME-REFUS	-	6	120	-
+tests/media/test_gpu.al	MÊME-REFUS	-	5	69	-
+tests/media/test_graphics.al	MÊME-REFUS	-	7	368	-
+tests/media/test_microphone.al	MÊME-REFUS	-	7	102	-
+tests/memory/test_memory.al	MÊME-REFUS	-	15	851	-
+tests/native/err_async.al	IDENTIQUE	80776	16	1797	même sortie
+tests/native/err_divzero.al	IDENTIQUE	59184	17	1708	même sortie
+tests/native/err_floatdiv.al	IDENTIQUE	68064	20	1736	même sortie
+tests/native/err_index.al	IDENTIQUE	60112	15	1649	même sortie
+tests/native/err_keyerror.al	IDENTIQUE	66360	13	1708	même sortie
+tests/native/err_module.al	IDENTIQUE	60400	17	1596	même sortie
+tests/native/err_modzero.al	IDENTIQUE	58808	15	2010	même sortie
+tests/native/err_noreturn.al	IDENTIQUE	59136	15	1773	même sortie
+tests/native/err_recursion.al	IDENTIQUE	59024	14	2009	même sortie
+tests/native/err_rethrow_runtime.al	IDENTIQUE	59368	17	1895	même sortie
+tests/native/err_runtime_through_try.al	IDENTIQUE	59512	13	1823	même sortie
+tests/native/err_shift.al	IDENTIQUE	58824	15	1732	même sortie
+tests/native/err_strindex.al	IDENTIQUE	63040	15	1616	même sortie
+tests/native/err_tuple_index.al	IDENTIQUE	59640	14	1426	même sortie
+tests/native/err_uncaught.al	IDENTIQUE	60400	12	1665	même sortie
+tests/native/kernel/k_fault.al	MÊME-REFUS	-	7	54	-
+tests/native/kernel/k_input.al	IDENTIQUE	63488	20	1725	même sortie
+tests/native/kernel/k_irq.al	MÊME-REFUS	-	4	47	-
+tests/native/kernel/k_parallel.al	MÊME-REFUS	-	4	82	-
+tests/native/kernel/k_vga.al	MÊME-REFUS	-	5	36	-
+tests/native/natmod/counter.al	IDENTIQUE	58792	14	1704	même sortie
+tests/native/natmod/shapes.al	IDENTIQUE	59664	12	1763	même sortie
+tests/native/ok_arith.al	IDENTIQUE	63240	21	1608	même sortie
+tests/native/ok_async.al	IDENTIQUE	143992	19	2387	même sortie
+tests/native/ok_bytes.al	IDENTIQUE	73336	23	1984	même sortie
+tests/native/ok_chars.al	IDENTIQUE	74256	16	1695	même sortie
+tests/native/ok_closures.al	IDENTIQUE	86744	20	1821	même sortie
+tests/native/ok_comprehensions.al	IDENTIQUE	83472	14	1769	même sortie
+tests/native/ok_control.al	IDENTIQUE	62112	14	1619	même sortie
+tests/native/ok_convert.al	IDENTIQUE	82168	13	1835	même sortie
+tests/native/ok_dict.al	IDENTIQUE	87312	17	1749	même sortie
+tests/native/ok_enums.al	IDENTIQUE	75816	16	1751	même sortie
+tests/native/ok_exceptions.al	IDENTIQUE	80400	17	1863	même sortie
+tests/native/ok_floats.al	IDENTIQUE	78768	19	1793	même sortie
+tests/native/ok_functions.al	IDENTIQUE	73560	18	1696	même sortie
+tests/native/ok_gc.al	IDENTIQUE	64808	19	1659	même sortie
+tests/native/ok_generic.al	IDENTIQUE	74304	16	1560	même sortie
+tests/native/ok_inherit.al	IDENTIQUE	77400	17	1689	même sortie
+tests/native/ok_io_os.al	IDENTIQUE	86544	17	1918	même sortie
+tests/native/ok_lists.al	IDENTIQUE	76440	16	1836	même sortie
+tests/native/ok_math.al	IDENTIQUE	122056	19	2237	même sortie
+tests/native/ok_modules.al	IDENTIQUE	63904	22	1623	même sortie
+tests/native/ok_null.al	IDENTIQUE	81384	21	1701	même sortie
+tests/native/ok_print.al	IDENTIQUE	59792	20	1405	même sortie
+tests/native/ok_string.al	IDENTIQUE	85592	17	1948	même sortie
+tests/native/ok_strings.al	IDENTIQUE	79368	17	1843	même sortie
+tests/native/ok_structs.al	IDENTIQUE	73848	17	1614	même sortie
+tests/native/ok_tuples.al	IDENTIQUE	79192	16	1780	même sortie
+tests/native/only/err_tasks.al	IDENTIQUE	61464	13	1668	même sortie
+tests/native/only/ok_pixmap.al	IDENTIQUE	105520	25	2923	même sortie
+tests/native/only/ok_posix.al	IDENTIQUE	94232	19	2418	même sortie
+tests/native/only/ok_tasks.al	IDENTIQUE	76512	16	1694	même sortie
+tests/native/unsupported_fixture.al	MÊME-REFUS	-	15	1268	-
+tests/native/windows/win_args.al	IDENTIQUE	64936	23	1701	même sortie
+tests/native/windows/win_gui_err.al	MÊME-REFUS	-	5	34	-
+tests/native/windows/win_input.al	IDENTIQUE	62464	13	1609	sorties différentes
+tests/native/windows/win_os.al	IDENTIQUE	78320	20	1978	même sortie
+tests/native/windows/win_posix.al	IDENTIQUE	66344	15	2119	sorties différentes
+tests/network/http_alex_server.al	MÊME-REFUS	-	6	65	-
+tests/network/https_alex_server.al	MÊME-REFUS	-	6	45	-
+tests/network/test_grpc.al	MÊME-REFUS	-	8	301	-
+tests/network/test_http.al	MÊME-REFUS	-	10	329	-
+tests/network/test_http_client.al	MÊME-REFUS	-	7	247	-
+tests/network/test_http_server.al	MÊME-REFUS	-	10	378	-
+tests/network/test_mail_ftp.al	MÊME-REFUS	-	36	279	-
+tests/network/test_network.al	MÊME-REFUS	-	8	252	-
+tests/network/test_network_system.al	MÊME-REFUS	-	6	220	-
+tests/network/test_network_utils.al	MÊME-REFUS	-	8	342	-
+tests/network/test_tls.al	MÊME-REFUS	-	9	327	-
+tests/network/test_websocket.al	MÊME-REFUS	-	8	358	-
+tests/network/test_xmlrpc.al	MÊME-REFUS	-	6	164	-
+tests/network/tls_alex_server.al	MÊME-REFUS	-	6	62	-
+tests/network/ws_alex_server.al	MÊME-REFUS	-	5	54	-
+tests/office/test_office_base.al	MÊME-REFUS	-	7	200	-
+tests/office/test_office_convert.al	MÊME-REFUS	-	7	356	-
+tests/office/test_office_odf.al	MÊME-REFUS	-	7	144	-
+tests/office/test_office_ooxml.al	MÊME-REFUS	-	6	114	-
+tests/office/test_office_pdf.al	MÊME-REFUS	-	6	130	-
+tests/process/test_process.al	MÊME-REFUS	-	9	307	-
+tests/selfhost/bad/arity.al	MÊME-REFUS	-	6	52	-
+tests/selfhost/bad/await.al	MÊME-REFUS	-	6	35	-
+tests/selfhost/bad/const_assign.al	MÊME-REFUS	-	6	33	-
+tests/selfhost/bad/duplicate.al	MÊME-REFUS	-	6	38	-
+tests/selfhost/bad/inherit_struct.al	MÊME-REFUS	-	5	41	-
+tests/selfhost/bad/interface.al	MÊME-REFUS	-	4	41	-
+tests/selfhost/bad/lex.al	MÊME-REFUS	-	5	30	-
+tests/selfhost/bad/name_error.al	MÊME-REFUS	-	4	30	-
+tests/selfhost/bad/return_type.al	MÊME-REFUS	-	6	35	-
+tests/selfhost/bad/sized_literal.al	MÊME-REFUS	-	5	39	-
+tests/selfhost/bad/syntax.al	MÊME-REFUS	-	6	33	-
+tests/selfhost/bad/type_error.al	MÊME-REFUS	-	5	38	-
+tests/selfhost/progs/lib/sh_geo.al	MÊME-REFUS	-	14	1326	-
+tests/selfhost/progs/sh_async.al	MÊME-REFUS	-	5	40	-
+tests/selfhost/progs/sh_flow.al	MÊME-REFUS	-	7	56	-
+tests/selfhost/progs/sh_modules.al	MÊME-REFUS	-	14	1289	-
+tests/selfhost/progs/sh_oop.al	MÊME-REFUS	-	5	57	-
+tests/selfhost/progs/sh_types.al	MÊME-REFUS	-	15	1284	-
+tests/stdlib2/check.al	MÊME-REFUS	-	17	1293	-
+tests/stdlib2/native/kdma.al	MÊME-REFUS	-	7	136	-
+tests/stdlib2/native/kdrv.al	MÊME-REFUS	-	9	384	-
+tests/stdlib2/native/kgpu.al	MÊME-REFUS	-	7	98	-
+tests/stdlib2/native/kint.al	IDENTIQUE	114224	25	2625	même sortie
+tests/stdlib2/native/knet.al	MÊME-REFUS	-	7	84	-
+tests/stdlib2/native/kpci.al	MÊME-REFUS	-	6	109	-
+tests/stdlib2/native/kstor.al	MÊME-REFUS	-	7	82	-
+tests/stdlib2/native/kusb.al	MÊME-REFUS	-	7	105	-
+tests/stdlib2/test_algorithm.al	MÊME-REFUS	-	9	226	-
+tests/stdlib2/test_collections.al	MÊME-REFUS	-	8	258	-
+tests/stdlib2/test_compiler2.al	MÊME-REFUS	-	8	276	-
+tests/stdlib2/test_coroutine.al	MÊME-REFUS	-	7	112	-
+tests/stdlib2/test_database2.al	MÊME-REFUS	-	9	441	-
+tests/stdlib2/test_diagnostics2.al	MÊME-REFUS	-	10	376	-
+tests/stdlib2/test_drivers2.al	MÊME-REFUS	-	13	437	-
+tests/stdlib2/test_filesystem2.al	MÊME-REFUS	-	8	238	-
+tests/stdlib2/test_functional2.al	MÊME-REFUS	-	7	172	-
+tests/stdlib2/test_gc2.al	MÊME-REFUS	-	7	70	-
+tests/stdlib2/test_hardware2.al	MÊME-REFUS	-	9	607	-
+tests/stdlib2/test_interaction2.al	MÊME-REFUS	-	10	581	-
+tests/stdlib2/test_iterator.al	MÊME-REFUS	-	7	139	-
+tests/stdlib2/test_logging2.al	MÊME-REFUS	-	7	258	-
+tests/stdlib2/test_memory2.al	MÊME-REFUS	-	6	149	-
+tests/stdlib2/test_modules.al	MÊME-REFUS	-	7	275	-
+tests/stdlib2/test_network2.al	MÊME-REFUS	-	7	254	-
+tests/stdlib2/test_process2.al	MÊME-REFUS	-	7	184	-
+tests/stdlib2/test_reflection.al	MÊME-REFUS	-	9	134	-
+tests/stdlib2/test_security2.al	MÊME-REFUS	-	10	381	-
+tests/stdlib2/test_serialization.al	MÊME-REFUS	-	6	244	-
+tests/stdlib2/test_smart_pointer.al	MÊME-REFUS	-	7	118	-
+tests/stdlib2/test_system2.al	MÊME-REFUS	-	7	280	-
+tests/stdlib2/test_testing2.al	MÊME-REFUS	-	7	229	-
+tests/sysapp/sysapp_child.al	MÊME-REFUS	-	6	46	-
+tests/sysapp/test_process_pipe_signal_ipc.al	MÊME-REFUS	-	6	196	-
+tests/system/system_workers.al	MÊME-REFUS	-	6	31	-
+tests/system/test_system.al	MÊME-REFUS	-	7	336	-
+tests/test_array.al	MÊME-REFUS	-	33	3096	-
+tests/test_calculus.al	MÊME-REFUS	-	9	380	-
+tests/test_constants.al	MÊME-REFUS	-	7	97	-
+tests/test_crypto.al	MÊME-REFUS	-	7	469	-
+tests/test_csv.al	MÊME-REFUS	-	6	77	-
+tests/test_datetime.al	MÊME-REFUS	-	8	356	-
+tests/test_defaults.al	MÊME-REFUS	-	6	52	-
+tests/test_file.al	MÊME-REFUS	-	8	381	-
+tests/test_filesystem.al	MÊME-REFUS	-	9	294	-
+tests/test_functional.al	MÊME-REFUS	-	9	400	-
+tests/test_json.al	MÊME-REFUS	-	8	179	-
+tests/test_linalg.al	MÊME-REFUS	-	15	1820	-
+tests/test_numeric.al	MÊME-REFUS	-	14	884	-
+tests/test_os.al	MÊME-REFUS	-	21	2503	-
+tests/test_path.al	MÊME-REFUS	-	6	74	-
+tests/test_pure_stdlib.al	MÊME-REFUS	-	19	1993	-
+tests/test_regex.al	MÊME-REFUS	-	6	124	-
+tests/test_science2_integration.al	MÊME-REFUS	-	13	190	-
+tests/test_science_integration.al	MÊME-REFUS	-	6	72	-
+tests/test_stats.al	MÊME-REFUS	-	14	840	-
+tests/test_string_chr_ord_slice.al	MÊME-REFUS	-	7	343	-
+tests/test_testing_logging.al	MÊME-REFUS	-	8	137	-
+tests/test_time.al	MÊME-REFUS	-	10	261	-
+tests/test_ui.al	MÊME-REFUS	-	6	42	-
+tests/test_units.al	MÊME-REFUS	-	23	216	-
+tests/test_xml.al	MÊME-REFUS	-	7	78	-
+tests/time_vectors.al	MÊME-REFUS	-	37	5812	-
+tests/tooling/dbg/prog.al	MÊME-REFUS	-	14	1275	-
+tests/tooling/ws/geo/forme.al	MÊME-REFUS	-	15	1733	-
+tests/tooling/ws/main.al	MÊME-REFUS	-	11	224	-
+tests/tui/test_tui.al	MÊME-REFUS	-	8	245	-
+tests/ui/test_edit.al	MÊME-REFUS	-	7	124	-
+tests/ui/test_gesture.al	MÊME-REFUS	-	6	83	-
+tests/ui/test_interact.al	MÊME-REFUS	-	7	203	-
+tests/ui/test_interact2.al	MÊME-REFUS	-	11	266	-
+tests/ui/test_interact_draw.al	MÊME-REFUS	-	6	77	-
+tests/ui/test_state.al	MÊME-REFUS	-	6	131	-
+tests/ui/test_state_ui.al	MÊME-REFUS	-	7	98	-
+tests/ui/test_tween.al	MÊME-REFUS	-	8	383	-
+tests/ui/test_ui_headless.al	MÊME-REFUS	-	6	101	-
+tests/ui/x11_gestures.al	MÊME-REFUS	-	5	55	-
+tests/ui/x11_widgets.al	MÊME-REFUS	-	5	57	-
+tests/ui_view/test_code_editor.al	MÊME-REFUS	-	8	389	-
+tests/ui_view/test_ide_widgets.al	MÊME-REFUS	-	8	71	-
+tests/ui_view/test_view_gui.al	MÊME-REFUS	-	8	303	-
+tests/ui_view/test_view_tui.al	MÊME-REFUS	-	26	411	-
+tests/ui_view/tui_pty_app.al	MÊME-REFUS	-	8	41	-
+tests/ui_view/x11_view_app.al	MÊME-REFUS	-	6	112	-
+tests/usb/test_usb.al	MÊME-REFUS	-	6	101	-
+tests/window/test_event_window.al	MÊME-REFUS	-	7	283	-
+tests/window/x11_window_app.al	MÊME-REFUS	-	7	69	-

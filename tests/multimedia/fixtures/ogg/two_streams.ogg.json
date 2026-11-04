@@ -1,0 +1,30 @@
+{
+    "programs": [
+
+    ],
+    "streams": [
+        {
+            "index": 0,
+            "codec_name": "flac",
+            "sample_rate": "16000",
+            "channels": 2,
+            "duration": "0.800000",
+            "tags": {
+                "encoder": "Lavc60.31.102 flac"
+            }
+        },
+        {
+            "index": 1,
+            "codec_name": "flac",
+            "sample_rate": "16000",
+            "channels": 1,
+            "duration": "0.800000",
+            "tags": {
+                "encoder": "Lavc60.31.102 flac"
+            }
+        }
+    ],
+    "format": {
+        "duration": "0.800000"
+    }
+}

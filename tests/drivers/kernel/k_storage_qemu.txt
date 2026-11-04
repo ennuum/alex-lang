@@ -1,0 +1,1 @@
+-m 256M -drive file=$DIR/ide.img,format=raw,if=ide,index=0 -drive id=s0,file=$DIR/sata.img,format=raw,if=none -device ahci,id=ahci -device ide-hd,drive=s0,bus=ahci.0 -drive id=n0,file=$DIR/nvme.img,format=raw,if=none -device nvme,drive=n0,serial=ALEX0001

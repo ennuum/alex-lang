@@ -1,0 +1,1 @@
+-m 256M -device piix3-usb-uhci,id=uhci -device usb-kbd,bus=uhci.0,port=1 -drive if=none,id=u0,file=$DIR/usb.img,format=raw -device usb-storage,bus=uhci.0,port=2,drive=u0

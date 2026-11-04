@@ -1,0 +1,1422 @@
+== ./p_cli/.github/workflows/alex.yml
+# Intégration continue GitHub Actions pour p_cli (généré par alexc new).
+name: alex
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer ALEX
+        run: |
+          curl -fsSL "$ALEX_DIST_URL" -o alex.tar.gz || { echo "Définissez la variable ALEX_DIST_URL (archive .tar.gz de make package)"; exit 1; }
+          mkdir -p "$HOME/alex" && tar -xzf alex.tar.gz -C "$HOME/alex" --strip-components=1
+          echo "$HOME/alex/bin" >> "$GITHUB_PATH"
+        env:
+          ALEX_DIST_URL: ${{ vars.ALEX_DIST_URL }}
+      - name: Vérifier la mise en forme
+        run: alexc fmt --check .
+      - name: Tests
+        run: alexc test --json . | tee resultats-tests.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resultats-tests
+          path: resultats-tests.jsonl
+== ./p_cli/.gitignore
+/build/
+/dist/
+/alex_packages/
+*.albc
+*.al.meta
+alex_profile.json
+== ./p_cli/README.md
+# P cli
+
+Commandes et options (argparse), aide, page de manuel et complétion shell générées.
+
+Projet créé avec `alexc new cli p_cli` (ALEX Studio : *Fichier › Nouveau projet*).
+
+## Commandes
+
+| Commande | Rôle |
+|---|---|
+| `alexc run` | exécuter le programme (point d'entrée : `main.al`) |
+| `alexc test` | lancer les tests du dossier `tests/` |
+| `alexc fmt` | mettre le code en forme |
+| `alexc doc --html docs/api .` | générer la documentation de référence |
+| `alex-studio .` | ouvrir le projet dans ALEX Studio (IDE, installé à part) |
+| `alexc pkg add <paquet>` | ajouter une dépendance |
+== ./p_cli/alex.toml
+[package]
+name = "p_cli"
+version = "0.1.0"
+entry = "main.al"
+alex = ">=VERSION"
+
+[dependencies]
+== ./p_cli/commandes.al
+# Commandes de p_cli (testées dans tests/).
+from core use len
+use io
+
+# Lignes, mots et caractères d'un texte.
+func statistiques(texte):
+    lignes := 0
+    mots := 0
+    car := 0
+    dans_mot := false
+    for c in texte:
+        car += 1
+        if c == '\n':
+            lignes += 1
+        if c == ' ' or c == '\n' or c == '\t':
+            dans_mot = false
+        elif not dans_mot:
+            dans_mot = true
+            mots += 1
+    return [lignes, mots, car]
+
+# Statistiques d'un fichier texte (fins de ligne \r\n et \r ramenées à \n : mêmes comptes sous Windows et Linux).
+func compter(fichier):
+    return statistiques(io.read_text(fichier)[0])
+
+func executer(args):
+    if args["commande"] == "saluer":
+        print("Bonjour, " + args["nom"] + " !")
+    elif args["commande"] == "compter":
+        for f in args["fichiers"]:
+            st := compter(f)
+            ligne := str(st[0]) + "\t" + str(st[1]) + "\t" + str(st[2]) + "\t" + f
+            print(ligne)
+== ./p_cli/main.al
+# p_cli — outil en ligne de commande.
+#   alexc run -- saluer Alex
+#   alexc run -- compter fichier.txt
+#   alexc run -- --help
+#   alexc build --standalone main.al -o p_cli     (exécutable autonome)
+use argparse
+use commandes
+
+p := argparse.parser(prog="p_cli", description="P cli : exemple d'outil.", version="0.1.0")
+p.add_argument(["-v", "--verbose"], {"action": "store_true", "help": "affiche les détails"})
+sub := p.add_subparsers({"dest": "commande", "required": true})
+c := sub.add_parser("compter", {"help": "compte lignes, mots et caractères"})
+c.add_argument("fichiers", {"nargs": "+", "help": "fichiers à analyser"})
+s := sub.add_parser("saluer", {"help": "affiche un salut"})
+s.add_argument("nom", {"nargs": "?", "default": "monde"})
+args := p.parse_args()
+commandes.executer(args)
+== ./p_cli/tests/test_commandes.al
+use commandes
+use testing
+use io
+use os
+
+func test_statistiques():
+    testing.assert_eq(commandes.statistiques("un deux\ntrois\n"), [2, 3, 14])
+
+func test_vide():
+    testing.assert_eq(commandes.statistiques(""), [0, 0, 0])
+
+func test_compter_fichier():
+    f := os.join(os.tmp_dir(), "p_cli_test_" + str(os.pid()) + ".txt")
+    io.write_file(f, "un deux\r\ntrois\r\n") # fins de ligne Windows
+    try:
+        testing.assert_eq(commandes.compter(f), [2, 3, 14])
+    finally:
+        os.remove(f)
+== ./p_console/.github/workflows/alex.yml
+# Intégration continue GitHub Actions pour p_console (généré par alexc new).
+name: alex
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer ALEX
+        run: |
+          curl -fsSL "$ALEX_DIST_URL" -o alex.tar.gz || { echo "Définissez la variable ALEX_DIST_URL (archive .tar.gz de make package)"; exit 1; }
+          mkdir -p "$HOME/alex" && tar -xzf alex.tar.gz -C "$HOME/alex" --strip-components=1
+          echo "$HOME/alex/bin" >> "$GITHUB_PATH"
+        env:
+          ALEX_DIST_URL: ${{ vars.ALEX_DIST_URL }}
+      - name: Vérifier la mise en forme
+        run: alexc fmt --check .
+      - name: Tests
+        run: alexc test --json . | tee resultats-tests.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resultats-tests
+          path: resultats-tests.jsonl
+== ./p_console/.gitignore
+/build/
+/dist/
+/alex_packages/
+*.albc
+*.al.meta
+alex_profile.json
+== ./p_console/README.md
+# P console
+
+Programme en ligne de commande avec module, tests unitaires et intégration continue.
+
+Projet créé avec `alexc new console p_console` (ALEX Studio : *Fichier › Nouveau projet*).
+
+## Commandes
+
+| Commande | Rôle |
+|---|---|
+| `alexc run` | exécuter le programme (point d'entrée : `main.al`) |
+| `alexc test` | lancer les tests du dossier `tests/` |
+| `alexc fmt` | mettre le code en forme |
+| `alexc doc --html docs/api .` | générer la documentation de référence |
+| `alex-studio .` | ouvrir le projet dans ALEX Studio (IDE, installé à part) |
+| `alexc pkg add <paquet>` | ajouter une dépendance |
+== ./p_console/alex.toml
+[package]
+name = "p_console"
+version = "0.1.0"
+entry = "main.al"
+alex = ">=VERSION"
+
+[dependencies]
+== ./p_console/main.al
+# p_console — point d'entrée.
+#   alexc run            (ou : alexc run main.al)
+#   alexc test           tests unitaires (dossier tests/)
+use salutations
+
+func main():
+    print(salutations.bonjour("monde"))
+    print(salutations.resume([3, 1, 4, 1, 5]))
+
+main()
+== ./p_console/salutations.al
+# Fonctions de p_console : séparées du point d'entrée pour être testables.
+from core use len
+
+# Message d'accueil pour `nom`.
+func bonjour(nom):
+    return "Bonjour, " + nom + " !"
+
+# Somme, minimum et maximum d'une liste de nombres non vide.
+func resume(valeurs):
+    total := 0
+    mini := valeurs[0]
+    maxi := valeurs[0]
+    for v in valeurs:
+        total = total + v
+        if v < mini:
+            mini = v
+        if v > maxi:
+            maxi = v
+    return {"total": total, "min": mini, "max": maxi, "n": len(valeurs)}
+== ./p_console/tests/test_salutations.al
+use salutations
+use testing
+
+func test_bonjour():
+    testing.assert_eq(salutations.bonjour("Alex"), "Bonjour, Alex !")
+
+func test_resume():
+    r := salutations.resume([3, 1, 4, 1, 5])
+    testing.assert_eq(r["total"], 14)
+    testing.assert_eq(r["min"], 1)
+    testing.assert_eq(r["max"], 5)
+== ./p_driver/.github/workflows/alex.yml
+# Intégration continue GitHub Actions pour p_driver (généré par alexc new).
+name: alex
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer ALEX
+        run: |
+          curl -fsSL "$ALEX_DIST_URL" -o alex.tar.gz || { echo "Définissez la variable ALEX_DIST_URL (archive .tar.gz de make package)"; exit 1; }
+          mkdir -p "$HOME/alex" && tar -xzf alex.tar.gz -C "$HOME/alex" --strip-components=1
+          echo "$HOME/alex/bin" >> "$GITHUB_PATH"
+        env:
+          ALEX_DIST_URL: ${{ vars.ALEX_DIST_URL }}
+      - name: Vérifier la mise en forme
+        run: alexc fmt --check .
+      - name: Tests
+        run: alexc test --json . | tee resultats-tests.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resultats-tests
+          path: resultats-tests.jsonl
+== ./p_driver/.gitignore
+/build/
+/dist/
+/alex_packages/
+*.albc
+*.al.meta
+alex_profile.json
+== ./p_driver/README.md
+# P driver
+
+Pilote d'un périphérique à ports d'E/S, testé dans la machine simulée (hw) puis utilisable dans un noyau.
+
+Projet créé avec `alexc new driver p_driver` (ALEX Studio : *Fichier › Nouveau projet*).
+
+## Commandes
+
+| Commande | Rôle |
+|---|---|
+| `alexc run` | exécuter le programme (point d'entrée : `demo.al`) |
+| `alexc test` | lancer les tests du dossier `tests/` |
+| `alexc fmt` | mettre le code en forme |
+| `alexc doc --html docs/api .` | générer la documentation de référence |
+| `alex-studio .` | ouvrir le projet dans ALEX Studio (IDE, installé à part) |
+| `alexc pkg add <paquet>` | ajouter une dépendance |
+== ./p_driver/alex.toml
+[package]
+name = "p_driver"
+version = "0.1.0"
+entry = "demo.al"
+alex = ">=VERSION"
+
+[dependencies]
+== ./p_driver/demo.al
+# Démonstration dans la VM : alexc run demo.al
+use hw
+use pilote
+use modele
+
+hw.sim_reset(16 * 1024 * 1024)
+hw.sim_map_ports(768, 4, modele.CapteurSimule(768, 215)) # 0x300
+c := pilote.Capteur(768)
+t := c.lire_dixiemes()
+print("température : " + str(t / 10.0) + " °C")
+== ./p_driver/modele.al
+# Modèle SIMULÉ du capteur pour la machine simulée de hw (tests dans la VM, sans matériel) :
+# io_read / io_write reçoivent le port, la taille (1, 2, 4) et la valeur.
+class CapteurSimule:
+    func init(base, dixiemes):
+        self.base = base
+        self.valeur = dixiemes
+        self.pret = false
+        self.commandes = 0
+
+    func io_write(port, taille, valeur):
+        if port == self.base:
+            self.commandes += 1
+            if valeur == 1:
+                self.pret = true
+            elif valeur == 2:
+                self.pret = false
+
+    func io_read(port, taille):
+        if port == self.base + 1:
+            if self.pret:
+                return 1
+            return 0
+        if port == self.base + 2:
+            self.pret = false
+            return self.valeur + 500
+        return 255
+== ./p_driver/pilote.al
+# alex: native
+# p_driver — pilote d'un capteur de température à ports d'entrée-sortie :
+#   base + 0 : commande (écriture) : 1 = mesurer, 2 = remettre à zéro
+#   base + 1 : état (lecture)      : bit 0 = mesure prête
+#   base + 2 : donnée (lecture 16 bits) : température en dixièmes de degré, décalée de +500 (0 = −50,0 °C)
+# Compilé dans un noyau (alexc build --native --freestanding) ou exécuté dans la VM sur la machine simulée de hw.
+use hw
+
+const CMD_MESURER := 1
+const CMD_RAZ := 2
+
+class Capteur:
+    base: int := 0
+    mesures: int := 0
+
+    func init(base: int):
+        self.base = base
+        self.mesures = 0
+
+    func remise_a_zero():
+        hw.outb(self.base, CMD_RAZ)
+
+    # Lance une mesure et attend le résultat (en dixièmes de degré Celsius).
+    func lire_dixiemes() -> int:
+        hw.outb(self.base, CMD_MESURER)
+        essais := 0
+        while (hw.inb(self.base + 1) & 1) == 0:
+            essais += 1
+            if essais > 100000:
+                raise("DriverError", "capteur muet")
+        self.mesures += 1
+        return hw.inw(self.base + 2) - 500
+== ./p_driver/tests/test_pilote.al
+use hw
+use pilote
+use modele
+use testing
+
+func test_mesure():
+    hw.sim_reset(16 * 1024 * 1024)
+    m := modele.CapteurSimule(768, -35)
+    hw.sim_map_ports(768, 4, m)
+    c := pilote.Capteur(768)
+    testing.assert_eq(c.lire_dixiemes(), -35)
+    testing.assert_eq(c.mesures, 1)
+    testing.assert_eq(m.commandes, 1)
+== ./p_gui/.editorconfig
+# Conventions de l'éditeur (ALEX Studio, VS Code, IntelliJ…) : https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.al]
+indent_style = space
+indent_size = 4
+
+[*.{md,toml,json,yml}]
+indent_style = space
+indent_size = 2
+
+[*.ps1]
+end_of_line = crlf
+== ./p_gui/.github/workflows/alex.yml
+# Intégration continue GitHub Actions pour p_gui (généré par alexc new).
+name: alex
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer ALEX
+        run: |
+          curl -fsSL "$ALEX_DIST_URL" -o alex.tar.gz || { echo "Définissez la variable ALEX_DIST_URL (archive .tar.gz de make package)"; exit 1; }
+          mkdir -p "$HOME/alex" && tar -xzf alex.tar.gz -C "$HOME/alex" --strip-components=1
+          echo "$HOME/alex/bin" >> "$GITHUB_PATH"
+        env:
+          ALEX_DIST_URL: ${{ vars.ALEX_DIST_URL }}
+      - name: Vérifier la mise en forme
+        run: alexc fmt --check .
+      - name: Tests
+        run: alexc test --json . | tee resultats-tests.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resultats-tests
+          path: resultats-tests.jsonl
+== ./p_gui/.gitignore
+/build/
+/dist/
+/alex_packages/
+*.albc
+*.al.meta
+alex_profile.json
+== ./p_gui/CHANGELOG.md
+# Journal des versions de P gui
+
+## 0.1.0
+
+* Création du projet : liste de tâches (ajout, filtres, suppression), enregistrement automatique.
+== ./p_gui/README.md
+# P gui
+
+Application de bureau ui.view (Windows, X11, ou terminal) : sources en couches (modèles, services, vues), données persistantes, ressources, tests, scripts de construction.
+
+Projet créé avec `alexc new gui p_gui` (ALEX Studio : *Fichier › Nouveau projet*).
+
+## Démarrer
+
+| Commande | Rôle |
+|---|---|
+| `alexc run` | lancer l'application (fenêtre) |
+| `alexc run -- --terminal` | la même interface dans le terminal |
+| `alexc test` | lancer les tests (`tests/`) |
+| `alexc fmt` | mettre le code en forme |
+| `alexc check src/main.al` | analyse et vérification des types |
+| `scripts/construire.ps1` | exécutable Windows `dist/p_gui.exe` (icône `assets/icone.ico`, sans console) |
+| `scripts/construire.sh` | binaire Linux `dist/p_gui` |
+
+`alexc` est le compilateur et la chaîne d'outils d'ALEX. Dans ALEX Studio : Exécuter (F5), Déboguer (F6),
+Tests (Ctrl+Maj+T), Projet › Construire le binaire natif.
+
+## Arborescence
+
+```
+p_gui/
+├── alex.toml               manifeste : nom, version, point d'entrée, dossiers de sources, dépendances
+├── src/                    code de l'application (racine des modules : sources = ["src"])
+│   ├── main.al             point d'entrée : options, démarrage, boucle de l'interface
+│   ├── app/
+│   │   ├── config.al       identité, taille de la fenêtre, emplacement des données
+│   │   └── application.al  état et actions (le « contrôleur »)
+│   ├── modeles/            logique métier, sans interface ni fichier
+│   │   └── taches.al
+│   ├── services/           accès au système : fichiers, réseau…
+│   │   └── stockage.al     sauvegarde JSON des tâches
+│   └── vues/               interface ui.view (fonctions pures de l'état)
+│       ├── principale.al
+│       └── composants.al
+├── assets/                 ressources : icône de l'application, images…
+├── tests/                  tests unitaires (alexc test)
+├── docs/                   documentation du projet (ARCHITECTURE.md)
+├── scripts/                construction des exécutables de distribution
+└── dist/                   exécutables produits (ignoré par git)
+```
+
+Les modules se référencent depuis `src/` : `use modeles.taches as taches`, `use vues.composants as composants`,
+dans l'application comme dans les tests. Architecture et conventions : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Données
+
+Les tâches sont enregistrées après chaque modification dans `%APPDATA%\p_gui\taches.json` (Windows) ou
+`~/.local/share/p_gui/taches.json` (Linux). Voir `src/app/config.al`.
+== ./p_gui/alex.toml
+[package]
+name = "p_gui"
+version = "0.1.0"
+entry = "src/main.al"
+sources = ["src"]
+alex = ">=VERSION"
+
+[dependencies]
+== ./p_gui/assets/LISEZMOI.md
+# Ressources de P gui
+
+| Fichier | Rôle |
+|---|---|
+| `icone.ico` | icône de l'exécutable Windows (16, 32, 48 et 256 px) : explorateur, barre des tâches, barre de titre ; utilisée par `scripts/construire.ps1` et par ALEX Studio (Projet › Construire le binaire natif) |
+| `icone.png` | la même icône en 256 px (documentation, paquets Linux) |
+
+Remplacez-les par l'icône de votre application en gardant les mêmes noms. Rangez images, sons et polices dans
+des sous-dossiers d'`assets/` (`images/`, `sons/`…).
+== ./p_gui/assets/icone.ico
+<binaire : 9132 octets, sha256 06953553c4e4e7d0>
+== ./p_gui/assets/icone.png
+<binaire : 6017 octets, sha256 b44d966f294ecf69>
+== ./p_gui/docs/ARCHITECTURE.md
+# Architecture de P gui
+
+L'application est découpée en couches ; chacune ne dépend que de celles du dessous.
+
+```
+vues/        interface ui.view       → lit l'état, appelle les actions
+app/         état et actions          → modifie les modèles, déclenche l'enregistrement
+services/    accès au système         → fichiers (stockage.al), réseau, horloge…
+modeles/     logique métier           → aucune dépendance à l'interface ni au système
+```
+
+## Règles
+
+* **modeles/** : classes et fonctions pures, entièrement testées (`tests/test_taches.al`). Pas d'`use ui.*`,
+  pas d'accès aux fichiers.
+* **services/** : seul endroit qui touche au système. Écritures atomiques, erreurs remontées en exceptions.
+* **app/application.al** : l'unique état de l'application (`etat`) et les actions qui le modifient. Testé sans
+  fenêtre (`tests/test_application.al`).
+* **vues/** : fonctions qui renvoient des éléments ui.view à partir de l'état ; aucune logique métier. ui.view
+  redessine la fenêtre après chaque action.
+* **app/config.al** : constantes (nom, version, taille de fenêtre) et emplacements.
+
+## Ajouter une fonctionnalité
+
+1. le comportement dans `modeles/` (et son test) ;
+2. l'action correspondante dans `app/application.al` (et son test) ;
+3. l'élément d'interface dans `vues/composants.al`, assemblé dans `vues/principale.al`.
+
+## Ressources
+
+`assets/icone.ico` est l'icône de l'exécutable Windows (barre des tâches, explorateur, barre de titre) :
+remplacez-la par la vôtre (16, 32, 48 et 256 px). Images et autres ressources vont dans `assets/`.
+== ./p_gui/scripts/construire.ps1
+# Build p_gui for Windows distribution: dist\p_gui.exe (GUI application, icon assets\icone.ico).
+#   powershell -ExecutionPolicy Bypass -File scripts\construire.ps1 [-Alexc path\to\alexc.exe]
+param([string]$Alexc = "")
+$ErrorActionPreference = 'Stop'
+$root = Split-Path -Parent $PSScriptRoot
+if ($Alexc -eq "") {
+    foreach ($name in 'alexc', 'alex') {
+        $c = Get-Command $name -ErrorAction SilentlyContinue
+        if ($c) { $Alexc = $c.Source; break }
+    }
+}
+if ($Alexc -eq "") { Write-Error "alexc not found: add it to PATH or pass -Alexc path\to\alexc.exe"; exit 1 }
+New-Item -ItemType Directory -Force (Join-Path $root 'dist') | Out-Null
+& $Alexc build --native --windows --gui --icon (Join-Path $root 'assets\icone.ico') (Join-Path $root 'src\main.al') -o (Join-Path $root 'dist\p_gui.exe')
+exit $LASTEXITCODE
+== ./p_gui/scripts/construire.sh
+#!/bin/sh
+# Construit P gui pour Linux : dist/p_gui (binaire natif x86-64).
+#   sh scripts/construire.sh            (ALEXC=chemin/vers/alexc pour un autre outil)
+set -e
+cd "$(dirname "$0")/.."
+ALEXC=${ALEXC:-$(command -v alexc || command -v alex)}
+[ -n "$ALEXC" ] || { echo "alexc introuvable : ajoutez-le au PATH ou définissez ALEXC" >&2; exit 1; }
+mkdir -p dist
+"$ALEXC" build --native src/main.al -o dist/p_gui
+echo "dist/p_gui"
+== ./p_gui/src/app/application.al
+# État et actions de P gui (contrôleur) : les vues lisent `etat` et appellent ces fonctions ; chaque
+# modification des tâches est enregistrée. Testé sans fenêtre dans tests/test_application.al.
+use modeles.taches as taches
+use services.stockage as stockage
+
+etat := {"liste": taches.Liste(), "saisie": "", "filtre": "toutes", "fichier": null, "message": ""}
+
+# Charge les tâches enregistrées (fichier : chemin du JSON, ou null pour ne rien enregistrer).
+func demarrer(fichier):
+    etat["fichier"] = fichier
+    etat["liste"] = stockage.charger(fichier)
+    etat["saisie"] = ""
+    etat["filtre"] = "toutes"
+    etat["message"] = ""
+
+func arreter():
+    _enregistrer()
+
+func _enregistrer():
+    if etat["fichier"] == null:
+        return null
+    try:
+        stockage.enregistrer(etat["liste"], etat["fichier"])
+    catch e:
+        etat["message"] = "Enregistrement impossible : " + e.message
+
+func saisir(texte):
+    etat["saisie"] = texte
+
+func ajouter():
+    if etat["liste"].ajouter(etat["saisie"]):
+        etat["saisie"] = ""
+        etat["message"] = ""
+        _enregistrer()
+    else:
+        etat["message"] = "Le titre de la tâche est vide."
+
+func basculer(i):
+    etat["liste"].basculer(i)
+    _enregistrer()
+
+func supprimer(i):
+    etat["liste"].supprimer(i)
+    _enregistrer()
+
+func vider_faites():
+    n := etat["liste"].vider_faites()
+    etat["message"] = str(n) + " tâche(s) terminée(s) retirée(s)."
+    _enregistrer()
+
+func filtrer(nom):
+    etat["filtre"] = nom
+== ./p_gui/src/app/config.al
+# Configuration de P gui : identité, fenêtre, emplacement des données de l'utilisateur.
+use os
+
+const NOM := "P gui"
+const IDENTIFIANT := "p_gui"
+const VERSION := "0.1.0"
+const LARGEUR := 720
+const HAUTEUR := 480
+
+# Dossier des données : %APPDATA%\p_gui (Windows), $XDG_DATA_HOME/p_gui ou ~/.local/share/p_gui (Linux).
+func dossier_donnees():
+    if os.platform() == "windows":
+        base := os.getenv("APPDATA", "")
+        if base != "":
+            return os.join(base, IDENTIFIANT)
+    xdg := os.getenv("XDG_DATA_HOME", "")
+    if xdg != "":
+        return os.join(xdg, IDENTIFIANT)
+    return os.join(os.home(), ".local", "share", IDENTIFIANT)
+
+func fichier_donnees():
+    return os.join(dossier_donnees(), "taches.json")
+== ./p_gui/src/main.al
+# P gui — point d'entrée.
+#   alexc run                     fenêtre (Windows, X11)
+#   alexc run -- --terminal       même interface dans le terminal
+#   alexc test                    tests (dossier tests/)
+# Les modules se trouvent depuis src/ (alex.toml : sources = ["src"]) : `use vues.principale` -> src/vues/principale.al.
+from core use len
+use os
+use gui
+use tui
+use app.config as config
+use app.application as application
+use vues.principale as principale
+
+func principal():
+    args := os.args()
+    application.demarrer(config.fichier_donnees())
+    if len(args) > 0 and (args[0] == "--terminal" or args[0] == "tui"):
+        tui.run(principale.racine, config.NOM)
+    else:
+        gui.run(principale.racine, config.NOM, config.LARGEUR, config.HAUTEUR)
+    application.arreter()
+
+principal()
+== ./p_gui/src/modeles/taches.al
+# Modèle de P gui : la liste de tâches, sans interface ni fichier (testé dans tests/test_taches.al).
+from core use len, type
+from collections use append, contains_key
+use string
+
+const FILTRES := ["toutes", "a_faire", "faites"]
+
+class Liste:
+    func init():
+        self.elements = []
+
+    # Ajoute une tâche ; refuse un titre vide. Renvoie true si ajoutée.
+    func ajouter(titre):
+        t := string.trim(titre)
+        if t == "":
+            return false
+        append(self.elements, {"titre": t, "faite": false})
+        return true
+
+    func basculer(i):
+        if i >= 0 and i < len(self.elements):
+            self.elements[i]["faite"] = not self.elements[i]["faite"]
+
+    func supprimer(i):
+        garde := []
+        k := 0
+        for t in self.elements:
+            if k != i:
+                append(garde, t)
+            k += 1
+        self.elements = garde
+
+    # Retire les tâches terminées ; renvoie leur nombre.
+    func vider_faites():
+        garde := []
+        for t in self.elements:
+            if not t["faite"]:
+                append(garde, t)
+        n := len(self.elements) - len(garde)
+        self.elements = garde
+        return n
+
+    # Nombre de tâches non faites.
+    func restantes():
+        n := 0
+        for t in self.elements:
+            if not t["faite"]:
+                n += 1
+        return n
+
+    # Indices des tâches visibles pour un filtre : "toutes", "a_faire" ou "faites".
+    func visibles(filtre):
+        out := []
+        i := 0
+        for t in self.elements:
+            if filtre == "toutes" or (filtre == "faites") == t["faite"]:
+                append(out, i)
+            i += 1
+        return out
+
+    # Données sérialisables (liste de dicts), pour le stockage.
+    func vers_donnees():
+        out := []
+        for t in self.elements:
+            append(out, {"titre": t["titre"], "faite": t["faite"]})
+        return out
+
+# Liste reconstruite depuis des données lues (entrées invalides ignorées).
+func depuis_donnees(donnees):
+    l := Liste()
+    if type(donnees) != "list":
+        return l
+    for e in donnees:
+        if type(e) == "dict" and contains_key(e, "titre") and type(e["titre"]) == "str" and string.trim(e["titre"]) != "":
+            append(l.elements, {"titre": string.trim(e["titre"]), "faite": contains_key(e, "faite") and e["faite"] == true})
+    return l
+== ./p_gui/src/services/stockage.al
+# Persistance de P gui : la liste de tâches en JSON. Écriture atomique (fichier temporaire puis
+# remplacement) ; un fichier illisible est mis de côté (.bak) au lieu d'être écrasé. Testé dans tests/test_stockage.al.
+use os
+use io
+use json
+use modeles.taches as taches
+
+func charger(chemin):
+    if chemin == null or not os.isfile(chemin):
+        return taches.Liste()
+    try:
+        return taches.depuis_donnees(json.parse(io.read_file(chemin)))
+    catch e:
+        try:
+            os.copy(chemin, chemin + ".bak")
+        catch e2:
+            return taches.Liste()
+        return taches.Liste()
+
+func enregistrer(liste, chemin):
+    os.mkdir_all(os.dirname(chemin))
+    tmp := chemin + ".tmp"
+    io.write_file(tmp, json.pretty(liste.vers_donnees()) + "\n")
+    if os.exists(chemin):
+        os.remove(chemin)
+    os.move(tmp, chemin)
+== ./p_gui/src/vues/composants.al
+# Composants de l'interface de P gui : fonctions pures de l'état, qui renvoient des éléments ui.view.
+from core use len
+use ui.view as v
+use app.application as application
+
+func en_tete(titre, restantes, total):
+    return v.column([
+        v.text(titre, style="title"),
+        v.text(str(restantes) + " tâche(s) à faire sur " + str(total), style="muted"),
+    ], gap=0)
+
+func barre_saisie(saisie):
+    return v.row([
+        v.field(saisie, application.saisir, on_submit=(x) => application.ajouter(), placeholder="Nouvelle tâche…", flex=1, id="saisie"),
+        v.button("Ajouter", application.ajouter, primary=true, id="ajouter"),
+    ])
+
+func barre_filtres(actif):
+    libelles := [["toutes", "Toutes"], ["a_faire", "À faire"], ["faites", "Faites"]]
+    boutons := []
+    for f in libelles:
+        boutons = boutons + [v.button(f[1], _filtre(f[0]), primary=f[0] == actif, id="filtre_" + f[0])]
+    return v.row(boutons)
+
+func _filtre(nom):
+    return () => application.filtrer(nom)
+
+func ligne_tache(i, t):
+    return v.row([
+        v.checkbox(t["titre"], t["faite"], (x) => application.basculer(i), id="tache_" + str(i)),
+        v.spacer(),
+        v.button("Supprimer", () => application.supprimer(i), id="supprimer_" + str(i)),
+    ])
+== ./p_gui/src/vues/principale.al
+# Vue principale de P gui : assemble les composants à partir de l'état ; ui.view la redessine après chaque action.
+from core use len
+use ui.view as v
+use app.config as config
+use app.application as application
+use vues.composants as composants
+
+func racine():
+    etat := application.etat
+    liste := etat["liste"]
+    lignes := []
+    for i in liste.visibles(etat["filtre"]):
+        lignes = lignes + [composants.ligne_tache(i, liste.elements[i])]
+    if len(lignes) == 0:
+        lignes = [v.text("Aucune tâche ici — ajoutez-en une ci-dessus.", style="muted")]
+    return v.column([
+        composants.en_tete(config.NOM, liste.restantes(), len(liste.elements)),
+        composants.barre_saisie(etat["saisie"]),
+        composants.barre_filtres(etat["filtre"]),
+        v.scroll(v.column(lignes), flex=1),
+        v.row([
+            v.text(etat["message"], style="muted"),
+            v.spacer(),
+            v.button("Retirer les tâches faites", application.vider_faites, id="vider"),
+            v.button("Quitter", v.quit, id="quitter"),
+        ]),
+    ], padding=2)
+== ./p_gui/tests/test_application.al
+# Actions de l'application, sans fenêtre : état, enregistrement automatique, rechargement.
+use os
+use app.application as application
+use testing
+
+func _fichier():
+    d := os.join(os.tmp_dir(), "p_gui_app_" + str(os.pid()))
+    os.mkdir_all(d)
+    f := os.join(d, "taches.json")
+    if os.exists(f):
+        os.remove(f)
+    return f
+
+func test_ajouter_et_recharger():
+    f := _fichier()
+    application.demarrer(f)
+    application.saisir("tâche 1")
+    application.ajouter()
+    testing.assert_eq(application.etat["saisie"], "")
+    application.saisir("tâche 2")
+    application.ajouter()
+    application.basculer(0)
+    # nouvelle session : les tâches ont été enregistrées
+    application.demarrer(f)
+    testing.assert_eq(len(application.etat["liste"].elements), 2)
+    testing.assert_eq(application.etat["liste"].restantes(), 1)
+    os.remove(f)
+
+func test_titre_vide_refuse():
+    application.demarrer(null)
+    application.saisir("   ")
+    application.ajouter()
+    testing.assert_eq(len(application.etat["liste"].elements), 0)
+    testing.assert_true(application.etat["message"] != "")
+
+func test_filtre_et_vider():
+    application.demarrer(null)
+    for t in ["a", "b"]:
+        application.saisir(t)
+        application.ajouter()
+    application.basculer(1)
+    application.filtrer("faites")
+    testing.assert_eq(application.etat["liste"].visibles(application.etat["filtre"]), [1])
+    application.vider_faites()
+    testing.assert_eq(len(application.etat["liste"].elements), 1)
+== ./p_gui/tests/test_stockage.al
+use os
+use io
+use modeles.taches as taches
+use services.stockage as stockage
+use testing
+
+func _fichier(nom):
+    d := os.join(os.tmp_dir(), "p_gui_tests_" + str(os.pid()))
+    os.mkdir_all(d)
+    return os.join(d, nom)
+
+func test_aller_retour():
+    f := _fichier("taches.json")
+    l := taches.Liste()
+    l.ajouter("préparer la démo")
+    l.basculer(0)
+    stockage.enregistrer(l, f)
+    testing.assert_eq(stockage.charger(f).vers_donnees(), [{"titre": "préparer la démo", "faite": true}])
+    os.remove(f)
+
+func test_fichier_absent():
+    testing.assert_eq(len(stockage.charger(_fichier("absent.json")).elements), 0)
+
+func test_fichier_abime_mis_de_cote():
+    f := _fichier("abime.json")
+    io.write_file(f, "{ ceci n'est pas du JSON")
+    testing.assert_eq(len(stockage.charger(f).elements), 0)
+    testing.assert_true(os.isfile(f + ".bak"))
+    os.remove(f)
+    os.remove(f + ".bak")
+== ./p_gui/tests/test_taches.al
+use modeles.taches as taches
+use testing
+
+func test_ajout():
+    l := taches.Liste()
+    testing.assert_true(l.ajouter("  écrire la doc "))
+    testing.assert_false(l.ajouter("   "))
+    testing.assert_eq(l.elements[0]["titre"], "écrire la doc")
+
+func test_restantes_et_filtres():
+    l := taches.Liste()
+    l.ajouter("a")
+    l.ajouter("b")
+    l.ajouter("c")
+    l.basculer(1)
+    testing.assert_eq(l.restantes(), 2)
+    testing.assert_eq(l.visibles("toutes"), [0, 1, 2])
+    testing.assert_eq(l.visibles("a_faire"), [0, 2])
+    testing.assert_eq(l.visibles("faites"), [1])
+
+func test_supprimer_et_vider():
+    l := taches.Liste()
+    for t in ["a", "b", "c"]:
+        l.ajouter(t)
+    l.supprimer(0)
+    testing.assert_eq(l.elements[0]["titre"], "b")
+    l.basculer(0)
+    testing.assert_eq(l.vider_faites(), 1)
+    testing.assert_eq(len(l.elements), 1)
+
+func test_donnees():
+    l := taches.Liste()
+    l.ajouter("x")
+    l.basculer(0)
+    r := taches.depuis_donnees(l.vers_donnees())
+    testing.assert_eq(r.elements, [{"titre": "x", "faite": true}])
+    # entrées invalides ignorées
+    testing.assert_eq(len(taches.depuis_donnees([{"titre": ""}, 3, {"faite": true}]).elements), 0)
+== ./p_kernel/.github/workflows/alex.yml
+# Intégration continue GitHub Actions pour p_kernel (généré par alexc new).
+name: alex
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer ALEX
+        run: |
+          curl -fsSL "$ALEX_DIST_URL" -o alex.tar.gz || { echo "Définissez la variable ALEX_DIST_URL (archive .tar.gz de make package)"; exit 1; }
+          mkdir -p "$HOME/alex" && tar -xzf alex.tar.gz -C "$HOME/alex" --strip-components=1
+          echo "$HOME/alex/bin" >> "$GITHUB_PATH"
+        env:
+          ALEX_DIST_URL: ${{ vars.ALEX_DIST_URL }}
+      - name: Vérifier la mise en forme
+        run: alexc fmt --check .
+      - name: Tests
+        run: alexc test --json . | tee resultats-tests.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resultats-tests
+          path: resultats-tests.jsonl
+== ./p_kernel/.gitignore
+/build/
+/dist/
+/alex_packages/
+*.albc
+*.al.meta
+alex_profile.json
+== ./p_kernel/README.md
+# P kernel
+
+Noyau démarrable sans OS (Multiboot, x86-64) : écran VGA, port série, horloge ; démarré dans QEMU.
+
+Projet créé avec `alexc new kernel p_kernel` (ALEX Studio : *Fichier › Nouveau projet*).
+
+## Commandes
+
+| Commande | Rôle |
+|---|---|
+| `alexc run` | exécuter le programme (point d'entrée : `noyau.al`) |
+| `alexc test` | lancer les tests du dossier `tests/` |
+| `alexc fmt` | mettre le code en forme |
+| `alexc doc --html docs/api .` | générer la documentation de référence |
+| `alex-studio .` | ouvrir le projet dans ALEX Studio (IDE, installé à part) |
+| `alexc pkg add <paquet>` | ajouter une dépendance |
+== ./p_kernel/alex.toml
+[package]
+name = "p_kernel"
+version = "0.1.0"
+entry = "noyau.al"
+alex = ">=VERSION"
+
+[dependencies]
+== ./p_kernel/noyau.al
+# p_kernel — noyau démarrable sans système d'exploitation.
+#   alexc build --native --freestanding noyau.al -o p_kernel.bin
+#   qemu-system-x86_64 -kernel p_kernel.bin -serial stdio -device isa-debug-exit,iobase=0xf4,iosize=0x04
+# La logique pure (texte.al) se teste dans la VM : alexc test
+use hw
+use texte
+
+const VGA := 753664 # 0xB8000 : écran texte 80 x 25
+
+func ecran(ligne: int, s: str, attr: int):
+    i := 0
+    for c in s:
+        hw.poke16(VGA + 2 * (ligne * 80 + i), texte.code(c) + (attr << 8))
+        i += 1
+
+func main():
+    i := 0
+    while i < 80 * 25:
+        hw.poke16(VGA + 2 * i, 32 + (15 << 8))
+        i += 1
+    ecran(0, texte.titre("P kernel"), 31)
+    ecran(2, "Noyau ALEX demarre.", 10)
+    print("P kernel : noyau démarré") # print écrit sur le port série dans un noyau
+    print(texte.titre("P kernel"))
+    hw.exit(0) # isa-debug-exit : arrête QEMU
+
+main()
+== ./p_kernel/tests/test_texte.al
+use texte
+use testing
+
+func test_code():
+    testing.assert_eq(texte.code('A'), 65)
+    testing.assert_eq(texte.code('é'), 63)
+
+func test_titre():
+    testing.assert_eq(texte.titre("X"), "=== X ===")
+== ./p_kernel/texte.al
+# alex: native
+# Fonctions pures utilisées par le noyau (compilées en natif) et testées dans la VM.
+from string use ord
+
+# Code d'un caractère pour l'écran texte et le port série (ASCII ; « ? » au-delà).
+func code(c: char) -> int:
+    n := ord(c)
+    if n > 126:
+        return 63
+    return n
+
+# Bandeau centré sur 80 colonnes : « ===  titre  === ».
+func titre(s: str) -> str:
+    bord := "=== "
+    return bord + s + " ==="
+== ./p_lib/.github/workflows/alex.yml
+# Intégration continue GitHub Actions pour p_lib (généré par alexc new).
+name: alex
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer ALEX
+        run: |
+          curl -fsSL "$ALEX_DIST_URL" -o alex.tar.gz || { echo "Définissez la variable ALEX_DIST_URL (archive .tar.gz de make package)"; exit 1; }
+          mkdir -p "$HOME/alex" && tar -xzf alex.tar.gz -C "$HOME/alex" --strip-components=1
+          echo "$HOME/alex/bin" >> "$GITHUB_PATH"
+        env:
+          ALEX_DIST_URL: ${{ vars.ALEX_DIST_URL }}
+      - name: Vérifier la mise en forme
+        run: alexc fmt --check .
+      - name: Tests
+        run: alexc test --json . | tee resultats-tests.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resultats-tests
+          path: resultats-tests.jsonl
+== ./p_lib/.gitignore
+/build/
+/dist/
+/alex_packages/
+*.albc
+*.al.meta
+alex_profile.json
+== ./p_lib/README.md
+# P lib
+
+Paquet réutilisable (alexc pkg) : module documenté, tests, exemple, publication.
+
+Projet créé avec `alexc new lib p_lib` (ALEX Studio : *Fichier › Nouveau projet*).
+
+## Commandes
+
+| Commande | Rôle |
+|---|---|
+| `alexc run` | exécuter le programme (point d'entrée : `exemple.al`) |
+| `alexc test` | lancer les tests du dossier `tests/` |
+| `alexc fmt` | mettre le code en forme |
+| `alexc doc --html docs/api .` | générer la documentation de référence |
+| `alex-studio .` | ouvrir le projet dans ALEX Studio (IDE, installé à part) |
+| `alexc pkg add <paquet>` | ajouter une dépendance |
+== ./p_lib/alex.toml
+[package]
+name = "p_lib"
+version = "0.1.0"
+entry = "exemple.al"
+alex = ">=VERSION"
+
+[dependencies]
+== ./p_lib/exemple.al
+# Exemple d'utilisation de p_lib : alexc run exemple.al
+use p_lib
+
+print(p_lib.slug("Bonjour le Monde !"))
+print(p_lib.mots("un deux  trois"))
+== ./p_lib/p_lib.al
+# p_lib — bibliothèque ALEX.
+#
+#   use p_lib
+#   print(p_lib.slug("Bonjour le Monde !"))     # bonjour-le-monde
+#   print(p_lib.mots("un deux  trois"))          # 3
+#
+# La documentation de référence se génère avec `alexc doc p_lib.al` (ou --html dossier).
+from core use len
+from collections use append
+use string
+
+# Version de la bibliothèque.
+const VERSION := "0.1.0"
+
+# Identifiant d'URL : minuscules, lettres et chiffres, mots séparés par « - ».
+func slug(texte):
+    out := []
+    tiret := false
+    for c in string.lower(texte):
+        ok := (c >= 'a' and c <= 'z') or (c >= '0' and c <= '9')
+        if ok:
+            if tiret and len(out) > 0:
+                append(out, "-")
+            append(out, str(c))
+            tiret = false
+        else:
+            tiret = true
+    return string.join("", out)
+
+# Nombre de mots (séparés par des espaces).
+func mots(texte):
+    n := 0
+    dans_mot := false
+    for c in texte:
+        if c == ' ' or c == '\t' or c == '\n':
+            dans_mot = false
+        elif not dans_mot:
+            dans_mot = true
+            n += 1
+    return n
+== ./p_lib/tests/test_p_lib.al
+use p_lib
+use testing
+
+func test_slug():
+    testing.assert_eq(p_lib.slug("Bonjour le Monde !"), "bonjour-le-monde")
+    testing.assert_eq(p_lib.slug("  A--B  "), "a-b")
+
+func test_mots():
+    testing.assert_eq(p_lib.mots("un deux  trois"), 3)
+    testing.assert_eq(p_lib.mots(""), 0)
+== ./p_server/.github/workflows/alex.yml
+# Intégration continue GitHub Actions pour p_server (généré par alexc new).
+name: alex
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer ALEX
+        run: |
+          curl -fsSL "$ALEX_DIST_URL" -o alex.tar.gz || { echo "Définissez la variable ALEX_DIST_URL (archive .tar.gz de make package)"; exit 1; }
+          mkdir -p "$HOME/alex" && tar -xzf alex.tar.gz -C "$HOME/alex" --strip-components=1
+          echo "$HOME/alex/bin" >> "$GITHUB_PATH"
+        env:
+          ALEX_DIST_URL: ${{ vars.ALEX_DIST_URL }}
+      - name: Vérifier la mise en forme
+        run: alexc fmt --check .
+      - name: Tests
+        run: alexc test --json . | tee resultats-tests.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resultats-tests
+          path: resultats-tests.jsonl
+== ./p_server/.gitignore
+/build/
+/dist/
+/alex_packages/
+*.albc
+*.al.meta
+alex_profile.json
+== ./p_server/README.md
+# P server
+
+Serveur HTTP/1.1 (network.http) avec routes JSON ; la logique des routes est testée sans réseau.
+
+Projet créé avec `alexc new server p_server` (ALEX Studio : *Fichier › Nouveau projet*).
+
+## Commandes
+
+| Commande | Rôle |
+|---|---|
+| `alexc run` | exécuter le programme (point d'entrée : `main.al`) |
+| `alexc test` | lancer les tests du dossier `tests/` |
+| `alexc fmt` | mettre le code en forme |
+| `alexc doc --html docs/api .` | générer la documentation de référence |
+| `alex-studio .` | ouvrir le projet dans ALEX Studio (IDE, installé à part) |
+| `alexc pkg add <paquet>` | ajouter une dépendance |
+== ./p_server/alex.toml
+[package]
+name = "p_server"
+version = "0.1.0"
+entry = "main.al"
+alex = ">=VERSION"
+
+[dependencies]
+== ./p_server/main.al
+# p_server — serveur HTTP.
+#   alexc run                       écoute sur http://127.0.0.1:8080
+#   curl http://127.0.0.1:8080/api/bonjour?nom=Alex
+from core use len, to_int
+use os
+use io
+use network.http as http
+use routes
+
+port := 8080
+args := os.args()
+if len(args) > 0:
+    port = to_int(args[0])
+
+func handler(req):
+    return routes.traiter(req.method, req.path, req.query)
+
+srv := http.Server("127.0.0.1", port)
+print("P server écoute sur " + srv.url())
+io.flush() # visible tout de suite, même quand la sortie est un tube ou un fichier
+srv.serve(handler)
+== ./p_server/routes.al
+# Routes de p_server : fonctions pures (méthode, chemin, paramètres) -> [statut, corps, "json" | "text"], et leur
+# traduction en réponse HTTP (traiter). Les deux se testent sans réseau.
+from collections use contains_key
+use network.http as http
+
+compteur := {"visites": 0}
+
+func repondre(methode, chemin, params):
+    compteur["visites"] += 1
+    if methode == "GET" and chemin == "/":
+        return [200, "P server fonctionne.\n", "text"]
+    if methode == "GET" and chemin == "/api/bonjour":
+        nom := "monde"
+        if contains_key(params, "nom"):
+            nom = params["nom"]
+        return [200, {"message": "Bonjour, " + nom + " !"}, "json"]
+    if methode == "GET" and chemin == "/api/stats":
+        return [200, {"visites": compteur["visites"]}, "json"]
+    return [404, "introuvable : " + chemin + "\n", "text"]
+
+# Réponse HTTP (network.http.Response) d'une requête : JSON ou texte, avec le statut de repondre.
+func traiter(methode, chemin, params):
+    r := repondre(methode, chemin, params)
+    if r[2] == "json":
+        return http.json_response(r[1], r[0])
+    return http.text(r[1], r[0])
+== ./p_server/tests/test_routes.al
+use routes
+use testing
+use string
+
+func test_bonjour():
+    r := routes.repondre("GET", "/api/bonjour", {"nom": "Alex"})
+    testing.assert_eq(r[0], 200)
+    testing.assert_eq(r[1]["message"], "Bonjour, Alex !")
+
+func test_introuvable():
+    testing.assert_eq(routes.repondre("GET", "/nulle-part", {})[0], 404)
+
+func test_reponse_json():
+    rep := routes.traiter("GET", "/api/bonjour", {"nom": "Alex"})
+    testing.assert_eq(rep.status, 200)
+    testing.assert_eq(rep.headers["Content-Type"], "application/json")
+
+func test_reponse_texte_404():
+    rep := routes.traiter("GET", "/nulle-part", {})
+    testing.assert_eq(rep.status, 404)
+    testing.assert_true(string.starts_with(rep.headers["Content-Type"], "text/plain"))
+    testing.assert_eq(rep.body, "introuvable : /nulle-part\n")
+== ./p_x/.gitignore
+/build/
+/dist/
+/alex_packages/
+*.albc
+*.al.meta
+alex_profile.json
+== ./p_x/.gitlab-ci.yml
+# Intégration continue GitLab pour p_x (généré par alexc new).
+stages: [verifier, tester]
+variables:
+  ALEX_DIST_URL: ""   # archive .tar.gz de « make package » (dossier dist/ du SDK)
+before_script:
+  - curl -fsSL "$ALEX_DIST_URL" -o alex.tar.gz
+  - mkdir -p /opt/alex && tar -xzf alex.tar.gz -C /opt/alex --strip-components=1
+  - export PATH=/opt/alex/bin:$PATH
+format:
+  stage: verifier
+  script: alexc fmt --check .
+tests:
+  stage: tester
+  script: alexc test --json . | tee resultats-tests.jsonl
+  artifacts:
+    when: always
+    paths: [resultats-tests.jsonl]
+== ./p_x/README.md
+# P x
+
+Commandes et options (argparse), aide, page de manuel et complétion shell générées.
+
+Projet créé avec `alexc new cli p_x` (ALEX Studio : *Fichier › Nouveau projet*).
+
+## Commandes
+
+| Commande | Rôle |
+|---|---|
+| `alexc run` | exécuter le programme (point d'entrée : `main.al`) |
+| `alexc test` | lancer les tests du dossier `tests/` |
+| `alexc fmt` | mettre le code en forme |
+| `alexc doc --html docs/api .` | générer la documentation de référence |
+| `alex-studio .` | ouvrir le projet dans ALEX Studio (IDE, installé à part) |
+| `alexc pkg add <paquet>` | ajouter une dépendance |
+== ./p_x/alex.toml
+[package]
+name = "p_x"
+version = "0.1.0"
+entry = "main.al"
+alex = ">=VERSION"
+
+[dependencies]
+== ./p_x/commandes.al
+# Commandes de p_x (testées dans tests/).
+from core use len
+use io
+
+# Lignes, mots et caractères d'un texte.
+func statistiques(texte):
+    lignes := 0
+    mots := 0
+    car := 0
+    dans_mot := false
+    for c in texte:
+        car += 1
+        if c == '\n':
+            lignes += 1
+        if c == ' ' or c == '\n' or c == '\t':
+            dans_mot = false
+        elif not dans_mot:
+            dans_mot = true
+            mots += 1
+    return [lignes, mots, car]
+
+# Statistiques d'un fichier texte (fins de ligne \r\n et \r ramenées à \n : mêmes comptes sous Windows et Linux).
+func compter(fichier):
+    return statistiques(io.read_text(fichier)[0])
+
+func executer(args):
+    if args["commande"] == "saluer":
+        print("Bonjour, " + args["nom"] + " !")
+    elif args["commande"] == "compter":
+        for f in args["fichiers"]:
+            st := compter(f)
+            ligne := str(st[0]) + "\t" + str(st[1]) + "\t" + str(st[2]) + "\t" + f
+            print(ligne)
+== ./p_x/main.al
+# p_x — outil en ligne de commande.
+#   alexc run -- saluer Alex
+#   alexc run -- compter fichier.txt
+#   alexc run -- --help
+#   alexc build --standalone main.al -o p_x     (exécutable autonome)
+use argparse
+use commandes
+
+p := argparse.parser(prog="p_x", description="P x : exemple d'outil.", version="0.1.0")
+p.add_argument(["-v", "--verbose"], {"action": "store_true", "help": "affiche les détails"})
+sub := p.add_subparsers({"dest": "commande", "required": true})
+c := sub.add_parser("compter", {"help": "compte lignes, mots et caractères"})
+c.add_argument("fichiers", {"nargs": "+", "help": "fichiers à analyser"})
+s := sub.add_parser("saluer", {"help": "affiche un salut"})
+s.add_argument("nom", {"nargs": "?", "default": "monde"})
+args := p.parse_args()
+commandes.executer(args)
+== ./p_x/tests/test_commandes.al
+use commandes
+use testing
+use io
+use os
+
+func test_statistiques():
+    testing.assert_eq(commandes.statistiques("un deux\ntrois\n"), [2, 3, 14])
+
+func test_vide():
+    testing.assert_eq(commandes.statistiques(""), [0, 0, 0])
+
+func test_compter_fichier():
+    f := os.join(os.tmp_dir(), "p_x_test_" + str(os.pid()) + ".txt")
+    io.write_file(f, "un deux\r\ntrois\r\n") # fins de ligne Windows
+    try:
+        testing.assert_eq(commandes.compter(f), [2, 3, 14])
+    finally:
+        os.remove(f)

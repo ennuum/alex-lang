@@ -1,0 +1,84 @@
+pilote :
+ATA
+true
+--- racine
+  HELLO.TXT
+  BONJOUR.ELF
+  CALCUL.ELF
+  CARRES.ELF
+  ERREUR.ELF
+  FICHIERS.ELF
+  Documents/
+--- Documents
+  Rapports annuels/
+  Archive/
+  Lisez-moi d'abord.txt (52 o)
+--- lectures (casse ignorée, chemins relatifs avec . et ..)
+Lisez-moi : ce disque a été préparé par mtools.
+Chiffre d affaires 2026 : en hausse.
+Archive :
+40
+fichiers, dernier :
+fichier numéro 40.txt
+fichier 40
+nom court de Documents :
+DOCUME~1
+--- écritures du noyau
+Beaucoup :
+30
+fichiers
+  Alex OS/
+  README.TXT (40 o)
+  Clé 🔑 musicale 𝄞.txt (49 o)
+  Rapport final version 1.txt (3 o)
+  Rapport final version 2.txt (3 o)
+  Beaucoup/
+E7 : sous-répertoires et noms longs (réécrit).
+caractères hors du plan de base : paires UTF-16
+--- erreurs
+FatError: existe déjà : Projets
+FatError: répertoire non vide : Projets
+FatError: est un répertoire (rmdir) : Projets/Alex OS
+FatError: répertoire introuvable : Absent
+FatError: caractère interdit dans un nom ("*/:<>?\|) : a:b.txt
+FatError: est un répertoire : Projets
+après suppressions :
+4
+entrées dans Projets
+--- processus
+code :
+départ :
+/
+ici :
+/Mes documents
+pain
+lait
+
+true
+true
+IoError: rmdir('Mes documents/Archives 2026') : Directory not empty
+false
+0
+  Liste de courses.txt (10 o)
+--- hôte : fsck.fat
+volume sain
+--- hôte : arborescence de Projets
+Projets/Alex OS/
+Projets/README.TXT
+Projets/Clé __ musicale __.txt
+Projets/Rapport final version 2.txt
+Projets/Alex OS/Journal de bord.txt
+--- hôte : contenu lu par mtype
+E7 : sous-répertoires et noms longs (réécrit).
+pain
+lait
+--- hôte : noms courts
+ALEXOS~1 <DIR>
+README TXT
+CL__MU~1 TXT
+RAPPOR~2 TXT
+--- hôte : noms longs relus en Python (UTF-16 avec paires, sommes de contrôle, ordre des morceaux)
+Projets/Alex OS/
+Projets/README.TXT
+Projets/Clé 🔑 musicale 𝄞.txt
+Projets/Rapport final version 2.txt

@@ -1,0 +1,18 @@
+zéro : division entière par zéro (int // 0)
+IndexError : index 5 hors limites (taille 2, §10)
+KeyError : clé absente du dictionnaire (§10)
+perso : perso 3
+autre : Exception: message seul
+ok 500
+0
+1
+Stop rattrapé : arrêt
+[corps 0, fin du corps, finally 0, corps 1, finally 1, corps 2, finally 2]
+[0, 100, 101, 2, 102, 3, 103, 104]
+A propagé à travers une clause non correspondante : a
+Profond: fond atteint
+46000
+5
+finally interne
+relance après finally : Interne
+relancé : première

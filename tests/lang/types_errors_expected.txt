@@ -1,0 +1,18 @@
+TypeCheckError: tests/lang/types_errors_fixture.al:12:12: valeur de retour : attendu str, obtenu int
+  tests/lang/types_errors_fixture.al:15:5: valeur de retour : attendu int, 'return' sans valeur
+  tests/lang/types_errors_fixture.al:17:11: variable 'x' : attendu int, obtenu str
+  tests/lang/types_errors_fixture.al:18:10: variable 'o' : la valeur 300 ne tient pas dans u8
+  tests/lang/types_errors_fixture.al:19:8: argument 'b' de add : attendu int, obtenu str
+  tests/lang/types_errors_fixture.al:20:7: argument 'b' de add : attendu int, obtenu str
+  tests/lang/types_errors_fixture.al:21:19: argument 'x' de Point : attendu int, obtenu float
+  tests/lang/types_errors_fixture.al:22:7: champ 'x' : attendu int, obtenu str
+  tests/lang/types_errors_fixture.al:23:8: opération '+' impossible entre int et str
+  tests/lang/types_errors_fixture.al:24:4: type inconnu 'Pointt'
+  tests/lang/types_errors_fixture.al:25:11: variable 'n' : attendu int, obtenu null
+  tests/lang/types_errors_fixture.al:27:8: opération '+' impossible entre int? et int
+  tests/lang/types_errors_fixture.al:28:17: variable 'l' : attendu list[int], obtenu list[str]
+  tests/lang/types_errors_fixture.al:29:4: nombre de paramètres de type invalide pour 'dict'
+  tests/lang/types_errors_fixture.al:30:10: variable 'c' : la valeur -129 ne tient pas dans i8
+  tests/lang/types_errors_fixture.al:33:8: opération '+' entre i32 et u8 : convertir explicitement (to_i32(…) ou to_u8(…))
+  tests/lang/types_errors_fixture.al:34:19: argument 's' de string.upper : attendu str, obtenu int
+  tests/lang/types_errors_fixture.al:38:14: opération '+' impossible entre int? et int

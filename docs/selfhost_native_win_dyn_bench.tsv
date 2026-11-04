@@ -1,0 +1,25 @@
+programme	statut	taille	cpp_ms	alex_ms	execution
+examples/comprehensions.al	IDENTIQUE	807424	124	10418	même sortie
+examples/functional_demo.al	IDENTIQUE	1093632	143	12904	même sortie
+examples/async_demo.al	IDENTIQUE	739840	139	10088	même sortie
+tests/lang/test_oop.al	IDENTIQUE	1427968	183	13420	même sortie
+tests/lang/test_closures.al	IDENTIQUE	962048	175	11029	même sortie
+tests/lang/test_exceptions.al	IDENTIQUE	962560	152	11504	même sortie
+tests/lang/test_pythonic.al	IDENTIQUE	1565184	245	14595	même sortie
+tests/lang/test_async.al	IDENTIQUE	969216	158	10657	même sortie
+tests/lang/test_types.al	IDENTIQUE	1487360	247	14689	même sortie
+tests/test_json.al	IDENTIQUE	2022400	220	17272	même sortie
+tests/test_csv.al	IDENTIQUE	2087936	196	17841	sorties différentes
+tests/test_regex.al	IDENTIQUE	2331136	305	19018	sorties différentes
+tests/test_datetime.al	IDENTIQUE	6547456	217836	50676	sorties différentes
+tests/test_path.al	IDENTIQUE	2130432	263	18404	sorties différentes
+tests/test_crypto.al	IDENTIQUE	2310656	4819	19068	sorties différentes
+tests/stdlib2/test_functional2.al	IDENTIQUE	2077696	288	17096	même sortie
+tests/stdlib2/test_iterator.al	IDENTIQUE	1872384	235	16216	même sortie
+tests/stdlib2/test_algorithm.al	IDENTIQUE	2366464	343	18882	même sortie
+tests/selfhost/progs/sh_oop.al	IDENTIQUE	1378816	283	13351	même sortie
+tests/selfhost/progs/sh_flow.al	IDENTIQUE	1384960	183	12801	même sortie
+tests/selfhost/progs/sh_types.al	IDENTIQUE	723456	166	9982	même sortie
+tests/selfhost/progs/sh_modules.al	IDENTIQUE	712192	129	9585	même sortie
+tests/selfhost/progs/sh_async.al	IDENTIQUE	1354752	171	12754	même sortie
+tests/selfhost/progs/sh_dyn.al	IDENTIQUE	1379840	172	12912	même sortie

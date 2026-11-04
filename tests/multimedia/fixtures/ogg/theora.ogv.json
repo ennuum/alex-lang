@@ -1,0 +1,30 @@
+{
+    "programs": [
+
+    ],
+    "streams": [
+        {
+            "index": 0,
+            "codec_name": "theora",
+            "width": 64,
+            "height": 48,
+            "duration": "1.000000",
+            "tags": {
+                "encoder": "Lavc60.31.102 libtheora"
+            }
+        },
+        {
+            "index": 1,
+            "codec_name": "vorbis",
+            "sample_rate": "22050",
+            "channels": 2,
+            "duration": "1.000000",
+            "tags": {
+                "encoder": "Lavc60.31.102 libvorbis"
+            }
+        }
+    ],
+    "format": {
+        "duration": "1.000000"
+    }
+}

@@ -1,0 +1,5 @@
+5
+Trace (appel le plus récent en dernier) :
+  tests/native/only/err_tasks.al:7, dans <lambda>
+  tests/native/only/err_tasks.al:5, dans fail_later
+ZeroDivisionError: division entière par zéro (int // 0)

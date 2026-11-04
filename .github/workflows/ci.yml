@@ -1,0 +1,22 @@
+# Intégration continue du dépôt ALEX : construction, tests complets, paquet de distribution.
+name: ci
+on: [push, pull_request]
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dépendances
+        run: sudo apt-get update && sudo apt-get install -y g++ make libx11-dev xvfb qemu-system-x86 python3 python3-pil nodejs
+      - name: Construction
+        run: make -j"$(nproc)" alex
+      - name: Outillage (LSP, débogueur, tests)
+        run: make test-tooling
+      - name: Tests complets
+        run: make -k test
+      - name: Paquet
+        run: make package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alex-distribution
+          path: dist/*

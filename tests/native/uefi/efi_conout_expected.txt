@@ -1,0 +1,8 @@
+Bonjour depuis ConOut
+uefi : true
+image : true
+signature : true
+AllocatePages : 0
+lu : 42
+FreePages : 0
+service absent : true

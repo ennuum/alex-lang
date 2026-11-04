@@ -1,0 +1,11 @@
+à mettre en forme : ./a.al
+rc=1
+mis en forme : ./a.al
+2 fichier(s), 1 modifié(s)
+rc=0
+x := 1
+    if x:
+        print(x)
+
+
+y := 2

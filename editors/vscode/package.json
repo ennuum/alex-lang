@@ -1,0 +1,67 @@
+{
+  "name": "alex-lang",
+  "displayName": "ALEX",
+  "description": "Langage ALEX : coloration, IntelliSense (alexc lsp), débogueur (alexc debug), extraits, tâches.",
+  "version": "1.0.0",
+  "publisher": "alex-lang",
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "engines": { "vscode": "^1.82.0" },
+  "categories": ["Programming Languages", "Debuggers", "Snippets", "Linters", "Formatters"],
+  "main": "./src/extension.js",
+  "activationEvents": ["onLanguage:alex", "onDebugResolve:alex", "workspaceContains:**/alex.toml"],
+  "contributes": {
+    "languages": [{
+      "id": "alex",
+      "aliases": ["ALEX", "alex"],
+      "extensions": [".al"],
+      "configuration": "./language-configuration.json",
+      "icon": { "light": "./images/icon.png", "dark": "./images/icon.png" }
+    }, {
+      "id": "alex-ui",
+      "aliases": ["Interface ALEX"],
+      "extensions": [".alui"]
+    }],
+    "grammars": [{ "language": "alex", "scopeName": "source.alex", "path": "./syntaxes/alex.tmLanguage.json" }],
+    "snippets": [{ "language": "alex", "path": "./snippets/alex.json" }],
+    "configuration": {
+      "title": "ALEX",
+      "properties": {
+        "alex.path": { "type": "string", "default": "alex", "description": "Chemin de l'exécutable alex." },
+        "alex.studioPath": { "type": "string", "default": "alex-studio", "description": "Chemin d'ALEX Studio (application installée à part)." },
+        "alex.trace.server": { "type": "string", "enum": ["off", "messages", "verbose"], "default": "off", "description": "Trace des échanges avec alexc lsp." }
+      }
+    },
+    "breakpoints": [{ "language": "alex" }],
+    "debuggers": [{
+      "type": "alex",
+      "label": "ALEX",
+      "languages": ["alex"],
+      "program": "./src/dap.js",
+      "runtime": "node",
+      "configurationAttributes": {
+        "launch": {
+          "required": ["program"],
+          "properties": {
+            "program": { "type": "string", "description": "Fichier .al à déboguer.", "default": "${file}" },
+            "args": { "type": "array", "items": { "type": "string" }, "default": [] },
+            "cwd": { "type": "string", "default": "${workspaceFolder}" },
+            "stopOnEntry": { "type": "boolean", "default": false },
+            "breakOnException": { "type": "boolean", "default": true },
+            "alexPath": { "type": "string", "default": "alex" }
+          }
+        }
+      },
+      "initialConfigurations": [{ "type": "alex", "request": "launch", "name": "Déboguer le fichier ALEX", "program": "${file}" }],
+      "configurationSnippets": [{ "label": "ALEX : déboguer", "body": { "type": "alex", "request": "launch", "name": "Déboguer le fichier ALEX", "program": "^\"\\${file}\"" } }]
+    }],
+    "taskDefinitions": [{ "type": "alex", "required": ["command"], "properties": { "command": { "type": "string", "enum": ["run", "test", "check", "build", "fmt", "doc"] }, "file": { "type": "string" } } }],
+    "commands": [
+      { "command": "alex.run", "title": "ALEX : exécuter le fichier" },
+      { "command": "alex.test", "title": "ALEX : lancer les tests" },
+      { "command": "alex.studio", "title": "ALEX : ouvrir dans ALEX Studio" }
+    ]
+  },
+  "scripts": { "package": "vsce package" },
+  "dependencies": { "vscode-languageclient": "^9.0.1" }
+}

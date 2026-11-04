@@ -1,0 +1,42 @@
+usage: alexc new [modèle] <nom> [--dir dossier] [--ci github|gitlab|aucune]
+
+Modèles :
+  console   Application console — Programme en ligne de commande avec module, tests unitaires et intégration continue.
+  gui       Application graphique — Application de bureau ui.view (Windows, X11, ou terminal) : sources en couches (modèles, services, vues), données persistantes, ressources, tests, scripts de construction.
+  cli       Outil en ligne de commande — Commandes et options (argparse), aide, page de manuel et complétion shell générées.
+  lib       Bibliothèque — Paquet réutilisable (alexc pkg) : module documenté, tests, exemple, publication.
+  server    Serveur web — Serveur HTTP/1.1 (network.http) avec routes JSON ; la logique des routes est testée sans réseau.
+  kernel    Noyau de système d'exploitation — Noyau démarrable sans OS (Multiboot, x86-64) : écran VGA, port série, horloge ; démarré dans QEMU.
+  driver    Pilote de périphérique — Pilote d'un périphérique à ports d'E/S, testé dans la machine simulée (hw) puis utilisable dans un noyau.
+rc=0
+[{"id":"console","title":"Application console","description":"Programme en ligne de commande avec module, tests unitaires et intégration continue.","category":"Application","entry":"main.al"},{"id":"gui","title":"Application graphique","description":"Application de bureau ui.view (Windows, X11, ou terminal) : sources en couches (modèles, services, vues), données persistantes, ressources, tests, scripts de construction.","category":"Application","entry":"src/main.al"},{"id":"cli","title":"Outil en ligne de commande","description":"Commandes et options (argparse), aide, page de manuel et complétion shell générées.","category":"Application","entry":"main.al"},{"id":"lib","title":"Bibliothèque","description":"Paquet réutilisable (alexc pkg) : module documenté, tests, exemple, publication.","category":"Bibliothèque","entry":"exemple.al"},{"id":"server","title":"Serveur web","description":"Serveur HTTP/1.1 (network.http) avec routes JSON ; la logique des routes est testée sans réseau.","category":"Réseau","entry":"main.al"},{"id":"kernel","title":"Noyau de système d'exploitation","description":"Noyau démarrable sans OS (Multiboot, x86-64) : écran VGA, port série, horloge ; démarré dans QEMU.","category":"Système","entry":"noyau.al"},{"id":"driver","title":"Pilote de périphérique","description":"Pilote d'un périphérique à ports d'E/S, testé dans la machine simulée (hw) puis utilisable dans un noyau.","category":"Système","entry":"demo.al"}]
+Projet créé : DIR/p_console (modèle console)
+  cd DIR/p_console
+  alexc run
+  alexc test
+Projet créé : DIR/p_gui (modèle gui)
+  cd DIR/p_gui
+  alexc run
+  alexc test
+Projet créé : DIR/p_cli (modèle cli)
+  cd DIR/p_cli
+  alexc run -- saluer Alex
+  alexc test
+Projet créé : DIR/p_lib (modèle lib)
+  cd DIR/p_lib
+  alexc run
+  alexc test
+Projet créé : DIR/p_server (modèle server)
+  cd DIR/p_server
+  alexc run   puis http://127.0.0.1:8080/api/bonjour?nom=Alex
+  alexc test
+Projet créé : DIR/p_kernel (modèle kernel)
+  cd DIR/p_kernel
+  alexc run
+  alexc test
+Projet créé : DIR/p_driver (modèle driver)
+  cd DIR/p_driver
+  alexc run
+  alexc test
+erreur: nom de projet invalide : « bad-name » (lettres, chiffres, _)
+rc=1

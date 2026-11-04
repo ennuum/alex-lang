@@ -1,0 +1,6 @@
+avant
+Trace (appel le plus récent en dernier) :
+  tests/native/kernel/k_fault.al:6, dans <module>
+  tests/native/kernel/k_fault.al:4, dans read_far
+  <stdlib natif>/hw.al:484, dans peek64
+CPUError: défaut de page (#PF, adresse 17179869184, code 0)

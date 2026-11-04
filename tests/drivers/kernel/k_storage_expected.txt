@@ -1,0 +1,31 @@
+pilotes : 3, périphériques : 5, liés : 3
+  pci 00:01.1 82371SB PIIX3 IDE [Natoma/Triton II] [8086:7010] -> ata-pio : 1 disque(s)
+  pci 00:02.0 Bochs / QEMU standard VGA [1234:1111] : sans pilote
+  pci 00:03.0 82540EM Gigabit Ethernet Controller (e1000) [8086:100e] irq 11 : sans pilote
+  pci 00:04.0 82801IR/IO/IH (ICH9R/DO/DH) 6 port SATA Controller [AHCI mode] [8086:2922] irq 11 -> ahci : AHCI 1.0, 6 ports, 1 disque(s)
+  pci 00:05.0 QEMU NVM Express Controller [1b36:0010] irq 10 -> nvme : NVMe 1.4 QEMU NVMe Ctrl (n° ALEX0001, micrologiciel 9.2.0), 1 espace(s) de noms
+
+disques : 3
+nvme0n1 : 32768 blocs de 512 octets (16 Mio)
+  signature : DISQUE-NVME
+  motif : 200
+  relu : écrit sur nvme0n1
+  table mbr : 2 partitions, Linux
+  nvme0n1p2 : 2048 blocs de 512 octets (1 Mio)
+sata0 : 32768 blocs de 512 octets (16 Mio)
+  signature : DISQUE-SATA
+  motif : 200
+  relu : écrit sur sata0
+  table mbr : 2 partitions, Linux
+  sata0p2 : 2048 blocs de 512 octets (1 Mio)
+ata0 : 16384 blocs de 512 octets (8 Mio)
+  signature : DISQUE-PATA
+  motif : 200
+  relu : écrit sur ata0
+  table mbr : 2 partitions, Linux
+  ata0p2 : 2048 blocs de 512 octets (1 Mio)
+file : 18 terminées, 0 en échec, 15 fusionnées, 3 commandes, déplacement 3984 blocs
+  ordre rétabli : 255 0
+cache : 1 succès, 1 défauts, 1 modifié(s)
+  écrit au vidage : cache
+octets : à cheval
