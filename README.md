@@ -26,6 +26,15 @@ make package                       # dist/ : archive .tar.gz et paquet .deb inst
 make installer-windows              # Windows : installeur (alex.exe inscrit dans le PATH) et archive zip
 ```
 
+## Apprendre ALEX
+
+| Guide | Contenu |
+|---|---|
+| [Langage ALEX : parcours pratique pour débutants](docs/guides/Langage_ALEX_parcours_pratique_debutants.pdf) (PDF, 18 pages) | apprendre ALEX de zéro, pas à pas |
+| [Diaporama : apprendre ALEX](docs/guides/Diaporama_Apprendre_ALEX.pdf) (PDF, 27 diapositives) | présentation du langage et de ses notions |
+
+Le compilateur prêt à l'emploi (Windows, Linux) est dans les [versions publiées](https://github.com/ennuum/alex-lang/releases).
+
 ## ALEX Studio
 
 L'IDE du langage, **ALEX Studio**, est un projet séparé, non publié dans ce dépôt (exécutables autonomes
