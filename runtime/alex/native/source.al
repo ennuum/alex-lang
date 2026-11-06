@@ -2326,7 +2326,23 @@ func __rt_pop_ready(s: int) -> int:
         __store64(s + 16, 0)
         return 0
     t := __rt_vec_at(l, head)
-    __store64(s + 16, head + 1)
+    # La case lue est effacée : sinon la file retient (pour le ramasse-miettes) chaque tâche déjà exécutée, avec
+    # son futur, sa fermeture et ses arguments, tant qu'elle ne se vide pas entièrement — ce qui n'arrive jamais
+    # quand le programme principal se remet dans la file à chaque tour (serveur, boucle de jeu).
+    data := __load64(l + 16)
+    __store64(data + 8 * head, 0)
+    head += 1
+    n := __load64(l)
+    if head >= 256 and head * 2 >= n:
+        # compaction : les tâches encore en file reviennent au début (la file ne grandit plus sans fin)
+        k := 0
+        while head + k < n:
+            __store64(data + 8 * k, __load64(data + 8 * (head + k)))
+            __store64(data + 8 * (head + k), 0)
+            k += 1
+        __store64(l, k)
+        head = 0
+    __store64(s + 16, head)
     __rt_set_flag(t, 1, false)
     return t
 
