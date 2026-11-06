@@ -55,6 +55,7 @@ use web.server.concurrency as _conc
 use web.server.tls_server as _tls
 use web.server.websocket as _wsk
 use web.server.streaming as _stream
+use thread.offload as _offload
 use web.http.date_header as _date
 use web.http.protocol_writer as _pw
 use web.http.response as _response
@@ -211,6 +212,8 @@ class Server:
         for ws in self.websockets:
             if ws.is_busy():
                 return 0.002             # session qui attend autre chose que son socket (minuteur, E/S)
+        if _offload.pending() > 0:
+            return 0.002                 # calculs délégués à des fils : résultats relevés toutes les 2 ms
         if len(self.streams) > 0:
             return 0.01                  # producteurs de flux : minuteurs servis au plus 10 ms en retard
         return self.config.poll_interval if self.config.poll_interval < 0.05 else 0.05
@@ -287,6 +290,7 @@ class Server:
         for c in self.manager.all():
             if c.has_buffered_input() and not c.closed:
                 self._read(c)
+        _offload.poll()
         self._complete()
         self._process(tick)
         self._expire()

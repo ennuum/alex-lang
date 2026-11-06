@@ -19,6 +19,10 @@
 #
 # Supervisor sert aussi seul (tests, outils) : Supervisor(n, hôte, port).start(), wait_ready(), step(), stop().
 #
+# Rechargement à chaud (développement) : serve(..., reload=true) ou Supervisor(...).watch([dossiers]) : le maître
+# surveille les fichiers .al (racine du projet par défaut) et relance les ouvriers quand l'un change ; un
+# programme qui ne démarre plus (erreur de syntaxe) est relancé à la modification suivante.
+#
 # Limites : POSIX (SO_REUSEPORT) ; un port explicite, ou 0 (le maître choisit alors un port libre et le transmet).
 
 from core use len, type, to_int
@@ -59,11 +63,13 @@ func default_count():
 
 # Sert app avec count ouvriers (0 ou null : un par cœur). Dans le maître : lance et surveille les ouvriers jusqu'à
 # INT / TERM, puis rend le Supervisor ; dans un ouvrier : sert (boucle async) jusqu'à l'arrêt, puis rend le Server.
-async func serve(app, host="127.0.0.1", port=8080, count=0, cfg=null, quiet=false):
+async func serve(app, host="127.0.0.1", port=8080, count=0, cfg=null, quiet=false, reload=false):
     if is_worker():
         return await _serve_worker(app, host, cfg)
     n := count if count != null and count > 0 else default_count()
     sup := Supervisor(n, host, port)
+    if reload:
+        sup.watch(null, quiet)
     sup.start()
     if not quiet:
         print("Serveur à l'écoute sur http://" + (host if host != "0.0.0.0" and host != "" else "127.0.0.1") + ":" + str(sup.port) + "/ (" + str(n) + " ouvriers, maître " + str(_os.pid()) + ")")
@@ -136,6 +142,10 @@ class Supervisor:
         self.stopping = false
         self.flags = []
         self.max_quick_failures = 5      # au-delà, l'ouvrier n'est plus relancé (erreur au démarrage)
+        self.watch_roots = null          # dossiers surveillés (rechargement à chaud), ou null
+        self.watch_state = null
+        self.reloads = 0
+        self.quiet_reload = false
         self.ready_dir = _os.join(_os.tmp_dir(), "alex-web-" + str(_os.pid()) + "-" + str(_nu.free_port("127.0.0.1")))
 
     func start():
@@ -176,7 +186,10 @@ class Supervisor:
                 w.quick_failures = 0
             if w.quick_failures >= self.max_quick_failures:
                 w.given_up = true
-                print("workers : l'ouvrier " + str(w.index) + " échoue au démarrage (code " + str(code) + ") : abandon")
+                if self.watch_roots != null:
+                    print("workers : l'ouvrier " + str(w.index) + " ne démarre pas (code " + str(code) + ") : en attente d'une modification")
+                else:
+                    print("workers : l'ouvrier " + str(w.index) + " échoue au démarrage (code " + str(code) + ") : abandon")
                 continue
             w.restarts += 1
             self._launch(w)
@@ -227,7 +240,7 @@ class Supervisor:
         return n
 
     # Arrêt propre : TERM à chaque ouvrier (il finit ses requêtes en cours), KILL après grace secondes.
-    func stop(grace=10.0):
+    func stop(grace=10.0, cleanup=true):
         self.stopping = true
         for w in self.workers:
             if w.running():
@@ -246,17 +259,56 @@ class Supervisor:
                     ignored := e
             if w.process != null:
                 w.process.wait(1.0)
-        try:
-            _os.rmdir(self.ready_dir, true)
-        catch e:
-            ignored := e
+        if cleanup:
+            try:
+                _os.rmdir(self.ready_dir, true)
+            catch e:
+                ignored := e
+
+    # Rechargement à chaud : surveille les fichiers .al de roots (null : racine du projet, c'est-à-dire le dossier
+    # le plus proche du programme qui contient alex.toml, sinon le dossier du programme) ; un changement
+    # relance tous les ouvriers (voir reload_if_changed).
+    func watch(roots=null, quiet=false):
+        if roots == null:
+            roots = [_project_root()]
+        self.watch_roots = roots
+        self.quiet_reload = quiet
+        self.max_quick_failures = 1      # code inchangé : inutile de réessayer avant la prochaine modification
+        self.watch_state = _snapshot(roots)
+        return self
+
+    # Relance les ouvriers si un fichier surveillé a changé (ajout, suppression, modification). Rend le chemin du
+    # premier fichier changé, ou null.
+    func reload_if_changed(grace=3.0):
+        if self.watch_roots == null:
+            return null
+        now := _snapshot(self.watch_roots)
+        changed := _diff(self.watch_state, now)
+        if changed == null:
+            return null
+        self.watch_state = now
+        if not self.quiet_reload:
+            print("workers : " + changed + " a changé, relance des ouvriers")
+        self.restart(grace)
+        self.reloads += 1
+        return changed
+
+    # Arrête puis relance tous les ouvriers (y compris ceux abandonnés après des échecs au démarrage).
+    func restart(grace=3.0):
+        self.stop(grace, false)
+        self.stopping = false
+        for w in self.workers:
+            w.given_up = false
+            w.quick_failures = 0
+            self._launch(w)
 
     # Surveille jusqu'à INT / TERM, puis arrête proprement les ouvriers.
     func run(poll=0.2, grace=10.0):
         self._install_signals()
         while not self._signalled():
             self.step()
-            if self._all_given_up():
+            self.reload_if_changed()
+            if self._all_given_up() and self.watch_roots == null:
                 print("workers : plus aucun ouvrier en état de servir")
                 break
             _time.sleep(poll)
@@ -296,3 +348,59 @@ func self_command():
             exe = "alex"
         return [exe, "run", script, "--"] + rest
     return [script] + rest
+
+# ---------------------------------------------------------------- rechargement à chaud
+
+# Dossier le plus proche du programme qui contient alex.toml ; à défaut, le dossier du programme.
+func _project_root():
+    script := _os.argv()[0] if len(_os.argv()) > 0 else "."
+    start := _os.dirname(_os.absolute(script))
+    d := start
+    k := 0
+    while k < 32 and d != "" and d != "/":
+        if _os.exists(_os.join(d, "alex.toml")):
+            return d
+        parent := _os.dirname(d)
+        if parent == d:
+            break
+        d = parent
+        k += 1
+    return start if start != "" else "."
+
+# {chemin: date de modification} des fichiers .al sous roots (dossiers cachés et build / alex_packages ignorés).
+func _snapshot(roots):
+    out := {}
+    for r in roots:
+        _scan(r, out, 0)
+    return out
+
+func _scan(d, out, depth):
+    if depth > 12:
+        return
+    names := []
+    try:
+        names = _os.list_dir(d)
+    catch e:
+        return
+    for n in names:
+        if len(n) > 0 and n[0:1] == ".":
+            continue
+        p := _os.join(d, n)
+        if _os.isdir(p):
+            if n != "build" and n != "alex_packages" and n != "dist":
+                _scan(p, out, depth + 1)
+        elif len(n) > 3 and n[len(n) - 3:len(n)] == ".al":
+            try:
+                out[p] = [_os.mtime(p), _os.size(p)]
+            catch e:
+                ignored := e
+
+# Premier chemin ajouté, supprimé ou modifié entre deux instantanés, ou null.
+func _diff(a, b):
+    for k in keys(b):
+        if not (k in a) or a[k] != b[k]:
+            return k
+    for k in keys(a):
+        if not (k in b):
+            return k
+    return null

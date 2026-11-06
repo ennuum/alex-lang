@@ -28,6 +28,7 @@ stdlib/web/server/
 ├── workers.al              plusieurs processus sur un port (SO_REUSEPORT) : Supervisor, serve
 ├── websocket.al            WebSocket en sessions async (app.websocket)
 ├── streaming.al            réponses en flux et Server-Sent Events (stream, sse)
+│                           (calcul délégué : thread.offload ; base async : database.async_database)
 ├── server_errors.al        erreurs, abort(statut)
 └── README.md
 ```
@@ -146,6 +147,38 @@ part ou à l'arrêt du serveur ; `flux.last_event_id` (reprise SSE). Tests : `te
 
 WebSocket et flux exigent la boucle async ; servis par une boucle synchrone, ils sont refusés par une 500
 explicite.
+
+### Calcul et E/S bloquantes hors de la boucle (`thread.offload`, `database.async_database`)
+
+```al
+use thread.offload as offload
+use database.async_database as adb
+use calculs                                     # fonctions de premier niveau, dans leur propre module
+
+db := adb.open("sqlite:app.db")                 # la connexion vit dans un fil dédié
+
+async func rapport(req):
+    lignes := await db.query("SELECT * FROM ventes WHERE annee = ?", [2026])
+    return await offload.run(calculs.synthese, [lignes])      # calcul sur un autre cœur
+```
+
+`offload.run(fn, args)` exécute `fn` sur une réserve de fils et rend une tâche ; la boucle du serveur relève les
+résultats à chaque tour (sans serveur, la tâche se relève seule). `AsyncDatabase` : `execute`, `query`,
+`query_one`, `scalar`, `script`, `insert`, `transaction([[sql, params]...])`, `close`, toutes attendues avec await ;
+une base = un fil, requêtes dans l'ordre. Arguments et résultats passent par copie (valeurs simples). Pendant une
+requête SQLite de 0,5 s, la boucle continue de tourner. Tests : `tests/web/test_web_server_offload.al`,
+`tests/test_async_database.al`.
+
+### Rechargement à chaud (développement)
+
+```al
+await workers.serve(app, "127.0.0.1", 8000, 1, null, false, true)      # reload=true
+```
+
+Le maître surveille les fichiers `.al` de la racine du projet (dossier qui contient `alex.toml`, sinon celui du
+programme) et relance les ouvriers à chaque modification ; un programme qui ne démarre plus (erreur de syntaxe)
+attend la modification suivante sans arrêter le maître. `Supervisor.watch(dossiers)`, `reload_if_changed()`.
+Tests : `tests/web/test_web_server_reload.al`.
 
 ## Protections par défaut
 
