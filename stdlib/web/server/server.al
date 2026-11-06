@@ -39,6 +39,7 @@ from core use len, type, to_int
 from collections use append
 use string as _s
 use time as _time
+use io as _io
 use asyncio as _aio
 use network.socket as _sk
 use web.server.server_errors as _err
@@ -639,6 +640,7 @@ class Server:
         line := str(who) + " \"" + req.method + " " + req.target + " " + req.version + "\" " + str(resp.status) + " " + str(sent) + " " + str(to_int(dt * 1000)) + "ms"
         if sink == true:
             print(line)
+            _io.flush()                  # sortie tamponnée quand elle est un fichier ou un tube (systemd, Docker)
         else:
             sink(line)
 
@@ -685,6 +687,7 @@ func serve(app, host="127.0.0.1", port=8080, cfg=null):
     c.handle_signals = true
     srv := Server(app, c).start()
     print("Serveur à l'écoute sur " + srv.url())
+    _io.flush()
     srv.serve_forever()
     return srv
 
@@ -697,6 +700,7 @@ async func serve_async(app, host="127.0.0.1", port=8080, cfg=null):
     c.handle_signals = true
     srv := Server(app, c).start()
     print("Serveur à l'écoute sur " + srv.url())
+    _io.flush()
     await srv.serve_forever_async()
     return srv
 

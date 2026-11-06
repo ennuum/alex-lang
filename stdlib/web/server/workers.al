@@ -72,7 +72,8 @@ async func serve(app, host="127.0.0.1", port=8080, count=0, cfg=null, quiet=fals
         sup.watch(null, quiet)
     sup.start()
     if not quiet:
-        print("Serveur à l'écoute sur http://" + (host if host != "0.0.0.0" and host != "" else "127.0.0.1") + ":" + str(sup.port) + "/ (" + str(n) + " ouvriers, maître " + str(_os.pid()) + ")")
+        print("Serveur à l'écoute sur http://" + (host if host != "0.0.0.0" and host != "" else "127.0.0.1") + ":" + str(sup.port) + "/ (" + str(n) + " ouvrier" + ("s" if n > 1 else "") + ", maître " + str(_os.pid()) + ")")
+        _io.flush()
     sup.run()
     return sup
 
@@ -188,8 +189,10 @@ class Supervisor:
                 w.given_up = true
                 if self.watch_roots != null:
                     print("workers : l'ouvrier " + str(w.index) + " ne démarre pas (code " + str(code) + ") : en attente d'une modification")
+                    _io.flush()
                 else:
                     print("workers : l'ouvrier " + str(w.index) + " échoue au démarrage (code " + str(code) + ") : abandon")
+                    _io.flush()
                 continue
             w.restarts += 1
             self._launch(w)
@@ -289,6 +292,7 @@ class Supervisor:
         self.watch_state = now
         if not self.quiet_reload:
             print("workers : " + changed + " a changé, relance des ouvriers")
+            _io.flush()
         self.restart(grace)
         self.reloads += 1
         return changed
@@ -310,6 +314,7 @@ class Supervisor:
             self.reload_if_changed()
             if self._all_given_up() and self.watch_roots == null:
                 print("workers : plus aucun ouvrier en état de servir")
+                _io.flush()
                 break
             _time.sleep(poll)
         self.stop(grace)
