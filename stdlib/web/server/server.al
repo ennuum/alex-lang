@@ -53,6 +53,9 @@ use web.server.server_metrics as _metrics
 use web.server.graceful_shutdown as _shutdown
 use web.server.concurrency as _conc
 use web.server.tls_server as _tls
+use web.server.websocket as _wsk
+use web.server.streaming as _stream
+use web.http.date_header as _date
 use web.http.protocol_writer as _pw
 use web.http.response as _response
 
@@ -75,6 +78,8 @@ class Server:
         self.errors = []                 # « Type : message » des exceptions de gestionnaires (fonction simple)
         self.waiting = []                # connexions dont la réponse vient d'un gestionnaire async en cours
         self.async_mode = false          # vrai pendant serve_forever_async / serve_async / serve_for_async
+        self.websockets = []             # sessions WebSocket ouvertes (web.server.websocket.ServerWebSocket)
+        self.streams = []                # réponses en flux en cours (web.server.streaming.Stream)
         if isinstance(app, _dispatch.Router):
             app.debug = app.debug or c.debug
 
@@ -86,7 +91,7 @@ class Server:
             return self
         if self.config.tls != null:
             _tls.require()
-        self.listener = _listener.Listener(self.config.host, self.config.port, self.config.backlog)
+        self.listener = _listener.Listener(self.config.host, self.config.port, self.config.backlog, true, self.config.reuse_port)
         self.accepting = true
         return self
 
@@ -172,6 +177,8 @@ class Server:
         self._stop_accepting()
         self.manager.close_all()
         self._complete()
+        self.close_websockets()
+        self.close_streams()
         self.shutdown.uninstall_signals()
         self.async_mode = false
 
@@ -201,6 +208,11 @@ class Server:
     func _async_wait():
         if len(self.waiting) > 0:
             return 0
+        for ws in self.websockets:
+            if ws.is_busy():
+                return 0.002             # session qui attend autre chose que son socket (minuteur, E/S)
+        if len(self.streams) > 0:
+            return 0.01                  # producteurs de flux : minuteurs servis au plus 10 ms en retard
         return self.config.poll_interval if self.config.poll_interval < 0.05 else 0.05
 
     # Un tour de la boucle async : un tour de serveur, puis la main aux tâches prêtes. Les réponses async qui se
@@ -208,16 +220,26 @@ class Server:
     # une réponse attend encore une E/S ou un minuteur.
     async func _async_round():
         self.step(self._async_wait())
-        await _aio.sleep(0)
         k := 0
-        while len(self.waiting) > 0 and k < 8:
-            self._complete()
-            if len(self.waiting) == 0:
-                return
+        while k < 32:
             await _aio.sleep(0)
+            self._complete()
+            if not self._tasks_progressing():
+                return
             k += 1
         if len(self.waiting) > 0:
             await _aio.sleep(0.001)
+
+    # Vrai si des tâches du serveur avancent sans attendre de socket : réponse async pas encore prête, session
+    # WebSocket en train de traiter un message. La boucle leur laisse alors la main plusieurs fois de suite
+    # (chaque tâche imbriquée coûte un passage par l'ordonnanceur).
+    func _tasks_progressing():
+        if len(self.waiting) > 0:
+            return true
+        for ws in self.websockets:
+            if ws.is_busy():
+                return true
+        return false
 
     func _stop_accepting():
         if self.listener != null and self.accepting:
@@ -245,6 +267,13 @@ class Server:
             append(socks, self.listener.socket)
         for c in self.manager.readable_candidates():
             append(socks, c.raw_socket())
+        for ws in self.websockets:
+            if ws.wake != null and not ws.closed:
+                if ws.conn.has_buffered_input():
+                    ws.notify()
+                    busy = true
+                else:
+                    append(socks, ws.conn.raw_socket())
         ready := self.loop.wait(socks, 0 if busy else timeout)
         for s in ready:
             if self.accepting and s == self.listener.socket:
@@ -253,12 +282,16 @@ class Server:
                 c := self.manager.by_socket(s)
                 if c != null:
                     self._read(c)
+                else:
+                    self._wake_websocket(s)
         for c in self.manager.all():
             if c.has_buffered_input() and not c.closed:
                 self._read(c)
         self._complete()
         self._process(tick)
         self._expire()
+        for st in self.streams:
+            st.poll()
 
     func _accept_some():
         k := 0
@@ -450,6 +483,18 @@ class Server:
     # Écrit la réponse d'une requête et met à jour la connexion, les mesures et le journal.
     func _respond(conn, req, resp, t0):
         c := self.config
+        if "stream" in req.state and resp.status == 200:
+            if self.async_mode:
+                self._start_stream(conn, req, resp, t0)
+                return
+            self._record_error("ServerError : réponse en flux servie par une boucle synchrone (utiliser serve_forever_async, serve_async ou web.server.serve_async)")
+            resp = _dispatch.error_response(req, 500, "flux : serveur lancé sans boucle async" if c.debug else null)
+        if resp.status == 101 and "websocket" in req.state:
+            if self.async_mode:
+                self._start_websocket(conn, req, resp, t0)
+                return
+            self._record_error("ServerError : WebSocket servi par une boucle synchrone (utiliser serve_forever_async, serve_async ou web.server.serve_async)")
+            resp = _dispatch.error_response(req, 500, "WebSocket : serveur lancé sans boucle async" if c.debug else null)
         if conn.requests_served + 1 >= c.limits.max_requests_per_connection:
             conn.closing = true
         # pendant un arrêt, les requêtes déjà reçues (pipelining) sont servies ; la dernière ferme la connexion
@@ -471,6 +516,116 @@ class Server:
         if not resp.keep_alive or conn.closing:
             if not conn.has_request() or not resp.keep_alive:
                 self.manager.remove(conn)
+
+    # Poignée de main WebSocket : 101 écrit tel quel (Connection: Upgrade), la connexion quitte le HTTP et devient
+    # une session async ; les octets déjà reçus après la poignée de main lui sont confiés.
+    func _start_websocket(conn, req, resp, t0):
+        info := req.state["websocket"]
+        resp.headers.set("Date", _date.now())
+        sent := 0
+        try:
+            sent = conn.send(_pw.write_response_head(resp), self.config.timeouts.write)
+        catch e:
+            self.manager.remove(conn)
+            return
+        conn.requests_served += 1
+        self.handled += 1
+        dt := _time.monotonic() - t0
+        self.metrics.request_done(req.method, 101, dt, 0, sent)
+        self._log(req, resp, sent, dt)
+        p := conn.parser
+        rest := _s.byte_slice(p.buffer, p.pos, _s.byte_len(p.buffer)) if p.pending() > 0 else ""
+        self.manager.detach(conn)
+        ws := _wsk.ServerWebSocket(conn, req, info["max_message"], info["protocol"], rest, self)
+        append(self.websockets, ws)
+        self.metrics.websockets_opened += 1
+        self._ws_session(ws, info["handler"])
+
+    async func _ws_session(ws, handler):
+        try:
+            r := handler(ws.request, ws)
+            if _aio.is_future(r):
+                await r
+        catch e:
+            if e.type != "CancelledError" and not ws.closed:
+                self._record_error("WebSocket : " + str(e.type) + " : " + str(e.message))
+                ws._send_close(1011, "erreur interne")
+        try:
+            if not ws.closed:
+                await ws.close()
+        catch e:
+            ignored := e
+        ws.closed = true
+        ws.conn.close()
+        kept := []
+        for w in self.websockets:
+            if w != ws:
+                append(kept, w)
+        self.websockets = kept
+
+    # Réponse en flux : en-tête écrit (chunked en HTTP/1.1, fermeture en HTTP/1.0), la connexion quitte le HTTP et
+    # le producteur async écrit le corps ; la connexion est fermée à la fin du flux.
+    func _start_stream(conn, req, resp, t0):
+        info := req.state["stream"]
+        resp.body_stream = (x) => null        # marque « corps en flux » pour prepare_response
+        _pw.prepare_response(resp, req.method, req.version, false, self.config.server_name)
+        resp.body_stream = null
+        sent := 0
+        try:
+            sent = conn.send(_pw.write_response_head(resp), self.config.timeouts.write)
+        catch e:
+            self.manager.remove(conn)
+            return
+        conn.requests_served += 1
+        self.handled += 1
+        dt := _time.monotonic() - t0
+        self.metrics.request_done(req.method, 200, dt, 0, sent)
+        self._log(req, resp, sent, dt)
+        self.manager.detach(conn)
+        chunked := resp.headers.has_token("transfer-encoding", "chunked")
+        st := _stream.Stream(conn, req, chunked, info["sse"], info["keepalive"])
+        append(self.streams, st)
+        self.metrics.streams_opened += 1
+        if req.method == "HEAD":
+            st.close()
+            return
+        self._stream_session(st, info["producer"])
+
+    async func _stream_session(st, producer):
+        try:
+            r := producer(st.request, st)
+            if _aio.is_future(r):
+                await r
+        catch e:
+            if e.type != "CancelledError":
+                self._record_error("Stream : " + str(e.type) + " : " + str(e.message))
+        st.close()
+        kept := []
+        for x in self.streams:
+            if x != st:
+                append(kept, x)
+        self.streams = kept
+
+    # Termine tous les flux en cours (arrêt du serveur) : les producteurs voient flux.closed.
+    func close_streams():
+        for st in self.streams:
+            st.close()
+
+    func _wake_websocket(sock):
+        for ws in self.websockets:
+            if ws.wake != null and ws.conn.raw_socket() == sock:
+                ws.notify()
+                return
+
+    # Ferme toutes les sessions WebSocket (1001 : le serveur s'en va).
+    func close_websockets():
+        for ws in self.websockets:
+            if not ws.closed:
+                ws._send_close(1001, "arrêt du serveur")
+                ws.closed = true
+                ws.conn.close()
+                ws.notify()
+        self.websockets = []
 
     func _log(req, resp, sent, dt):
         sink := self.config.access_log

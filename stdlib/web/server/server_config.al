@@ -43,6 +43,7 @@ class ServerConfig:
         self.access_log = false               # true : print ; fonction (ligne) : destination
         self.poll_interval = 0.5              # attente maximale d'un tour de boucle (secondes)
         self.handle_signals = false           # INT / TERM : arrêt propre (serve_forever)
+        self.reuse_port = false               # SO_REUSEPORT : plusieurs processus sur le même port (workers)
 
     func is_secure():
         return self.tls != null

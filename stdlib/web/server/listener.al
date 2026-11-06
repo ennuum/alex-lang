@@ -16,15 +16,21 @@
 from core use len, type
 use network.tcp as _tcp
 use network.socket as _sk
+use network.dns as _dns
 use web.server.server_errors as _err
 
 class Listener:
-    func init(host="127.0.0.1", port=8080, backlog=128, reuse_address=true):
+    # reuse_port : SO_REUSEPORT, pour que plusieurs processus écoutent le même port (le noyau répartit les
+    # connexions entre eux ; voir web.server.workers).
+    func init(host="127.0.0.1", port=8080, backlog=128, reuse_address=true, reuse_port=false):
         if type(port) != "int" or port < 0 or port > 65535:
             _err.config_error("Listener", "port entre 0 et 65535 attendu (obtenu " + str(port) + ")")
         self.host = host
         try:
-            self.tcp = _tcp.listen(host, port, backlog, reuse_address)
+            if reuse_port:
+                self.tcp = _listen_shared(host, port, backlog)
+            else:
+                self.tcp = _tcp.listen(host, port, backlog, reuse_address)
         catch e:
             _err.config_error("Listener", "impossible d'écouter sur " + _sk.format_address(host if host != "" else "0.0.0.0", port) + " : " + str(e.message))
         self.socket = self.tcp.socket
@@ -73,6 +79,28 @@ class Listener:
 
     func is_closed():
         return self.closed
+
+# Comme network.tcp.listen, avec SO_REUSEADDR et SO_REUSEPORT posés avant bind.
+func _listen_shared(host, port, backlog):
+    family := 4
+    addr := host
+    if host != "" and not _dns.is_ipv4(host):
+        if _dns.is_ipv6(host):
+            family = 6
+        else:
+            a := _dns.lookup(host, port, 0, "tcp")[0]
+            family = a.family
+            addr = a.host
+    s := _sk.Socket(family, "tcp")
+    try:
+        s.set_option("reuse_address", true)
+        s.set_option("reuse_port", true)
+        s.bind(addr, port)
+        s.listen(backlog)
+    catch e:
+        s.close()
+        raise(e)
+    return _tcp.Listener(s)
 
 func listen(host="127.0.0.1", port=8080, backlog=128):
     return Listener(host, port, backlog)

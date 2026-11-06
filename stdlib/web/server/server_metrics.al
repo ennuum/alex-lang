@@ -41,6 +41,8 @@ class Metrics:
         self.handler_errors = 0
         self.protocol_errors = 0
         self.async_cancelled = 0         # gestionnaires async annulés (client parti pendant l'attente)
+        self.websockets_opened = 0       # sessions WebSocket ouvertes (poignées de main réussies)
+        self.streams_opened = 0          # réponses en flux commencées (web.server.streaming)
         self.duration_sum = 0.0
         self.duration_min = null
         self.duration_max = 0.0
@@ -120,7 +122,7 @@ class Metrics:
         return _time.time() - self.started_at
 
     func snapshot():
-        return {"uptime": self.uptime(), "connections": {"opened": self.connections_opened, "closed": self.connections_closed, "active": self.active_connections(), "rejected": self.connections_rejected, "timed_out": self.connections_timed_out, "tls_failures": self.tls_handshake_failures}, "requests": self.requests, "by_method": self.by_method, "by_status_class": self.by_status_class, "bytes_in": self.bytes_in, "bytes_out": self.bytes_out, "errors": {"handler": self.handler_errors, "protocol": self.protocol_errors}, "async_cancelled": self.async_cancelled, "duration": {"mean": self.mean_duration(), "min": self.duration_min if self.duration_min != null else 0.0, "max": self.duration_max, "p50": self.quantile(0.5), "p95": self.quantile(0.95), "p99": self.quantile(0.99)}}
+        return {"uptime": self.uptime(), "connections": {"opened": self.connections_opened, "closed": self.connections_closed, "active": self.active_connections(), "rejected": self.connections_rejected, "timed_out": self.connections_timed_out, "tls_failures": self.tls_handshake_failures}, "requests": self.requests, "by_method": self.by_method, "by_status_class": self.by_status_class, "bytes_in": self.bytes_in, "bytes_out": self.bytes_out, "errors": {"handler": self.handler_errors, "protocol": self.protocol_errors}, "async_cancelled": self.async_cancelled, "websockets_opened": self.websockets_opened, "streams_opened": self.streams_opened, "duration": {"mean": self.mean_duration(), "min": self.duration_min if self.duration_min != null else 0.0, "max": self.duration_max, "p50": self.quantile(0.5), "p95": self.quantile(0.95), "p99": self.quantile(0.99)}}
 
     # Format d'exposition texte de Prometheus.
     func to_prometheus(prefix="alex_http"):

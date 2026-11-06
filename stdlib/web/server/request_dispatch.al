@@ -36,6 +36,7 @@ use network.compression as _z
 use web.server.server_errors as _err
 use web.server.static_files as _static
 use web.server.request_parser as _rp
+use web.server.websocket as _wsk
 use web.http.response as _response
 use web.http.status_code as _status
 use web.http.header_value as _hv
@@ -335,6 +336,11 @@ class Router:
 
     func any(pattern, handler, name=null):
         return self.route(["*"], pattern, handler, name)
+
+    # Point d'accès WebSocket (web.server.websocket) : handler(requête, session), de préférence async. Exige la
+    # boucle async du serveur. protocols : sous-protocoles acceptés ; origins : origines permises (null : toutes).
+    func websocket(pattern, handler, protocols=null, max_message=16777216, origins=null, name=null):
+        return self.route(["GET"], pattern, (req) => _wsk.upgrade(req, handler, protocols, max_message, origins), name)
 
     # Monte un sous-routeur, un StaticFiles ou une fonction (req, sous_chemin) sous un préfixe.
     func mount(prefix, target):

@@ -25,6 +25,9 @@ stdlib/web/server/
 ├── concurrency.al          EventLoop, Policy (équité entre connexions)
 ├── tls_server.al           TlsServerConfig, HSTS, certificat de développement
 ├── server_metrics.al       Metrics : compteurs, durées, export Prometheus
+├── workers.al              plusieurs processus sur un port (SO_REUSEPORT) : Supervisor, serve
+├── websocket.al            WebSocket en sessions async (app.websocket)
+├── streaming.al            réponses en flux et Server-Sent Events (stream, sse)
 ├── server_errors.al        erreurs, abort(statut)
 └── README.md
 ```
@@ -90,6 +93,59 @@ await server.serve_async(app, "0.0.0.0", 8080)          # ou await srv.serve_for
 Mesure (2 cœurs, 8 clients sur `/rapide` pendant que 8 autres appellent un `/lent` de 100 ms) : 1 092 req/s sur
 `/rapide` (médiane 5 ms) contre 9 req/s (médiane 816 ms) avec un gestionnaire synchrone ; aucun surcoût mesurable
 sur une route synchrone (1 596 contre 1 568 req/s). Tests : `tests/web/test_web_server_async.al`.
+
+### Plusieurs processus (`web.server.workers`)
+
+```al
+use web.server.workers as workers
+await workers.serve(app, "0.0.0.0", 8080, 4)        # 4 ouvriers ; 0 : un par cœur
+```
+
+Le programme lancé devient le maître : il relance N copies de lui-même, qui écoutent le même port avec
+`SO_REUSEPORT` (le noyau répartit les connexions). Un ouvrier mort est relancé (abandon après 5 échecs de suite
+au démarrage) ; INT / TERM arrêtent proprement tous les ouvriers ; un ouvrier s'arrête seul si son maître
+disparaît. `Supervisor(n, hôte, port).start()`, `wait_ready()` (tous les ouvriers écoutent), `step()`, `stop()`
+servent aux tests et aux outils. Pas d'état partagé en mémoire entre ouvriers. Mesure : 1 646 → 2 693 req/s de 1
+à 2 ouvriers sur 2 cœurs partagés avec le générateur de charge. Tests : `tests/web/test_web_server_workers.al`.
+
+### WebSocket (`web.server.websocket`)
+
+```al
+async func echo(req, ws):
+    while true:
+        m := await ws.receive()          # null à la fermeture
+        if m == null:
+            return
+        await ws.send_text("écho : " + m.text())
+
+app.websocket("/ws/{salon}", echo)       # options : protocols, max_message, origins, name
+```
+
+Après la poignée de main, la connexion quitte le HTTP et devient une session async : la boucle du serveur la
+réveille quand son socket devient lisible (aucun sondage), les envois partent tout de suite. Aller-retour d'un
+message : 0,19 ms en moyenne. Retour du gestionnaire : fermeture 1000 ; exception : 1011 ; arrêt du serveur : 1001.
+Garanties de `network.websocket` (masquage, RSV, UTF-8, taille maximale, ping / pong). Tests :
+`tests/web/test_web_server_websocket.al`.
+
+### Flux et Server-Sent Events (`web.server.streaming`)
+
+```al
+use web.server.streaming as st
+
+async func horloge(req, flux):
+    while not flux.closed:
+        await flux.send({"heure": time.time()}, "tick")
+        await aio.sleep(1.0)
+
+app.get("/evenements", st.sse(horloge))                       # keepalive : commentaire toutes les 15 s
+app.get("/export.csv", st.stream(produire, "text/csv"))       # flux.write(morceau)
+```
+
+Corps `chunked` en HTTP/1.1, délimité par la fermeture en HTTP/1.0 ; `flux.closed` devient vrai quand le client
+part ou à l'arrêt du serveur ; `flux.last_event_id` (reprise SSE). Tests : `tests/web/test_web_server_streaming.al`.
+
+WebSocket et flux exigent la boucle async ; servis par une boucle synchrone, ils sont refusés par une 500
+explicite.
 
 ## Protections par défaut
 

@@ -49,6 +49,14 @@ class ConnectionManager:
         if found and self.metrics != null:
             self.metrics.connection_closed()
 
+    # Retire une connexion SANS la fermer : elle quitte le HTTP (mise à niveau WebSocket).
+    func detach(conn):
+        kept := []
+        for c in self.connections:
+            if c != conn:
+                append(kept, c)
+        self.connections = kept
+
     func all():
         return self.connections + []
 
