@@ -7538,7 +7538,7 @@ func __nat__native_thread__closed(n: int, a: int) -> int:
     return __dyn_bool(k != 0)
 
 # Fil : [0] utilisé [8] fini [16] réussi [24] résultat [32] type d'erreur [40] message [48] trace [56] canal vers
-# [64] canal depuis [72] pid [80] attendu [88] nom [96] canal des tâches (service).
+# [64] canal depuis [72] pid [80] attendu [88] nom [96] canal des tâches (service) + 2^32 x (fil lanceur + 1).
 
 func __nat__native_thread__name(n: int, a: int) -> int:
     __nat_range("name", n, 1, 1)
@@ -7777,7 +7777,9 @@ func __th_spawn(who: str, f: int, argsV: int, nameV: int, jobs: int, results: in
     __store64(w, 1)
     __store64(w + 56, __th_new_chan(r, 0))
     __store64(w + 64, __th_new_chan(r, 0))
-    __store64(w + 96, jobs)
+    if jobs != 0:
+        # le fil qui lance ce fil de réserve est noté avec le canal : seul lui fermera ce canal en finissant
+        __store64(w + 96, jobs + 4294967296 * (__load64(__dyn_ds() + 120) + 1))
     __store64(r + 40, __load64(r + 40) + 1)
     __th_unlock(r)
     name := "fil-" + __int_to_str(id)
@@ -7834,8 +7836,11 @@ func __th_join_all():
     i := 1
     while i < top:
         w := __th_worker_entry(r, i)
-        if __load64(w + 96) != 0 and __load64(w + 72) != 0:
-            __store64(__th_chan_entry(r, __load64(w + 96)) + 8, 1)
+        # seulement les réserves lancées par CE fil (ou programme) : un fil qui finit ne doit pas arrêter les
+        # réserves de son parent (la zone des canaux est partagée par tous les processus)
+        sv := __load64(w + 96)
+        if sv != 0 and __load64(w + 72) != 0 and sv // 4294967296 - 1 == me:
+            __store64(__th_chan_entry(r, sv % 4294967296) + 8, 1)
         i += 1
     __th_unlock(r)
     __th_notify(r)
