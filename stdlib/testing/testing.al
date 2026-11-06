@@ -21,6 +21,8 @@
 #   run(verbose, only)        exécute les tests enregistrés ; `only` = fragment du nom à filtrer ; renvoie le nombre
 #                             d'échecs et d'erreurs. Échec = AssertionError ; erreur = toute autre exception.
 #   run_tests(list)           variante sans registre global : liste de paires (nom, fn).
+#   run_async(verbose, only) / run_tests_async(list)   idem, et attend les tests `async func` (await) ; à appeler
+#                             avec await. `alexc test` l'utilise tout seul dès qu'un fichier contient « async func test_ ».
 #   reset()                   vide le registre.
 #   summary()                 dict {"passed","failed","errors","skipped","total"} du dernier run.
 # Sortie : une ligne [OK] / [ÉCHEC] / [ERREUR] / [IGNORÉ] par test, puis un résumé.
@@ -32,6 +34,7 @@ from collections use append, clear, contains_key
 use string
 use os
 use json
+use asyncio as _aio
 
 _state := {"tests": [], "before": [], "after": [], "last": {"passed": 0, "failed": 0, "errors": 0, "skipped": 0, "total": 0}}
 
@@ -161,12 +164,12 @@ func _run_one(fn):
             break
     if err == null:
         try:
-            fn()
+            r := fn()
+            if _aio.is_future(r):
+                _aio.cancel(r)
+                raise("TestError", "test async : lancer avec await testing.run_async() (alexc test le fait tout seul)")
         catch e:
-            if e.type == "AssertionError":
-                err = ["ÉCHEC", str(e.message)]
-            else:
-                err = ["ERREUR", str(e.type) + " : " + str(e.message)]
+            err = _classify(e)
     for hook in _state["after"]:
         try:
             hook()
@@ -175,49 +178,101 @@ func _run_one(fn):
                 err = ["ERREUR", "after_each : " + str(e.type) + " : " + str(e.message)]
     return err
 
+# Comme _run_one, en attendant le test (et les fixtures) s'ils rendent une tâche.
+async func _run_one_async(fn):
+    err := null
+    for hook in _state["before"]:
+        try:
+            h := hook()
+            if _aio.is_future(h):
+                await h
+        catch e:
+            err = ["ERREUR", "before_each : " + str(e.type) + " : " + str(e.message)]
+            break
+    if err == null:
+        try:
+            r := fn()
+            if _aio.is_future(r):
+                await r
+        catch e:
+            err = _classify(e)
+    for hook in _state["after"]:
+        try:
+            h := hook()
+            if _aio.is_future(h):
+                await h
+        catch e:
+            if err == null:
+                err = ["ERREUR", "after_each : " + str(e.type) + " : " + str(e.message)]
+    return err
+
+func _classify(e):
+    if e.type == "AssertionError":
+        return ["ÉCHEC", str(e.message)]
+    return ["ERREUR", str(e.type) + " : " + str(e.message)]
+
 func _report(name, status, message, duration):
     if os.getenv("ALEX_TEST_REPORT") == "1":
         print("@@ALEXTEST " + json.stringify({"name": name, "status": status, "message": message, "duration": duration}))
 
 # Exécute une liste de [nom, fn] ou [nom, fn, raison_skip] ; renvoie le nombre d'échecs + erreurs.
 func run_tests(tests, verbose=true):
-    passed := 0
-    failed := 0
-    errors := 0
-    skipped := 0
-    problems := []
-    t0 := os.monotonic_time()
+    acc := _new_acc()
     for t in tests:
-        name := t[0]
-        reason := null
-        if len(t) > 2:
-            reason = t[2]
-        if reason != null:
-            skipped = skipped + 1
-            if verbose:
-                print("  [IGNORÉ]  " + name + " (" + reason + ")")
-            _report(name, "skipped", reason, 0.0)
+        if _skipped(acc, t, verbose):
             continue
         t1 := os.monotonic_time()
         res := _run_one(t[1])
-        dt1 := os.monotonic_time() - t1
-        if res == null:
-            passed = passed + 1
-            if verbose:
-                print("  [OK]      " + name)
-            _report(name, "passed", "", dt1)
-        else:
-            if res[0] == "ÉCHEC":
-                failed = failed + 1
-                _report(name, "failed", res[1], dt1)
-            else:
-                errors = errors + 1
-                _report(name, "error", res[1], dt1)
-            append(problems, [name, res])
-            if verbose:
-                print("  [" + res[0] + "]  " + name)
-                print("      " + res[1])
-    dt := os.monotonic_time() - t0
+        _record(acc, t[0], res, os.monotonic_time() - t1, verbose)
+    return _finish(acc, verbose)
+
+# Variante async : les tests `async func` sont attendus. À appeler avec await.
+async func run_tests_async(tests, verbose=true):
+    acc := _new_acc()
+    for t in tests:
+        if _skipped(acc, t, verbose):
+            continue
+        t1 := os.monotonic_time()
+        res := await _run_one_async(t[1])
+        _record(acc, t[0], res, os.monotonic_time() - t1, verbose)
+    return _finish(acc, verbose)
+
+func _new_acc():
+    return {"passed": 0, "failed": 0, "errors": 0, "skipped": 0, "problems": [], "t0": os.monotonic_time()}
+
+func _skipped(acc, t, verbose):
+    if len(t) > 2 and t[2] != null:
+        acc["skipped"] = acc["skipped"] + 1
+        if verbose:
+            print("  [IGNORÉ]  " + t[0] + " (" + t[2] + ")")
+        _report(t[0], "skipped", t[2], 0.0)
+        return true
+    return false
+
+func _record(acc, name, res, dt1, verbose):
+    if res == null:
+        acc["passed"] = acc["passed"] + 1
+        if verbose:
+            print("  [OK]      " + name)
+        _report(name, "passed", "", dt1)
+        return
+    if res[0] == "ÉCHEC":
+        acc["failed"] = acc["failed"] + 1
+        _report(name, "failed", res[1], dt1)
+    else:
+        acc["errors"] = acc["errors"] + 1
+        _report(name, "error", res[1], dt1)
+    append(acc["problems"], [name, res])
+    if verbose:
+        print("  [" + res[0] + "]  " + name)
+        print("      " + res[1])
+
+func _finish(acc, verbose):
+    dt := os.monotonic_time() - acc["t0"]
+    passed := acc["passed"]
+    failed := acc["failed"]
+    errors := acc["errors"]
+    skipped := acc["skipped"]
     total := passed + failed + errors + skipped
     _state["last"] = {"passed": passed, "failed": failed, "errors": errors, "skipped": skipped, "total": total}
     if verbose:
@@ -233,3 +288,11 @@ func run(verbose=true, only=null):
         if only == null or string.contains(t[0], only):
             append(selected, t)
     return run_tests(selected, verbose)
+
+# Comme run, en attendant les tests async (await testing.run_async()).
+async func run_async(verbose=true, only=null):
+    selected := []
+    for t in _state["tests"]:
+        if only == null or string.contains(t[0], only):
+            append(selected, t)
+    return await run_tests_async(selected, verbose)

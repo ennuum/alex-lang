@@ -585,7 +585,7 @@ func cmd_test_file(args):
     d := cmd_test.discover(file)
     extra := ""
     if d["has_functions"] and not d["self_running"]:
-        extra = cmd_test.epilogue(d["tests"], filter)
+        extra = cmd_test.epilogue(d["tests"], filter, d["has_async"])
     return run_program(file, [], [], extra, true)
 
 func main():

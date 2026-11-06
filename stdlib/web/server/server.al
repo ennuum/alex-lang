@@ -39,6 +39,7 @@ from core use len, type, to_int
 from collections use append
 use string as _s
 use time as _time
+use asyncio as _aio
 use network.socket as _sk
 use web.server.server_errors as _err
 use web.server.server_config as _config
@@ -72,6 +73,8 @@ class Server:
         self.accepting = false
         self.handled = 0
         self.errors = []                 # « Type : message » des exceptions de gestionnaires (fonction simple)
+        self.waiting = []                # connexions dont la réponse vient d'un gestionnaire async en cours
+        self.async_mode = false          # vrai pendant serve_forever_async / serve_async / serve_for_async
         if isinstance(app, _dispatch.Router):
             app.debug = app.debug or c.debug
 
@@ -151,6 +154,71 @@ class Server:
             self.step(0.05)
         return self.handled
 
+    # ---------------------------------------------------------------- service async
+    #
+    # Les gestionnaires `async func` (ou qui rendent une tâche) exigent une boucle async : la boucle cède la main
+    # à l'ordonnanceur entre deux tours, si bien que les tâches avancent pendant que le serveur sert les autres
+    # connexions. Une connexion dont la réponse est attendue garde ses requêtes suivantes en file (ordre HTTP).
+    #
+    #   await server.Server(app, cfg).serve_forever_async()
+
+    async func serve_forever_async():
+        self.start()
+        self.async_mode = true
+        if self.config.handle_signals:
+            self.shutdown.install_signals()
+        while not self.shutdown.is_stopped():
+            await self._async_round()
+        self._stop_accepting()
+        self.manager.close_all()
+        self._complete()
+        self.shutdown.uninstall_signals()
+        self.async_mode = false
+
+    async func serve_async(count, timeout=null):
+        self.start()
+        self.async_mode = true
+        target := self.handled + count
+        t0 := _time.monotonic()
+        while self.handled < target and not self.shutdown.is_stopped():
+            if timeout != null and _time.monotonic() - t0 > timeout:
+                break
+            await self._async_round()
+        self.async_mode = false
+        return self.handled
+
+    async func serve_for_async(seconds):
+        self.start()
+        self.async_mode = true
+        t0 := _time.monotonic()
+        while _time.monotonic() - t0 < seconds and not self.shutdown.is_stopped():
+            await self._async_round()
+        self.async_mode = false
+        return self.handled
+
+    # Attente maximale sur les sockets pendant un tour async : nulle si des réponses async sont attendues, courte
+    # sinon (les tâches de fond de l'application avancent aussi entre deux tours).
+    func _async_wait():
+        if len(self.waiting) > 0:
+            return 0
+        return self.config.poll_interval if self.config.poll_interval < 0.05 else 0.05
+
+    # Un tour de la boucle async : un tour de serveur, puis la main aux tâches prêtes. Les réponses async qui se
+    # terminent sans vraie attente (intergiciels, calcul court) partent dans le même tour ; on ne dort 1 ms que si
+    # une réponse attend encore une E/S ou un minuteur.
+    async func _async_round():
+        self.step(self._async_wait())
+        await _aio.sleep(0)
+        k := 0
+        while len(self.waiting) > 0 and k < 8:
+            self._complete()
+            if len(self.waiting) == 0:
+                return
+            await _aio.sleep(0)
+            k += 1
+        if len(self.waiting) > 0:
+            await _aio.sleep(0.001)
+
     func _stop_accepting():
         if self.listener != null and self.accepting:
             self.accepting = false
@@ -188,6 +256,7 @@ class Server:
         for c in self.manager.all():
             if c.has_buffered_input() and not c.closed:
                 self._read(c)
+        self._complete()
         self._process(tick)
         self._expire()
 
@@ -243,7 +312,14 @@ class Server:
             self.manager.remove(conn)
             return
         if n == -1:
-            if conn.has_request():
+            if conn.is_waiting():
+                # le client est parti pendant un gestionnaire async : on annule la tâche (CancelledError à son
+                # prochain await) et on libère la connexion, plutôt que de calculer une réponse que personne ne lira
+                _aio.cancel(conn.in_flight[1])
+                conn.in_flight = null
+                self.manager.remove(conn)
+                self.metrics.async_cancelled += 1
+            elif conn.has_request():
                 conn.closing = true
             else:
                 self.manager.remove(conn)
@@ -253,10 +329,12 @@ class Server:
         total := 0
         for conn in pol.order(self.manager.all(), tick):
             k := 0
-            while not conn.closed and conn.has_request() and k < pol.per_connection and total < pol.max_per_tick:
+            while not conn.closed and not conn.is_waiting() and conn.has_request() and k < pol.per_connection and total < pol.max_per_tick:
                 self._handle(conn, conn.next_request())
                 k += 1
                 total += 1
+            if conn.is_waiting():
+                continue
             if not conn.closed and not conn.has_request() and conn.wants_continue():
                 try:
                     self.writer.write_continue(conn)
@@ -280,16 +358,66 @@ class Server:
         if isinstance(self.app, _dispatch.Router):
             return self.app.dispatch(req)
         try:
-            return _dispatch.to_response(self.app(req), req)
+            result := self.app(req)
+            if _aio.is_future(result):
+                return self._settle(result, req)
+            return _dispatch.to_response(result, req)
         catch e:
-            if _err.is_abort(e):
-                d := _err.abort_details(e)
-                return _dispatch.error_response(req, d[0], d[1])
-            self.metrics.handler_error()
-            append(self.errors, str(e.type) + " : " + str(e.message))
-            if len(self.errors) > 100:
-                self.errors = self.errors[len(self.errors) - 100:len(self.errors)]
-            return _dispatch.error_response(req, 500, str(e.type) + " : " + str(e.message) if self.config.debug else null)
+            return self._handler_failure(req, e)
+
+    # Tâche qui attend un gestionnaire async (fonction simple) et rend toujours une Response.
+    async func _settle(pending, req):
+        try:
+            return _dispatch.to_response(await pending, req)
+        catch e:
+            return self._handler_failure(req, e)
+
+    func _handler_failure(req, e):
+        if _err.is_abort(e):
+            d := _err.abort_details(e)
+            return _dispatch.error_response(req, d[0], d[1])
+        self._record_error(str(e.type) + " : " + str(e.message))
+        return _dispatch.error_response(req, 500, str(e.type) + " : " + str(e.message) if self.config.debug else null)
+
+    func _record_error(text):
+        self.metrics.handler_error()
+        append(self.errors, text)
+        if len(self.errors) > 100:
+            self.errors = self.errors[len(self.errors) - 100:len(self.errors)]
+
+    func _collect_router_errors():
+        if isinstance(self.app, _dispatch.Router) and len(self.app.errors) > 0:
+            for e in self.app.errors:
+                self._record_error(e)
+            self.app.errors = []
+
+    # Envoie les réponses async terminées ; abandonne (annule) celles des connexions fermées entre-temps.
+    func _complete():
+        if len(self.waiting) == 0:
+            return
+        pending := self.waiting
+        self.waiting = []
+        for conn in pending:
+            entry := conn.in_flight
+            if entry == null:
+                continue
+            fut := entry[1]
+            if conn.closed:
+                conn.in_flight = null
+                _aio.cancel(fut)
+                continue
+            if not _aio.done(fut):
+                append(self.waiting, conn)
+                continue
+            conn.in_flight = null
+            resp := null
+            if _aio.failed(fut) or _aio.cancelled(fut):
+                resp = _dispatch.error_response(entry[0], 500, null)
+                self._record_error("AsyncError : tâche de gestionnaire échouée ou annulée")
+            else:
+                resp = _aio.result(fut)
+            self._collect_router_errors()
+            self._respond(conn, entry[0], resp, entry[2])
 
     func _handle(conn, req):
         t0 := _time.monotonic()
@@ -306,11 +434,22 @@ class Server:
                 req.state["scheme"] = c.scheme()
             req.state["server"] = self
             resp = self._call_app(req)
-            if isinstance(self.app, _dispatch.Router) and len(self.app.errors) > 0:
-                for e in self.app.errors:
-                    append(self.errors, e)
-                    self.metrics.handler_error()
-                self.app.errors = []
+            self._collect_router_errors()
+        if _aio.is_future(resp):
+            if not self.async_mode:
+                # personne ne ferait avancer la tâche : erreur explicite plutôt qu'une connexion figée
+                _aio.cancel(resp)
+                self._record_error("ServerError : gestionnaire async servi par une boucle synchrone (utiliser serve_forever_async, serve_async ou web.server.serve_async)")
+                resp = _dispatch.error_response(req, 500, "gestionnaire async : serveur lancé sans boucle async" if c.debug else null)
+            else:
+                conn.in_flight = [req, resp, t0]
+                append(self.waiting, conn)
+                return
+        self._respond(conn, req, resp, t0)
+
+    # Écrit la réponse d'une requête et met à jour la connexion, les mesures et le journal.
+    func _respond(conn, req, resp, t0):
+        c := self.config
         if conn.requests_served + 1 >= c.limits.max_requests_per_connection:
             conn.closing = true
         # pendant un arrêt, les requêtes déjà reçues (pipelining) sont servies ; la dernière ferme la connexion
@@ -388,6 +527,18 @@ func serve(app, host="127.0.0.1", port=8080, cfg=null):
     srv := Server(app, c).start()
     print("Serveur à l'écoute sur " + srv.url())
     srv.serve_forever()
+    return srv
+
+# Comme serve, avec une boucle async : nécessaire dès qu'un gestionnaire est une `async func`.
+#   await server.serve_async(app, "0.0.0.0", 8080)
+async func serve_async(app, host="127.0.0.1", port=8080, cfg=null):
+    c := cfg if cfg != null else _config.ServerConfig(host, port)
+    c.host = host
+    c.port = port
+    c.handle_signals = true
+    srv := Server(app, c).start()
+    print("Serveur à l'écoute sur " + srv.url())
+    await srv.serve_forever_async()
     return srv
 
 # Interrompt un gestionnaire avec une réponse d'erreur (voir server_errors.abort).

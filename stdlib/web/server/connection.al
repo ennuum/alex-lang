@@ -45,6 +45,12 @@ class ServerConnection:
         self.closed = false
         self.continue_sent = false       # « 100 Continue » envoyé pour la requête en cours
         self.eof = false
+        self.in_flight = null            # [requête, futur, début] : réponse d'un gestionnaire async attendue
+
+    # Vrai si la connexion attend la réponse d'un gestionnaire async (ses requêtes suivantes patientent, pour
+    # que les réponses partent dans l'ordre des requêtes).
+    func is_waiting():
+        return self.in_flight != null
 
     # Socket brut (pour l'attente d'événements) : le socket TCP sous-jacent d'une session TLS.
     func raw_socket():

@@ -31,6 +31,7 @@ from core use len, type, to_int, to_float
 from collections use append, keys
 use string as _s
 use time as _time
+use asyncio as _aio
 use network.compression as _z
 use web.server.server_errors as _err
 use web.server.static_files as _static
@@ -231,6 +232,8 @@ func path_segments(raw_path):
 func to_response(result, req=null):
     if result == null:
         return _response.no_content()
+    if _aio.is_future(result):
+        _err.server_error("to_response", "réponse async reçue par un intergiciel synchrone qui la transforme : attendre (await) le résultat dans un intergiciel async, ou placer cet intergiciel autour de routes synchrones")
     if isinstance(result, _response.Response):
         return result
     t := type(result)
@@ -390,7 +393,17 @@ class Router:
         result := null
         try:
             result = chain(req)
+            if _aio.is_future(result):
+                return self._finish_async(result, req)
             return to_response(result, req)
+        catch e:
+            return self._error_from_exception(req, e)
+
+    # Gestionnaire async : tâche qui rend TOUJOURS une Response (les exceptions deviennent des réponses d'erreur,
+    # comme pour un gestionnaire ordinaire). Le serveur l'attend sans bloquer les autres connexions.
+    async func _finish_async(pending, req):
+        try:
+            return to_response(await pending, req)
         catch e:
             return self._error_from_exception(req, e)
 

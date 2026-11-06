@@ -59,8 +59,37 @@ Résultats acceptés d'un gestionnaire : `Response`, `str` (HTML s'il commence p
 
 Un seul fil et une boucle d'événements : toutes les connexions sont surveillées ensemble et lues sans blocage ;
 une requête n'est traitée qu'une fois entièrement reçue (un client lent ne bloque pas les autres pendant l'envoi
-de sa requête). Les gestionnaires s'exécutent l'un après l'autre : pour un calcul long, déléguer à un fil
-(`thread`) ou à une file de travaux. Pour plusieurs cœurs, lancer plusieurs processus derrière un répartiteur.
+de sa requête). Les gestionnaires ordinaires s'exécutent l'un après l'autre : pour un calcul long, déléguer à un
+fil (`thread`) ou à une file de travaux. Pour plusieurs cœurs, lancer plusieurs processus derrière un répartiteur.
+
+### Gestionnaires async
+
+Un gestionnaire peut être une `async func` (ou rendre une tâche) : pendant qu'il attend (`await` d'une E/S, d'un
+minuteur), le serveur continue de servir les autres connexions. Il faut alors une boucle async :
+
+```al
+async func voir(req):
+    note := await base.trouver(req.route_params["id"])
+    return note
+
+app.get("/notes/{id:int}", voir)
+await server.serve_async(app, "0.0.0.0", 8080)          # ou await srv.serve_forever_async()
+```
+
+- Variantes de `Server` : `serve_forever_async()`, `serve_async(n, délai)`, `serve_for_async(s)`.
+- Ordre HTTP : une connexion qui attend une réponse async garde ses requêtes suivantes (pipelining) en file.
+- Exceptions et `abort()` dans une `async func` donnent les mêmes réponses d'erreur qu'en synchrone.
+- Client parti pendant l'attente : la tâche est annulée (`CancelledError` à son prochain `await`), la connexion
+  libérée ; compteur `async_cancelled` dans les mesures.
+- Servi par une boucle synchrone (`serve_forever`), un gestionnaire async est refusé par une 500 explicite
+  (message dans `srv.errors`) plutôt que de figer la connexion.
+- Les intergiciels synchrones de ce module qui transforment la réponse (`logger`, `cors`, `compress`,
+  `security_headers`, `request_id`, `timing`) ne peuvent pas attendre une réponse async : les placer autour de routes
+  synchrones, ou utiliser des intergiciels async (par exemple ceux du framework alweb).
+
+Mesure (2 cœurs, 8 clients sur `/rapide` pendant que 8 autres appellent un `/lent` de 100 ms) : 1 092 req/s sur
+`/rapide` (médiane 5 ms) contre 9 req/s (médiane 816 ms) avec un gestionnaire synchrone ; aucun surcoût mesurable
+sur une route synchrone (1 596 contre 1 568 req/s). Tests : `tests/web/test_web_server_async.al`.
 
 ## Protections par défaut
 

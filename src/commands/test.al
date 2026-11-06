@@ -63,7 +63,8 @@ func discover(file):
         text = _io.read_file(file)
     catch e:
         text = ""
-    self_running := _s.contains(text, "testing.run(") or _s.contains(text, ".run_tests(")
+    self_running := _s.contains(text, "testing.run(") or _s.contains(text, ".run_tests(") or _s.contains(text, "testing.run_async(") or _s.contains(text, ".run_tests_async(")
+    has_async := _s.contains(text, "async func test_")
     has_fns := false
     try:
         prog := _bp.parse_text(text, file)
@@ -88,14 +89,15 @@ func discover(file):
                     dup = true
             if not dup:
                 append(tests, [name, ln])
-    return {"tests": tests, "self_running": self_running, "has_functions": has_fns}
+    return {"tests": tests, "self_running": self_running, "has_functions": has_fns, "has_async": has_async}
 
-func epilogue(tests, filter):
+# has_async : le fichier déclare des tests `async func test_*` ; ils sont alors attendus (await run_async).
+func epilogue(tests, filter, has_async=false):
     s := "\nuse testing as __alex_testing\n"
     for t in tests:
         if _s.starts_with(t[0], "test_"):
             s += "__alex_testing.test(\"" + t[0] + "\", " + t[0] + ")\n"
-    s += "__alex_testing.run(true, "
+    s += "await __alex_testing.run_async(true, " if has_async else "__alex_testing.run(true, "
     if filter == "":
         s += "null"
     else:

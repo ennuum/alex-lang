@@ -67,11 +67,12 @@ class ConnectionManager:
                 return c
         return null
 
-    # Connexions avec des données déjà disponibles (TLS déchiffré en attente, requêtes en file).
+    # Connexions avec des données déjà disponibles (TLS déchiffré en attente, requêtes en file), hors celles qui
+    # attendent un gestionnaire async.
     func with_pending_work():
         out := []
         for c in self.connections:
-            if not c.closed and (c.has_request() or c.has_buffered_input()):
+            if not c.closed and not c.is_waiting() and (c.has_request() or c.has_buffered_input()):
                 append(out, c)
         return out
 
@@ -80,7 +81,7 @@ class ConnectionManager:
         t := now if now != null else _time.monotonic()
         out := []
         for c in self.connections:
-            if c.has_request():
+            if c.has_request() or c.is_waiting():
                 continue
             r := self.timeouts.expired_reason(c, t)
             if r != null:
@@ -91,7 +92,7 @@ class ConnectionManager:
     func close_idle():
         n := 0
         for c in self.all():
-            if c.phase() == "idle" and not c.has_request():
+            if c.phase() == "idle" and not c.has_request() and not c.is_waiting():
                 self.remove(c)
                 n += 1
         return n
@@ -100,10 +101,10 @@ class ConnectionManager:
         for c in self.all():
             self.remove(c)
 
-    # Vrai si aucune connexion n'a de requête commencée ou en file.
+    # Vrai si aucune connexion n'a de requête commencée, en file ou en cours de traitement async.
     func is_quiet():
         for c in self.connections:
-            if c.has_request() or c.phase() != "idle":
+            if c.has_request() or c.is_waiting() or c.phase() != "idle":
                 return false
         return true
 
@@ -113,4 +114,8 @@ class ConnectionManager:
             p := c.phase()
             if p in phases:
                 phases[p] = phases[p] + 1
-        return {"open": len(self.connections), "phases": phases}
+        waiting := 0
+        for c in self.connections:
+            if c.is_waiting():
+                waiting += 1
+        return {"open": len(self.connections), "phases": phases, "waiting": waiting}
