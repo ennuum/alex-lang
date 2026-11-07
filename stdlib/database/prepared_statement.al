@@ -34,7 +34,8 @@ class PreparedStatement:
         self.closed = false
         self._native = null
         self._parsed = null
-        self._pg = conn.backend == "postgres"     # PostgreSQL : chaque exécution passe par le protocole étendu
+        # PostgreSQL (protocole étendu) et serveur ALEX DB : chaque exécution est envoyée au serveur telle quelle
+        self._pg = conn.backend == "postgres" or conn.backend == "alexdb-server"
         conn._check_open()
         if conn.backend == "sqlite":
             self._native = conn._impl.db.prepare(sql)

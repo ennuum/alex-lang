@@ -18,7 +18,8 @@
 # (ROLLBACK si l'une échoue, et l'erreur est relancée). Les erreurs de la base sont relancées par await avec leur
 # type (QueryError, IntegrityError...).
 #
-# URL : celles de database.connect (sqlite:chemin, alexdb:fichier.json, memory:). Une base « memory: » vit dans
+# URL : celles de database.connect (sqlite:chemin, alexdb:fichier.json, memory:, postgres://, alexdb://). Avec
+# un serveur ALEX DB, transaction() part en une seule requête (BEGIN ... COMMIT) : atomique, sans verrou croisé. Une base « memory: » vit dans
 # le fil de la base : elle est partagée par toutes les requêtes de cet AsyncDatabase, et perdue à close().
 # Les valeurs passent d'un fil à l'autre par copie : paramètres et résultats sont des valeurs simples (null, bool,
 # nombres, str, list, dict).
@@ -115,6 +116,9 @@ func _op(url, op, a, b):
     if op == "tables":
         return c.tables()
     if op == "transaction":
+        b := c.batch(a)
+        if b != null:
+            return b
         out := []
         c.begin()
         try:

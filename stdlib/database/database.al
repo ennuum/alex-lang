@@ -5,6 +5,7 @@
 #   use database.database as db
 #   conn := db.connect("memory:")                         # moteur SQL embarqué (toujours disponible)
 #   conn2 := db.connect("sqlite:/tmp/app.db")             # SQLite réel si libsqlite3 est installée
+#   conn3 := db.connect("alexdb://app:mdp@127.0.0.1:5442/ventes")   # serveur ALEX DB (pilote ALEX, aussi en natif)
 #   print(db.backends())                                  # ["alexdb", "sqlite"]
 #   with db.connect("alexdb:donnees.json") as c:
 #       c.executescript("CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, texte TEXT);")
@@ -36,12 +37,12 @@ func sqlite_version():
         return null
     return _lite.version()
 
-# Moteurs utilisables : alexdb (toujours), sqlite (si libsqlite3 est installée), postgres (pilote ALEX, serveur
-# requis).
+# Moteurs utilisables : alexdb (toujours), sqlite (si libsqlite3 est installée), postgres et alexdb-server
+# (pilotes ALEX, serveur requis : postgres://..., alexdb://...).
 func backends():
     if _lite.available():
-        return ["alexdb", "sqlite", "postgres"]
-    return ["alexdb", "postgres"]
+        return ["alexdb", "sqlite", "postgres", "alexdb-server"]
+    return ["alexdb", "postgres", "alexdb-server"]
 
 func pool(url, max_size=5):
     return _pool.DatabasePool(url, max_size)

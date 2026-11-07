@@ -5,6 +5,8 @@
 #               fichier JSON réécrit atomiquement à chaque validation
 #   « sqlite »  SQLite 3 réel par FFI (si libsqlite3 est installée) : fichiers .db standards, SQL complet
 #   « postgres » serveur PostgreSQL, pilote écrit en ALEX (database._postgres) : postgres://u:mdp@hôte:5432/base
+#   « alexdb-server » serveur ALEX DB (projet AlexDB, langage AQL), pilote écrit en ALEX (database._aqlp) :
+#               alexdb://u:mdp@hôte:5442/base ; clé primaire INT omise attribuée par le serveur (last_insert_id)
 # URL : "memory:" (privée), "memory:nom" (partagée dans le processus, p. ex. par un pool), "alexdb:chemin.json"
 # (ou un chemin finissant par .json), "sqlite:chemin.db", "sqlite::memory:" (ou un chemin finissant par .db /
 # .sqlite).
@@ -34,6 +36,7 @@ use json as _json
 use database._sql as _sql
 use database._sqlite as _lite
 use database._postgres as _pg
+use database._aqlp as _aqlp
 use database.result_set as _rs
 use database.prepared_statement as _ps
 use database.transaction as _tx
@@ -124,6 +127,19 @@ class _SqliteImpl:
     func close():
         self.db.close()
 
+class _AqlpImpl:
+    func init(url):
+        self.db = _aqlp.AqlpConnection(url)
+
+    func tables():
+        return self.db.tables()
+
+    func columns(t):
+        return self.db.columns(t)
+
+    func close():
+        self.db.close()
+
 class _PgImpl:
     func init(url):
         self.db = _pg.PgConnection(url)
@@ -145,6 +161,8 @@ func parse_url(url):
         return ["alexdb", null, null]
     if _s.starts_with(url, "memory:"):
         return ["alexdb", null, _s.substring(url, 7, len(url))]
+    if _s.starts_with(url, "alexdb://"):
+        return ["alexdb-server", url, null]
     if _s.starts_with(url, "alexdb:"):
         return ["alexdb", _s.substring(url, 7, len(url)), null]
     if _s.starts_with(url, "postgres://") or _s.starts_with(url, "postgresql://"):
@@ -160,7 +178,7 @@ func parse_url(url):
         return ["alexdb", url, null]
     if _s.ends_with(url, ".db") or _s.ends_with(url, ".sqlite") or _s.ends_with(url, ".sqlite3"):
         return ["sqlite", url, null]
-    raise("ConnectionError", "URL de base de données non reconnue : '" + url + "' (memory:, alexdb:fichier.json, sqlite:fichier.db, postgres://...)")
+    raise("ConnectionError", "URL de base de données non reconnue : '" + url + "' (memory:, alexdb:fichier.json, sqlite:fichier.db, postgres://..., alexdb://...)")
 
 class Connection:
     func init(url="memory:"):
@@ -178,8 +196,31 @@ class Connection:
             self._impl = _SqliteImpl(u[1])
         elif self.backend == "postgres":
             self._impl = _PgImpl(u[1])
+        elif self.backend == "alexdb-server":
+            self._impl = _AqlpImpl(u[1])
         else:
             self._impl = _AlexImpl(u[1], u[2])
+
+    # Vrai pour un pilote externe (SQLite, PostgreSQL, serveur ALEX DB) : self._impl.db suit le contrat des pilotes.
+    func _driver():
+        return self.backend != "alexdb"
+
+    # Transaction d'un seul bloc ([sql, paramètres], ...) si le pilote sait l'envoyer en une fois (serveur ALEX
+    # DB) ; null sinon (l'appelant fait BEGIN / instructions / COMMIT).
+    func batch(statements):
+        self._check_open()
+        if self.backend != "alexdb-server" or self.in_transaction():
+            return null
+        for st in statements:
+            if len(st) > 1 and st[1] != null and type(st[1]) != "list":
+                return null
+        out := self._impl.db.batch(statements)
+        for r in out:
+            self.total_changes += r["rowcount"]
+            self.statements += 1
+            if r["lastrowid"] != null:
+                self.last_insert_id = r["lastrowid"]
+        return out
 
     func _check_open():
         if self._closed:
@@ -188,7 +229,7 @@ class Connection:
     func _result(r, sql):
         lid := null
         if len(r[0]) == 0 and r[2] > 0:
-            if self.backend == "sqlite" or self.backend == "postgres":
+            if self._driver():
                 lid = self._impl.db.last_id()
             else:
                 lid = self._impl.engine.last_id
@@ -204,7 +245,7 @@ class Connection:
     # Une instruction (ou plusieurs pour alexdb) ; ResultSet.
     func execute(sql, params=null):
         self._check_open()
-        if self.backend == "sqlite" or self.backend == "postgres":
+        if self._driver():
             return self._result(self._impl.db.execute(sql, params), sql)
         return self._impl.run_parsed(self._impl.parsed(sql), params, self)
 
@@ -218,7 +259,7 @@ class Connection:
     # Script de plusieurs instructions séparées par « ; » (sans paramètres).
     func executescript(sql):
         self._check_open()
-        if self.backend == "sqlite" or self.backend == "postgres":
+        if self._driver():
             return self._result(self._impl.db.script(sql), null)
         return self.execute(sql)
 
@@ -266,7 +307,7 @@ class Connection:
 
     func in_transaction():
         self._check_open()
-        if self.backend == "sqlite" or self.backend == "postgres":
+        if self._driver():
             return self._impl.db.in_transaction()
         return self._impl.engine.in_transaction()
 
