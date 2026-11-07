@@ -192,13 +192,19 @@ func project_sources(dir):
         if _os.isfile(m):
             out := []
             for s in _manifest_sources(m):
-                append(out, _join(p, s))
+                append(out, s if _is_absolute(s) else _join(p, s))
             return out
         parent := _parent(p)
         if parent == p or parent == "":
             return []
         p = parent
     return []
+
+# Chemin absolu : /… (POSIX), C:\… ou C:/… (Windows), \\serveur\… (UNC).
+func _is_absolute(p):
+    if _s.starts_with(p, "/") or _s.starts_with(p, "\\"):
+        return true
+    return len(p) >= 3 and p[1] == ':' and (p[2] == '/' or p[2] == '\\')
 
 func _manifest_sources(path):
     text := ""

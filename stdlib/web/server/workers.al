@@ -19,6 +19,12 @@
 #
 # Supervisor sert aussi seul (tests, outils) : Supervisor(n, hôte, port).start(), wait_ready(), step(), stop().
 #
+# Services du maître : serve(..., env, services) ou sup.add_service(s). Un service est un objet qui a step(délai)
+# (attend au plus délai secondes un évènement puis le traite, par exemple un serveur de base de données local) et,
+# s'il le veut, shutdown(). Le maître les fait tourner à la place de ses pauses, y compris pendant l'arrêt des
+# ouvriers (qui peuvent finir leurs requêtes), et les arrête après eux. env : variables ajoutées à celles des
+# ouvriers (adresse d'un service, par exemple).
+#
 # Rechargement à chaud (développement) : serve(..., reload=true) ou Supervisor(...).watch([dossiers]) : le maître
 # surveille les fichiers .al (racine du projet par défaut) et relance les ouvriers quand l'un change ; un
 # programme qui ne démarre plus (erreur de syntaxe) est relancé à la modification suivante.
@@ -63,11 +69,14 @@ func default_count():
 
 # Sert app avec count ouvriers (0 ou null : un par cœur). Dans le maître : lance et surveille les ouvriers jusqu'à
 # INT / TERM, puis rend le Supervisor ; dans un ouvrier : sert (boucle async) jusqu'à l'arrêt, puis rend le Server.
-async func serve(app, host="127.0.0.1", port=8080, count=0, cfg=null, quiet=false, reload=false):
+async func serve(app, host="127.0.0.1", port=8080, count=0, cfg=null, quiet=false, reload=false, env=null, services=null):
     if is_worker():
         return await _serve_worker(app, host, cfg)
     n := count if count != null and count > 0 else default_count()
-    sup := Supervisor(n, host, port)
+    sup := Supervisor(n, host, port, null, env)
+    if services != null:
+        for s in services:
+            sup.add_service(s)
     if reload:
         sup.watch(null, quiet)
     sup.start()
@@ -148,6 +157,33 @@ class Supervisor:
         self.reloads = 0
         self.quiet_reload = false
         self.ready_dir = _os.join(_os.tmp_dir(), "alex-web-" + str(_os.pid()) + "-" + str(_nu.free_port("127.0.0.1")))
+        self.services = []               # objets step(délai) [et shutdown()] servis par le maître
+
+    func add_service(service):
+        append(self.services, service)
+        return self
+
+    # Pause du maître : les services en profitent (au plus seconds secondes en tout), sinon simple attente.
+    func _idle(seconds):
+        if len(self.services) == 0:
+            _time.sleep(seconds)
+            return
+        part := seconds / len(self.services)
+        for s in self.services:
+            try:
+                s.step(part)
+            catch e:
+                print("workers : service en erreur : " + str(e.type) + " : " + str(e.message))
+                _io.flush()
+                _time.sleep(part)
+
+    func _shutdown_services():
+        for s in self.services:
+            try:
+                s.shutdown()
+            catch e:
+                ignored := e
+        self.services = []
 
     func start():
         _os.mkdir_all(self.ready_dir)
@@ -223,7 +259,7 @@ class Supervisor:
             if want > 0 and self.ready_count() >= want:
                 return true
             self.step()
-            _time.sleep(0.05)
+            self._idle(0.05)
         return false
 
     func pids():
@@ -253,7 +289,7 @@ class Supervisor:
                     ignored := e
         t0 := _time.monotonic()
         while _time.monotonic() - t0 < grace and self.alive_count() > 0:
-            _time.sleep(0.05)
+            self._idle(0.05)
         for w in self.workers:
             if w.running():
                 try:
@@ -316,8 +352,9 @@ class Supervisor:
                 print("workers : plus aucun ouvrier en état de servir")
                 _io.flush()
                 break
-            _time.sleep(poll)
+            self._idle(poll)
         self.stop(grace)
+        self._shutdown_services()
         return self
 
     func _install_signals():
