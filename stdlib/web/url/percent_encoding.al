@@ -222,6 +222,9 @@ func is_valid_utf8(bytes):
     n := len(bytes)
     i := 0
     while i < n:
+        if bytes[i] < 128:
+            i += 1
+            continue
         k := _utf8_seq_len(bytes, i, n)
         if k == 0:
             return false

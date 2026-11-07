@@ -132,8 +132,8 @@ class ClientRequest:
         h := _headers.Headers()
         h.set("Host", self.host_header())
         for e in self.headers.entries:
-            if _s.lower(e[0]) != "host":
-                append(h.entries, [e[0], e[1]])
+            if e[2] != "host":
+                append(h.entries, [e[0], e[1], e[2]])
         if self.body != "" or _method.expects_body(self.method):
             if not h.has("transfer-encoding"):
                 h.set("Content-Length", _s.byte_len(self.body))

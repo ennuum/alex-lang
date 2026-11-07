@@ -29,7 +29,7 @@ use web.http.header_value as _hv
 class Headers:
     # data : dict (une liste = plusieurs valeurs), liste de paires, autre Headers, ou null.
     func init(data=null):
-        self.entries = []     # [nom tel qu'écrit, valeur]
+        self.entries = []     # [nom tel qu'écrit, valeur, nom en minuscules]
         if data != null:
             self.update(data)
 
@@ -40,7 +40,7 @@ class Headers:
     # Ajoute une valeur (les valeurs existantes du nom sont gardées).
     func add(name, value):
         v := self._check(name, value)
-        append(self.entries, [name, v])
+        append(self.entries, [name, v, _s.lower(name)])
         return self
 
     # Remplace toutes les valeurs du nom (à la place de la première occurrence). Une liste donne plusieurs valeurs ;
@@ -55,19 +55,36 @@ class Headers:
         else:
             append(values, self._check(name, value))
         k := _s.lower(name)
+        if len(values) == 1:
+            # cas courant : au plus une entrée de ce nom, remplacée sur place (sans recopier la liste)
+            found := -1
+            n := 0
+            i := 0
+            for e in self.entries:
+                if e[2] == k:
+                    n += 1
+                    if found < 0:
+                        found = i
+                i += 1
+            if n == 0:
+                append(self.entries, [name, values[0], k])
+                return self
+            if n == 1:
+                self.entries[found] = [name, values[0], k]
+                return self
         out := []
         placed := false
         for e in self.entries:
-            if _s.lower(e[0]) == k:
+            if e[2] == k:
                 if not placed:
                     for v in values:
-                        append(out, [name, v])
+                        append(out, [name, v, k])
                     placed = true
             else:
                 append(out, e)
         if not placed:
             for v in values:
-                append(out, [name, v])
+                append(out, [name, v, k])
         self.entries = out
         return self
 
@@ -86,7 +103,7 @@ class Headers:
                 return fallback
             return _s.join(", ", vals)
         for e in self.entries:
-            if _s.lower(e[0]) == k:
+            if e[2] == k:
                 return e[1]
         return fallback
 
@@ -95,7 +112,7 @@ class Headers:
         k := _s.lower(name)
         out := fallback
         for e in self.entries:
-            if _s.lower(e[0]) == k:
+            if e[2] == k:
                 out = e[1]
         return out
 
@@ -103,7 +120,7 @@ class Headers:
         k := _s.lower(name)
         out := []
         for e in self.entries:
-            if _s.lower(e[0]) == k:
+            if e[2] == k:
                 append(out, e[1])
         return out
 
@@ -133,7 +150,7 @@ class Headers:
     func has(name):
         k := _s.lower(name)
         for e in self.entries:
-            if _s.lower(e[0]) == k:
+            if e[2] == k:
                 return true
         return false
 
@@ -152,7 +169,7 @@ class Headers:
         k := _s.lower(name)
         out := []
         for e in self.entries:
-            if _s.lower(e[0]) != k:
+            if e[2] != k:
                 append(out, e)
         self.entries = out
         return self
@@ -165,7 +182,7 @@ class Headers:
     func update(data):
         if isinstance(data, Headers):
             for e in data.entries:
-                append(self.entries, [e[0], e[1]])
+                append(self.entries, [e[0], e[1], e[2]])
             return self
         t := type(data)
         if t == "dict":
@@ -195,7 +212,7 @@ class Headers:
         out := []
         seen := []
         for e in self.entries:
-            k := _s.lower(e[0])
+            k := e[2]
             if not (k in seen):
                 append(seen, k)
                 append(out, e[0])
@@ -222,7 +239,7 @@ class Headers:
     func copy():
         h := Headers()
         for e in self.entries:
-            append(h.entries, [e[0], e[1]])
+            append(h.entries, [e[0], e[1], e[2]])
         return h
 
     # Copie sans les en-têtes saut par saut (et ceux nommés dans Connection) : ce qu'un mandataire retransmet.
@@ -232,9 +249,9 @@ class Headers:
             append(extra, _s.lower(t))
         h := Headers()
         for e in self.entries:
-            k := _s.lower(e[0])
+            k := e[2]
             if not _hn.is_hop_by_hop(k) and not (k in extra):
-                append(h.entries, [e[0], e[1]])
+                append(h.entries, [e[0], e[1], e[2]])
         return h
 
     # Copie aux valeurs sensibles masquées (journaux).
@@ -242,9 +259,9 @@ class Headers:
         h := Headers()
         for e in self.entries:
             if _hn.is_sensitive(e[0]):
-                append(h.entries, [e[0], mask])
+                append(h.entries, [e[0], mask, e[2]])
             else:
-                append(h.entries, [e[0], e[1]])
+                append(h.entries, [e[0], e[1], e[2]])
         return h
 
     # Noms canoniques (« content-type » -> « Content-Type »).
@@ -295,7 +312,7 @@ class Headers:
         while i < len(self.entries):
             a := self.entries[i]
             b := other.entries[i]
-            if _s.lower(a[0]) != _s.lower(b[0]) or a[1] != b[1]:
+            if a[2] != b[2] or a[1] != b[1]:
                 return false
             i += 1
         return true
@@ -320,7 +337,7 @@ func parse_lines(text, allow_obs_fold=false):
             last[1] = last[1] + " " + _hv.trim(raw)
             continue
         p := parse_line(raw)
-        append(h.entries, [p[0], p[1]])
+        append(h.entries, [p[0], p[1], _s.lower(p[0])])
     return h
 
 # Analyse une ligne « Nom: valeur » -> (nom, valeur sans espaces optionnels) ; HttpHeaderError si le nom est vide,

@@ -91,14 +91,20 @@ func prepare_response(resp, request_method="GET", request_version="HTTP/1.1", ke
         resp.version = "HTTP/1.0"
     else:
         resp.version = "HTTP/1.1"
-    if date != false and not h.has("date"):
-        h.set("Date", date if date != null else _date.now())
-    if server != null and server != false and not h.has("server"):
-        h.set("Server", server)
+    # noms présents, en une passe (évite une recherche par en-tête ajouté)
+    present := {}
+    for e in h.entries:
+        present[e[2]] = true
+    if date != false and not ("date" in present):
+        h.add("Date", date if date != null else _date.now())
+    if server != null and server != false and not ("server" in present):
+        h.add("Server", server)
     no_body := not _status.allows_body(resp.status)
     if no_body:
-        h.remove("content-length")
-        h.remove("transfer-encoding")
+        if "content-length" in present:
+            h.remove("content-length")
+        if "transfer-encoding" in present:
+            h.remove("transfer-encoding")
         resp.body = ""
         resp.body_file = null
         resp.body_stream = null
@@ -111,15 +117,19 @@ func prepare_response(resp, request_method="GET", request_version="HTTP/1.1", ke
     else:
         size := resp.body_size()
         if size != null:
-            h.remove("transfer-encoding")
-            h.set("Content-Length", size)
+            if "transfer-encoding" in present:
+                h.remove("transfer-encoding")
+            if "content-length" in present:
+                h.set("Content-Length", size)
+            else:
+                h.add("Content-Length", size)
         elif resp.body_file != null:
             # taille inconnue (fichier sans plage) : à l'appelant de fixer body_range
             _err.http_error("protocol_writer.prepare_response", "body_file sans body_range (taille inconnue)")
     if keep_alive:
         if resp.version == "HTTP/1.0":
             h.set("Connection", "keep-alive")
-        elif h.has_token("connection", "close"):
+        elif "connection" in present and h.has_token("connection", "close"):
             keep_alive = false
     else:
         h.set("Connection", "close")

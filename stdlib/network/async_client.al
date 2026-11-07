@@ -305,7 +305,8 @@ async func _read_headers(conn, timeout):
         c := _s.find(line, ":")
         if c <= 0:
             raise("HttpError", "async_client : en-tête mal formé « " + line + " »")
-        append(h.entries, [_s.trim(_s.substring(line, 0, c)), _s.trim(_s.substring(line, c + 1, len(line)))])
+        hname := _s.trim(_s.substring(line, 0, c))
+        append(h.entries, [hname, _s.trim(_s.substring(line, c + 1, len(line))), _s.lower(hname)])
 
 async func _read_body(conn, headers, timeout, max_body):
     te := _s.lower(headers.get("transfer-encoding", ""))

@@ -51,8 +51,15 @@ func format(timestamp):
     return DAYS[wd] + ", " + _pad2(ymd[2]) + " " + MONTHS[ymd[1] - 1] + " " + _pad4(ymd[0]) + " " + _pad2(secs // 3600) + ":" + _pad2((secs % 3600) // 60) + ":" + _pad2(secs % 60) + " GMT"
 
 # Date courante au format HTTP.
+# Date courante au format HTTP ; recalculée au plus une fois par seconde (une réponse sur deux en a besoin).
+_now_cache := [-1, ""]
+
 func now():
-    return format(_time.time())
+    t := to_int(_time.time())
+    if t != _now_cache[0]:
+        _now_cache[1] = format(t)
+        _now_cache[0] = t
+    return _now_cache[1]
 
 func timestamp_now():
     return to_int(_time.time())

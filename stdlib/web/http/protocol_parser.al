@@ -37,6 +37,19 @@ use web.http.response as _response
 use web.url.percent_encoding as _pe
 
 # Limites d'analyse ; max_body=false : corps sans limite (à réserver aux clients de confiance).
+# Lignes déjà reconnues UTF-8 valides : sur une connexion persistante, les mêmes lignes d'en-tête reviennent à
+# chaque requête (Host, User-Agent, Accept...).
+_utf8_ok := [{}, 0]
+
+func _remember_utf8(line):
+    if _s.byte_len(line) > 512:
+        return
+    if _utf8_ok[1] >= 4096:
+        _utf8_ok[0] = {}
+        _utf8_ok[1] = 0
+    _utf8_ok[0][line] = true
+    _utf8_ok[1] = _utf8_ok[1] + 1
+
 class Limits:
     func init(max_start_line=8192, max_header_bytes=65536, max_headers=100, max_body=10485760, allow_obs_fold=false):
         self.max_start_line = max_start_line      # ligne de requête / de statut (octets) -> 414 / erreur
@@ -131,8 +144,10 @@ class MessageParser:
         n := _s.byte_len(line)
         if n > 0 and _s.byte_at(line, n - 1) == 13:
             line = _s.byte_slice(line, 0, n - 1)
-        if not _pe.is_valid_utf8(_s.byte_unpack(line)):
-            _err.parse_error("protocol_parser", what + " : octets non UTF-8")
+        if not (line in _utf8_ok[0]):
+            if not _pe.is_valid_utf8(_s.byte_unpack(line)):
+                _err.parse_error("protocol_parser", what + " : octets non UTF-8")
+            _remember_utf8(line)
         return (line, used)
 
     # Octets en attente (début d'un message suivant non encore complet).
@@ -225,7 +240,7 @@ class MessageParser:
             if self.header_count > self.limits.max_headers:
                 _err.limit_error("protocol_parser", "plus de " + str(self.limits.max_headers) + " en-têtes", 431)
             p := _headers.parse_line(line)
-            append(self.headers.entries, [p[0], p[1]])
+            append(self.headers.entries, [p[0], p[1], _s.lower(p[0])])
             return true
         if self.state == "body_length":
             avail := self.pending()

@@ -26,14 +26,27 @@ use web.http.http_errors as _err
 use web.http.method as _method
 use web.url.percent_encoding as _pe
 
+# Valeurs déjà reconnues valides (les mêmes reviennent à chaque requête : Content-Type, en-têtes de sécurité...).
+_valid := [{}, 0]
+const _CACHE_MAX := 4096
+const _CACHE_LEN := 256
+
 # Vrai si la valeur ne contient aucun caractère interdit (CR, LF, NUL, autres contrôles sauf HTAB).
 func is_valid(value):
     if type(value) != "str":
         return false
+    seen := _valid[0]
+    if value in seen:
+        return true
     for c in value:
-        o := _s.ord(c)
-        if (o < 32 and o != 9) or o == 127:
+        if (c < ' ' and c != '\t') or c == '\x7f':
             return false
+    if len(value) <= _CACHE_LEN:
+        if _valid[1] >= _CACHE_MAX:
+            _valid[0] = {}
+            _valid[1] = 0
+        _valid[0][value] = true
+        _valid[1] = _valid[1] + 1
     return true
 
 func check(value, name="valeur"):

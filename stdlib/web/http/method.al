@@ -50,12 +50,24 @@ const TCHAR_MARKS := "!#$%&'*+-.^_`|~"
 func is_tchar(c):
     return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9') or c in TCHAR_MARKS
 
+# Tokens déjà reconnus (noms d'en-têtes, méthodes : peu de valeurs distinctes).
+_tokens := [{}, 0]
+
 func is_token(text):
     if type(text) != "str" or len(text) == 0:
         return false
+    seen := _tokens[0]
+    if text in seen:
+        return true
     for c in text:
-        if not is_tchar(c):
+        if not ((c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '0' and c <= '9') or c in TCHAR_MARKS):
             return false
+    if len(text) <= 128:
+        if _tokens[1] >= 4096:
+            _tokens[0] = {}
+            _tokens[1] = 0
+        _tokens[0][text] = true
+        _tokens[1] = _tokens[1] + 1
     return true
 
 func is_valid(method):
