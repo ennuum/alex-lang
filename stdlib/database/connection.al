@@ -1,9 +1,10 @@
 # ALEX STANDARD LIBRARY — database.connection
 #
-# Connexion à une base de données. Deux moteurs :
+# Connexion à une base de données. Trois moteurs :
 #   « alexdb »  moteur SQL embarqué écrit en ALEX (toujours disponible) : en mémoire, ou persistant dans un
 #               fichier JSON réécrit atomiquement à chaque validation
 #   « sqlite »  SQLite 3 réel par FFI (si libsqlite3 est installée) : fichiers .db standards, SQL complet
+#   « postgres » serveur PostgreSQL, pilote écrit en ALEX (database._postgres) : postgres://u:mdp@hôte:5432/base
 # URL : "memory:" (privée), "memory:nom" (partagée dans le processus, p. ex. par un pool), "alexdb:chemin.json"
 # (ou un chemin finissant par .json), "sqlite:chemin.db", "sqlite::memory:" (ou un chemin finissant par .db /
 # .sqlite).
@@ -32,6 +33,7 @@ use io as _io
 use json as _json
 use database._sql as _sql
 use database._sqlite as _lite
+use database._postgres as _pg
 use database.result_set as _rs
 use database.prepared_statement as _ps
 use database.transaction as _tx
@@ -122,6 +124,19 @@ class _SqliteImpl:
     func close():
         self.db.close()
 
+class _PgImpl:
+    func init(url):
+        self.db = _pg.PgConnection(url)
+
+    func tables():
+        return self.db.tables()
+
+    func columns(t):
+        return self.db.columns(t)
+
+    func close():
+        self.db.close()
+
 # [moteur, chemin, nom partagé] d'une URL.
 func parse_url(url):
     if type(url) != "str":
@@ -132,6 +147,8 @@ func parse_url(url):
         return ["alexdb", null, _s.substring(url, 7, len(url))]
     if _s.starts_with(url, "alexdb:"):
         return ["alexdb", _s.substring(url, 7, len(url)), null]
+    if _s.starts_with(url, "postgres://") or _s.starts_with(url, "postgresql://"):
+        return ["postgres", url, null]
     if _s.starts_with(url, "sqlite:"):
         p := _s.substring(url, 7, len(url))
         if _s.starts_with(p, "//"):
@@ -143,7 +160,7 @@ func parse_url(url):
         return ["alexdb", url, null]
     if _s.ends_with(url, ".db") or _s.ends_with(url, ".sqlite") or _s.ends_with(url, ".sqlite3"):
         return ["sqlite", url, null]
-    raise("ConnectionError", "URL de base de données non reconnue : '" + url + "' (memory:, alexdb:fichier.json, sqlite:fichier.db)")
+    raise("ConnectionError", "URL de base de données non reconnue : '" + url + "' (memory:, alexdb:fichier.json, sqlite:fichier.db, postgres://...)")
 
 class Connection:
     func init(url="memory:"):
@@ -159,6 +176,8 @@ class Connection:
         self.id = _ids[0]
         if self.backend == "sqlite":
             self._impl = _SqliteImpl(u[1])
+        elif self.backend == "postgres":
+            self._impl = _PgImpl(u[1])
         else:
             self._impl = _AlexImpl(u[1], u[2])
 
@@ -169,13 +188,13 @@ class Connection:
     func _result(r, sql):
         lid := null
         if len(r[0]) == 0 and r[2] > 0:
-            if self.backend == "sqlite":
+            if self.backend == "sqlite" or self.backend == "postgres":
                 lid = self._impl.db.last_id()
             else:
                 lid = self._impl.engine.last_id
             if sql == null or _s.starts_with(_s.upper(_s.trim(sql)), "INSERT"):
                 self.last_insert_id = lid
-            elif self.backend != "sqlite":
+            elif self.backend == "alexdb":
                 self.last_insert_id = lid
         if len(r[0]) == 0:
             self.total_changes += r[2]
@@ -185,7 +204,7 @@ class Connection:
     # Une instruction (ou plusieurs pour alexdb) ; ResultSet.
     func execute(sql, params=null):
         self._check_open()
-        if self.backend == "sqlite":
+        if self.backend == "sqlite" or self.backend == "postgres":
             return self._result(self._impl.db.execute(sql, params), sql)
         return self._impl.run_parsed(self._impl.parsed(sql), params, self)
 
@@ -199,7 +218,7 @@ class Connection:
     # Script de plusieurs instructions séparées par « ; » (sans paramètres).
     func executescript(sql):
         self._check_open()
-        if self.backend == "sqlite":
+        if self.backend == "sqlite" or self.backend == "postgres":
             return self._result(self._impl.db.script(sql), null)
         return self.execute(sql)
 
@@ -247,7 +266,7 @@ class Connection:
 
     func in_transaction():
         self._check_open()
-        if self.backend == "sqlite":
+        if self.backend == "sqlite" or self.backend == "postgres":
             return self._impl.db.in_transaction()
         return self._impl.engine.in_transaction()
 

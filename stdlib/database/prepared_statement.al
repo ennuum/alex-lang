@@ -20,6 +20,11 @@ from core use len, type
 from collections use append
 use database.result_set as _rs
 use database._sql as _sql
+use database._postgres as _pg
+use string as _s
+
+func _has_qmark(sql):
+    return _s.find(sql, "?") >= 0
 
 class PreparedStatement:
     func init(conn, sql):
@@ -29,9 +34,12 @@ class PreparedStatement:
         self.closed = false
         self._native = null
         self._parsed = null
+        self._pg = conn.backend == "postgres"     # PostgreSQL : chaque exécution passe par le protocole étendu
         conn._check_open()
         if conn.backend == "sqlite":
             self._native = conn._impl.db.prepare(sql)
+        elif self._pg:
+            ignored := sql
         else:
             self._parsed = _sql.parse(sql)
             if len(self._parsed) != 1:
@@ -40,6 +48,8 @@ class PreparedStatement:
     func param_count():
         if self._native != null:
             return self._native.nparams
+        if self._pg:
+            return len(_pg.convert_placeholders(self.sql, [0] * 1000)[1]) if _has_qmark(self.sql) else 0
         return _sql.count_params(self.sql)
 
     func execute(params=null):
@@ -50,6 +60,8 @@ class PreparedStatement:
         if self._native != null:
             r := self._native.run(params)
             return self.conn._result(r, self.sql)
+        if self._pg:
+            return self.conn.execute(self.sql, params)
         return self.conn._impl.run_parsed(self._parsed, params, self.conn)
 
     # Exécute pour chaque jeu de paramètres ; total des lignes touchées.

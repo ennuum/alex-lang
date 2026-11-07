@@ -36,10 +36,12 @@ func sqlite_version():
         return null
     return _lite.version()
 
+# Moteurs utilisables : alexdb (toujours), sqlite (si libsqlite3 est installée), postgres (pilote ALEX, serveur
+# requis).
 func backends():
     if _lite.available():
-        return ["alexdb", "sqlite"]
-    return ["alexdb"]
+        return ["alexdb", "sqlite", "postgres"]
+    return ["alexdb", "postgres"]
 
 func pool(url, max_size=5):
     return _pool.DatabasePool(url, max_size)
