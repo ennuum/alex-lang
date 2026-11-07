@@ -72,6 +72,7 @@ class Server:
         self.metrics = _metrics.Metrics()
         self.manager = _manager.ConnectionManager(c.limits, c.timeouts, self.metrics)
         self.writer = _writer.ResponseWriter(c.server_name, c.timeouts.write, 65536, c.keep_alive)
+        self.writer.background = true
         self.loop = _conc.EventLoop()
         self.shutdown = _shutdown.ShutdownController(c.timeouts.shutdown)
         self.listener = null
@@ -266,6 +267,8 @@ class Server:
                 self.shutdown.finish()
                 return
         busy := len(self.manager.with_pending_work()) > 0
+        if self._push_outgoing() and timeout > 0.005:
+            timeout = 0.005
         socks := []
         if self.accepting:
             append(socks, self.listener.socket)
@@ -513,6 +516,14 @@ class Server:
             self.metrics.request_done(req.method, resp.status, _time.monotonic() - t0, _s.byte_len(req.body), sent)
             self.handled += 1
             return
+        if conn.outgoing != null:
+            # gros fichier : la suite part en arrière-plan (_push_outgoing) ; bilan à la fin de l'envoi
+            conn.outgoing["done"] = [req, resp, t0]
+            return
+        self._written(conn, req, resp, t0, sent)
+
+    # Après l'envoi complet d'une réponse : compteurs, journal, fermeture éventuelle de la connexion.
+    func _written(conn, req, resp, t0, sent):
         conn.requests_served += 1
         self.handled += 1
         dt := _time.monotonic() - t0
@@ -521,6 +532,48 @@ class Server:
         if not resp.keep_alive or conn.closing:
             if not conn.has_request() or not resp.keep_alive:
                 self.manager.remove(conn)
+
+    # Fait avancer les envois de fichiers en arrière-plan dont le socket accepte des octets ; rend vrai si l'un
+    # d'eux attend encore (la boucle ne dort alors que quelques millisecondes).
+    func _push_outgoing():
+        senders := []
+        for c in self.manager.all():
+            if c.outgoing != null and not c.closed:
+                append(senders, c)
+        if len(senders) == 0:
+            return false
+        socks := []
+        for c in senders:
+            append(socks, c.raw_socket())
+        ready := []
+        try:
+            ready = _sk.wait(socks, "write", 0)
+        catch e:
+            ready = socks
+        pending := false
+        for c in senders:
+            if not (c.raw_socket() in ready):
+                pending = true
+                if _time.monotonic() - c.outgoing["last"] > self.config.timeouts.write:
+                    self.manager.remove(c)
+                continue
+            state := "timeout"
+            try:
+                state = _writer.push(c, self.writer.chunk_size)
+            catch e:
+                state = "error"
+            if state == "pending":
+                pending = true
+            elif state == "done":
+                o := c.outgoing
+                c.outgoing = null
+                d := o["done"]
+                if d != null:
+                    self._written(c, d[0], d[1], d[2], o["sent"])
+            else:
+                c.outgoing = null
+                self.manager.remove(c)
+        return pending
 
     # Poignée de main WebSocket : 101 écrit tel quel (Connection: Upgrade), la connexion quitte le HTTP et devient
     # une session async ; les octets déjà reçus après la poignée de main lui sont confiés.

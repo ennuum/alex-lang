@@ -184,6 +184,7 @@ const MODULES := [
         ["read_bytes", false, 0, "read_bytes", 0, 0, 0, ""],
         ["read_file", false, 0, "read_file", 0, 0, 0, ""],
         ["read_line", false, 0, "read_line", 0, 0, 0, ""],
+        ["read_raw", false, 0, "read_raw", 0, 0, 0, ""],
         ["read_text", false, 0, "read_text", 0, 0, 0, ""],
         ["truncate", false, 0, "truncate", 0, 0, 0, ""],
         ["write_at", false, 0, "write_at", 0, 0, 0, ""],

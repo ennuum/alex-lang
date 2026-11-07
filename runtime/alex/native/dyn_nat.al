@@ -1488,6 +1488,19 @@ func __nat_scan_text(fn: str, path: str, off: int, maxChars: int, lineMode: bool
         chars += 1
     return __nat_text_result(__rt_sb_str(sb), i)
 
+# Octets [off, off + length) d'un fichier, rendus en str d'octets (sans liste d'entiers) ; length = -1 : jusqu'à la
+# fin. Pour envoyer un fichier sur un socket sans conversion.
+func __nat__native_io__read_raw(n: int, a: int, b: int, c: int) -> int:
+    __nat_exact("read_raw", n, 3)
+    path := __nat_str("read_raw", a, "le chemin")
+    off := __nat_offset("read_raw", b)
+    length := __nat_int("read_raw", c, "la longueur")
+    __nat_fsize("read_raw", path)
+    fd := __nat_open_at("read_raw", path, off)
+    data := __nat_read_fd(fd, length)
+    __syscall(3, fd)
+    return __dyn_str(data)
+
 func __nat__native_io__read_text(n: int, a: int, b: int, c: int) -> int:
     __nat_exact("read_text", n, 3)
     path := __nat_str("read_text", a, "le chemin")

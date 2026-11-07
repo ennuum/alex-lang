@@ -14,6 +14,7 @@
 
 from core use len, type
 use string as _s
+use time as _time
 use io as _io
 use os as _os
 use web.http.protocol_writer as _writer
@@ -28,6 +29,9 @@ class ResponseWriter:
         self.write_timeout = write_timeout
         self.chunk_size = chunk_size
         self.keep_alive_policy = keep_alive_policy
+        # Vrai (serveur) : au-delà du premier morceau, un fichier part en arrière-plan (conn.outgoing, poussé par la
+        # boucle quand le socket accepte des octets) au lieu de bloquer la boucle jusqu'à la fin de l'envoi.
+        self.background = false
 
     # Envoie resp en réponse à req sur conn ; keep_alive : persistance souhaitée. Renvoie les octets envoyés.
     func write(conn, req, resp, keep_alive=true):
@@ -55,9 +59,12 @@ class ResponseWriter:
         n := conn.send(head, t)
         offset := resp.body_range[0]
         remaining := resp.body_range[1]
+        if self.background and remaining > self.chunk_size and not conn.secure:
+            conn.outgoing = {"file": resp.body_file, "offset": offset, "remaining": remaining, "buf": "", "sent": n, "last": _time.monotonic(), "timeout": t, "done": null}
+            return n
         while remaining > 0:
             k := self.chunk_size if remaining > self.chunk_size else remaining
-            data := _s.byte_pack(_io.read_bytes(resp.body_file, offset, k))
+            data := _io.read_raw(resp.body_file, offset, k)
             got := _s.byte_len(data)
             if got == 0:
                 break      # fichier raccourci entre-temps : la connexion sera fermée (longueur annoncée non tenue)
@@ -99,3 +106,43 @@ class ResponseWriter:
     func write_continue(conn):
         conn.continue_sent = true
         return conn.send(_writer.continue_response(), self.write_timeout)
+
+# Pousse un envoi de fichier en arrière-plan sans attendre : au plus rounds morceaux. Rend "done" (tout est
+# parti), "pending" (le socket est plein, à reprendre) ou "timeout" (aucun progrès depuis le délai d'écriture).
+func push(conn, chunk_size=CHUNK_SIZE, rounds=16):
+    o := conn.outgoing
+    k := 0
+    while k < rounds:
+        if o["buf"] == "":
+            if o["remaining"] <= 0:
+                return "done"
+            want := chunk_size if o["remaining"] > chunk_size else o["remaining"]
+            data := _io.read_raw(o["file"], o["offset"], want)
+            got := _s.byte_len(data)
+            if got == 0:
+                conn.closing = true          # fichier raccourci : longueur annoncée non tenue
+                o["remaining"] = 0
+                return "done"
+            o["buf"] = data
+            o["offset"] = o["offset"] + got
+            o["remaining"] = o["remaining"] - got
+        n := 0
+        try:
+            n = conn.socket.send(o["buf"], 0)
+        catch e:
+            if e.type != "TimeoutError":
+                raise(e.type, e.message)
+            n = 0
+        if n == 0:
+            break
+        conn.bytes_out += n
+        o["sent"] = o["sent"] + n
+        o["last"] = _time.monotonic()
+        conn.last_activity = o["last"]
+        o["buf"] = _s.byte_slice(o["buf"], n, _s.byte_len(o["buf"]))
+        k += 1
+    if o["buf"] == "" and o["remaining"] <= 0:
+        return "done"
+    if o["timeout"] != null and _time.monotonic() - o["last"] > o["timeout"]:
+        return "timeout"
+    return "pending"

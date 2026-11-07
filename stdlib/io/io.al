@@ -33,6 +33,11 @@ func create_file(path):
 func read_bytes(path, offset=0, length=-1):
     return _io_native.read_bytes(path, offset, length)
 
+# Comme read_bytes, mais rend les octets dans une str (pas de liste d'entiers) : bien plus rapide pour de gros
+# morceaux (envoi de fichiers). La str peut ne pas être de l'UTF-8 valide (string.byte_* pour la manipuler).
+func read_raw(path, offset=0, length=-1):
+    return _io_native.read_raw(path, offset, length)
+
 # Remplace tout le contenu par ces octets.
 func write_bytes(path, data):
     return _io_native.write_bytes(path, data)

@@ -7,7 +7,10 @@
 #   - requêtes conditionnelles : If-None-Match / If-Modified-Since -> 304 ;
 #   - plages : Range « bytes=a-b », « a- », « -n » -> 206 + Content-Range ; plage impossible -> 416 ; If-Range ;
 #   - dossiers : redirection 301 vers « dossier/ », fichier d'index (index.html), liste facultative ;
-#   - Cache-Control configurable ; repli pour les applications monopages (fallback).
+#   - Cache-Control configurable ; repli pour les applications monopages (fallback) ;
+#   - versions précompressées : « fichier.br » ou « fichier.gz » posé à côté du fichier (et pas plus ancien que lui)
+#     est servi à la place, avec Content-Encoding, si Accept-Encoding l'accepte (br préféré) ; Vary: Accept-Encoding.
+#     Les requêtes avec Range reçoivent toujours le fichier d'origine.
 #
 #   use web.server.static_files as sf
 #   statique := sf.StaticFiles("public", ["index.html"], false, 3600)
@@ -17,8 +20,8 @@
 # Le corps des fichiers n'est pas chargé en mémoire : body_file / body_range (web.server.response_writer).
 # Erreurs : ServerConfigError (dossier racine absent).
 
-from core use len, type, to_int
-from collections use append, keys
+from core use len, type, to_int, to_float
+from collections use append, keys, remove
 use string as _s
 use os as _os
 use web.server.server_errors as _err
@@ -107,11 +110,19 @@ class StaticFiles:
 
     # Réponse pour un fichier existant (conditionnelle, plage).
     func file_response(req, file_path, subpath=""):
-        size := _os.size(file_path)
+        content_type := _ct.guess_with_charset(file_path)
         mtime := to_int(_os.mtime(file_path))
-        etag := "W/\"" + _hex(size) + "-" + _hex(mtime) + "\""
+        variant := _precompressed(req, file_path, mtime)
+        encoding := null
+        if variant != null:
+            encoding = variant[1]
+            file_path = variant[0]
+        size := _os.size(file_path)
+        etag := "W/\"" + _hex(size) + "-" + _hex(mtime) + ("-" + encoding if encoding != null else "") + "\""
         last_modified := _date.format(mtime)
         h := {"ETag": etag, "Last-Modified": last_modified, "Accept-Ranges": "bytes", "Cache-Control": self._cache_control(subpath)}
+        if variant != null or variant_exists(file_path):
+            h["Vary"] = "Accept-Encoding"
         # requêtes conditionnelles (RFC 9110 §13.2.2 : If-None-Match l'emporte sur If-Modified-Since)
         inm := req.header("if-none-match")
         if inm != null:
@@ -121,9 +132,11 @@ class StaticFiles:
             ims := req.header("if-modified-since")
             if ims != null and _date.not_modified_since(mtime, ims):
                 return _not_modified(h)
-        r := _response.file(file_path, _ct.guess_with_charset(file_path))
+        r := _response.file(file_path, content_type)
         for k in keys(h):
             r.headers.set(k, h[k])
+        if encoding != null:
+            r.headers.set("Content-Encoding", encoding)
         rng := req.header("range")
         if rng != null and req.method == "GET":
             ir := req.header("if-range")
@@ -149,6 +162,63 @@ class StaticFiles:
         if self.max_age <= 0:
             return "no-cache"
         return "public, max-age=" + str(self.max_age)
+
+const VARIANTS := [["br", ".br"], ["gzip", ".gz"]]
+
+# [chemin, codage] de la version précompressée à servir, ou null (pas acceptée, absente, plus ancienne, Range).
+func _precompressed(req, file_path, mtime):
+    if req.header("range") != null:
+        return null
+    accept := req.header("accept-encoding")
+    if accept == null or accept == "":
+        return null
+    ok := accepted_encodings(accept)
+    for v in VARIANTS:
+        if v[0] in ok:
+            p := file_path + v[1]
+            if _os.isfile(p) and to_int(_os.mtime(p)) >= mtime:
+                return [p, v[0]]
+    return null
+
+# Vrai si une version précompressée existe (la réponse dépend alors d'Accept-Encoding : Vary).
+func variant_exists(file_path):
+    for v in VARIANTS:
+        if _os.isfile(file_path + v[1]):
+            return true
+    return false
+
+# Codages acceptés d'un en-tête Accept-Encoding (q=0 exclut ; « * » accepte br et gzip non exclus).
+func accepted_encodings(header):
+    out := {}
+    refused := {}
+    star := false
+    for part in _s.split(header, ","):
+        bits := _s.split(_s.trim(part), ";")
+        name := _s.lower(_s.trim(bits[0]))
+        q := 1.0
+        i := 1
+        while i < len(bits):
+            kv := _s.trim(bits[i])
+            if _s.starts_with(kv, "q="):
+                try:
+                    q = to_float(_s.substring(kv, 2, len(kv)))
+                catch e:
+                    q = 0.0
+            i += 1
+        if q <= 0.0:
+            refused[name] = true
+        elif name == "*":
+            star = true
+        else:
+            out[name] = true
+    if star:
+        for n in ["br", "gzip"]:
+            if not (n in refused):
+                out[n] = true
+    for n in keys(refused):
+        if n in out:
+            remove(out, n)
+    return out
 
 func _not_modified(h):
     r := _response.Response(304)
