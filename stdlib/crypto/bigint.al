@@ -401,42 +401,34 @@ class Montgomery:
             return x
         return x + [0] * (self.n - len(x))
 
-    # a * b * R^-1 mod m (CIOS) ; a, b < m, de n limbes (complétés de zéros).
+    # a * b * R^-1 mod m (CIOS, produit et réduction dans la même boucle) ; a, b < m, de n limbes au plus.
+    # Chaque tour : s = t[j] + a_i b_j + u m_j + c < 2^26 + 2 * 2^52 + 2^27 : tient dans 64 bits.
     func mul(a, b):
         n := self.n
         m := self.m
         mp := self.mprime
-        t := [0] * (n + 2)
+        t := [0] * (n + 1)
         x := self._pad(a)
         y := self._pad(b)
+        y0 := y[0]
+        m0 := m[0]
         i := 0
         while i < n:
             ai := x[i]
-            c := 0
-            j := 0
+            u := ((t[0] + ai * y0) * mp) & MASK
+            s := t[0] + ai * y0 + u * m0
+            c := s >> BITS
+            j := 1
             while j < n:
-                s := t[j] + ai * y[j] + c
-                t[j] = s & MASK
-                c = s >> BITS
-                j += 1
-            s := t[n] + c
-            t[n] = s & MASK
-            t[n + 1] = s >> BITS
-            u := (t[0] * mp) & MASK
-            s = t[0] + u * m[0]
-            c = s >> BITS
-            j = 1
-            while j < n:
-                s = t[j] + u * m[j] + c
+                s = t[j] + ai * y[j] + u * m[j] + c
                 t[j - 1] = s & MASK
                 c = s >> BITS
                 j += 1
             s = t[n] + c
             t[n - 1] = s & MASK
-            t[n] = t[n + 1] + (s >> BITS)
-            t[n + 1] = 0
+            t[n] = s >> BITS
             i += 1
-        r := _norm(t[0:n + 1])
+        r := _norm(t)
         if cmp(r, m) >= 0:
             r = sub(r, m)
         return r
