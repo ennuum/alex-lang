@@ -14,6 +14,7 @@ use database.database_errors as _e
 
 const ROW := 100
 const DONE := 101
+const BUSY_TIMEOUT_MS := 5000
 
 _lib := [null, null]
 
@@ -54,6 +55,7 @@ func _fns():
     f["col_text"] = lib.function("sqlite3_column_text", ["ptr", "i32"], "cstr")
     f["autocommit"] = lib.function("sqlite3_get_autocommit", ["ptr"], "i32")
     f["version"] = lib.function("sqlite3_libversion", [], "cstr")
+    f["busy_timeout"] = lib.function("sqlite3_busy_timeout", ["ptr", "i32"], "i32")
     _lib[0] = lib
     _lib[1] = f
     return f
@@ -210,6 +212,9 @@ class SqliteConnection:
                 f["close"].call([self.db])
             raise("ConnectionError", "SQLite : ouverture de '" + path + "' impossible : " + msg)
         self.path = path
+        # Plusieurs connexions (fils, processus) sur le même fichier : un verrou d'écriture tenu par une autre
+        # connexion est attendu jusqu'à BUSY_TIMEOUT_MS au lieu d'échouer aussitôt (« database is locked »).
+        f["busy_timeout"].call([self.db, BUSY_TIMEOUT_MS])
 
     func fail(rc, what):
         msg := _fns()["errmsg"].call([self.db])
