@@ -451,7 +451,8 @@ func compute_signatures(program, options=null):
 # ---- cache des modules : <module>.albc (bytecode) et <module>.al.meta (signatures, dépendances) --------------------
 # Même format que l'alex de référence (metaVersion=6). Valide si : .albc au moins aussi récent que le source, même
 # compilateur (version complète), même chemin de source inscrit (relatif au dossier courant), même qualificatif,
-# dépendances présentes. Écriture au mieux : un cache non écrit désactive seulement l'accélération.
+# même bibliothèque standard (ligne stdlib= : les dépendances sont inscrites par chemin absolu, un module compilé
+# contre une autre stdlib — ALEX_STDLIB, autre SDK — la lierait encore), dépendances présentes. Écriture au mieux : un cache non écrit désactive seulement l'accélération.
 const META_VERSION := "6"
 
 func _cache_bc_path(src):
@@ -475,7 +476,7 @@ func _parse_param(text):
 func _compiler_full():
     return _os.alex_build()["full"]
 
-func try_load_cache(src, qualifier):
+func try_load_cache(src, qualifier, stdlib_root=""):
     bcp := _cache_bc_path(src)
     meta := src + ".meta"
     lines := []
@@ -494,6 +495,7 @@ func try_load_cache(src, qualifier):
     version_ok := false
     compiler_ok := false
     source_ok := false
+    stdlib_ok := false
     for raw in lines:
         line := _s.substring(raw, 0, len(raw) - 1) if _s.ends_with(raw, "\r") else raw
         if _s.starts_with(line, "metaVersion="):
@@ -504,6 +506,8 @@ func try_load_cache(src, qualifier):
             source_ok = _s.substring(line, 7, len(line)) == display_source_path(src)
         elif _s.starts_with(line, "qualifier="):
             stored_q = _s.substring(line, 10, len(line))
+        elif _s.starts_with(line, "stdlib="):
+            stdlib_ok = _s.substring(line, 7, len(line)) == stdlib_root
         elif _s.starts_with(line, "export="):
             append(exported, _s.substring(line, 7, len(line)))
         elif _s.starts_with(line, "dep="):
@@ -554,7 +558,7 @@ func try_load_cache(src, qualifier):
                 sig.variants[variant] = fields
                 i += 1
             sigs.enums[parts[0]] = sig
-    if not version_ok or not compiler_ok or not source_ok or stored_q != qualifier:
+    if not version_ok or not compiler_ok or not source_ok or not stdlib_ok or stored_q != qualifier:
         return null
     for d in deps:
         if not _os.isfile(d):
@@ -570,10 +574,11 @@ func try_load_cache(src, qualifier):
     r.direct_deps = deps
     return r
 
-func write_cache(src, r):
+func write_cache(src, r, stdlib_root=""):
     try:
         _io.write_bytes(_cache_bc_path(src), _bf.write_module(r.bytecode))
-        out := ["metaVersion=" + META_VERSION, "compiler=" + _compiler_full(), "source=" + display_source_path(src), "qualifier=" + r.qualifier]
+        out := ["metaVersion=" + META_VERSION, "compiler=" + _compiler_full(), "source=" + display_source_path(src), "qualifier=" + r.qualifier,
+                "stdlib=" + stdlib_root]
         for name in r.exported_names:
             append(out, "export=" + name)
         for name in r.sigs.functions:
@@ -647,7 +652,7 @@ class ModuleGraph:
         append(self.on_stack, canonical_path)
         qualifier := "" if is_entry else qualifier_of(canonical_path)
         if not is_entry and self.use_cache:
-            cached := try_load_cache(canonical_path, qualifier)
+            cached := try_load_cache(canonical_path, qualifier, self.stdlib_canonical)
             if cached != null:
                 # les dépendances de ce module (mémorisées dans son cache) sont résolues et liées avant lui
                 for dep in cached.direct_deps:
@@ -718,7 +723,7 @@ class ModuleGraph:
         r.sigs = compute_signatures(program, options)
         r.direct_deps = direct
         if not is_entry and self.use_cache and not (canonical_path in self.overrides):
-            write_cache(canonical_path, r)
+            write_cache(canonical_path, r, self.stdlib_canonical)
         self.on_stack = self.on_stack[0:len(self.on_stack) - 1]
         append(self.order, canonical_path)
         self.compiled[canonical_path] = r
