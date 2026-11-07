@@ -2,11 +2,15 @@
 #
 # Moteur SQL embarqué, écrit en ALEX : analyse d'un sous-ensemble courant de SQL et exécution sur des tables en
 # mémoire (persistées en JSON par database.connection). Sous-ensemble :
-#   CREATE TABLE [IF NOT EXISTS] t (col TYPE [PRIMARY KEY [AUTOINCREMENT]] [NOT NULL] [UNIQUE] [DEFAULT v], ...)
+#   CREATE TABLE [IF NOT EXISTS] t (col TYPE [PRIMARY KEY [AUTOINCREMENT]] [NOT NULL] [UNIQUE] [DEFAULT v]
+#          [REFERENCES u [(c)]], ..., [CONSTRAINT n] PRIMARY KEY (cols) | UNIQUE (cols)
+#          | FOREIGN KEY (cols) REFERENCES u [(cols)] [ON DELETE|UPDATE action])
+#     (clés étrangères lues mais non imposées, comme SQLite sans PRAGMA foreign_keys = ON)
 #   CREATE [UNIQUE] INDEX [IF NOT EXISTS] i ON t (cols) · DROP TABLE [IF EXISTS] t · DROP INDEX i
 #   INSERT INTO t [(cols)] VALUES (...), (...) · UPDATE t SET c = e, ... [WHERE] · DELETE FROM t [WHERE]
 #   SELECT [DISTINCT] * | t.* | expr [AS a], ... [FROM t [AS a] [[INNER|LEFT|CROSS] JOIN u [AS b] ON e]...]
 #          [WHERE e] [GROUP BY e, ...] [HAVING e] [ORDER BY e [ASC|DESC], ...] [LIMIT n [OFFSET m]]
+#   ALTER TABLE t ADD [COLUMN] déf | RENAME TO n | RENAME [COLUMN] a TO b | DROP [COLUMN] c
 #   BEGIN · COMMIT · ROLLBACK · SAVEPOINT s · RELEASE s · ROLLBACK TO s
 # Expressions : littéraux, NULL, TRUE/FALSE, colonnes (t.c), paramètres ? et :nom, + - * / % ||, = == != <> <
 # <= > >=, AND OR NOT, IS [NOT] NULL, [NOT] LIKE, [NOT] IN (...), [NOT] BETWEEN, CASE WHEN ... END,
@@ -164,6 +168,17 @@ class SqlParser:
         t := self.peek(k)
         return t[0] == "kw" and t[1] == w
 
+    # Mot non réservé (FOREIGN, REFERENCES, CASCADE...), lu comme identifiant, sans tenir compte de la casse.
+    func is_word(w, k=0):
+        t := self.peek(k)
+        return t[0] == "id" and _s.upper(t[1]) == w
+
+    func accept_word(w):
+        if self.is_word(w):
+            self.next()
+            return true
+        return false
+
     func is_op(o):
         t := self.peek()
         return t[0] == "op" and t[1] == o
@@ -252,7 +267,30 @@ class SqlParser:
         if self.accept_kw("RELEASE"):
             self.accept_kw("SAVEPOINT")
             return {"kind": "release", "name": self.ident()}
+        if self.accept_word("ALTER"):
+            return self.alter()
         self.fail("instruction SQL inconnue")
+
+    # ALTER TABLE t ADD [COLUMN] déf | RENAME TO n | RENAME [COLUMN] a TO b | DROP [COLUMN] c (comme SQLite)
+    func alter():
+        self.expect_kw("TABLE")
+        nm := self.ident()
+        if self.accept_word("ADD"):
+            self.accept_word("COLUMN")
+            fks := []
+            col := self.column_def(fks)
+            return {"kind": "alter_add_column", "table": nm, "column": col, "foreign_keys": fks}
+        if self.accept_word("RENAME"):
+            if self.accept_kw("TO"):
+                return {"kind": "alter_rename", "table": nm, "name": self.ident()}
+            self.accept_word("COLUMN")
+            old := self.ident()
+            self.expect_kw("TO")
+            return {"kind": "alter_rename_column", "table": nm, "old": old, "name": self.ident()}
+        if self.accept_kw("DROP"):
+            self.accept_word("COLUMN")
+            return {"kind": "alter_drop_column", "table": nm, "name": self.ident()}
+        self.fail("attendu ADD, RENAME ou DROP")
 
     func create():
         unique := self.accept_kw("UNIQUE")
@@ -282,8 +320,27 @@ class SqlParser:
         cols := []
         uniques := []
         pk := []
+        fks := []
         while true:
-            if self.accept_kw("PRIMARY"):
+            # CONSTRAINT nom devant une contrainte de table : le nom est ignoré
+            if self.is_word("CONSTRAINT") and self.peek(1)[0] == "id" and (self.is_kw("PRIMARY", 2) or self.is_kw("UNIQUE", 2) or self.is_word("FOREIGN", 2)):
+                self.next()
+                self.next()
+            if self.is_word("FOREIGN") and self.is_kw("KEY", 1):
+                self.next()
+                self.next()
+                self.expect_op("(")
+                fc := [self.ident()]
+                while self.accept_op(","):
+                    append(fc, self.ident())
+                self.expect_op(")")
+                if not self.accept_word("REFERENCES"):
+                    self.fail("attendu REFERENCES")
+                fk := self.references(fc)
+                if len(fk["ref_columns"]) > 0 and len(fk["ref_columns"]) != len(fc):
+                    self.fail("FOREIGN KEY : autant de colonnes de part et d'autre attendues")
+                append(fks, fk)
+            elif self.accept_kw("PRIMARY"):
                 self.expect_kw("KEY")
                 self.expect_op("(")
                 append(pk, self.ident())
@@ -298,7 +355,7 @@ class SqlParser:
                 self.expect_op(")")
                 append(uniques, u)
             else:
-                append(cols, self.column_def())
+                append(cols, self.column_def(fks))
             if not self.accept_op(","):
                 break
         self.expect_op(")")
@@ -311,12 +368,42 @@ class SqlParser:
             for c in cols:
                 if c["name"] in pk:
                     c["primary"] = false
-        return {"kind": "create_table", "name": nm, "columns": cols, "uniques": uniques, "if_not_exists": ine}
+        return {"kind": "create_table", "name": nm, "columns": cols, "uniques": uniques, "foreign_keys": fks, "if_not_exists": ine}
 
-    func column_def():
+    # Après REFERENCES : table [(colonnes)] [ON DELETE action] [ON UPDATE action]. Comme SQLite sans
+    # « PRAGMA foreign_keys = ON », la clé étrangère est lue et décrite, pas imposée.
+    func references(cols):
+        fk := {"columns": cols, "ref_table": self.ident(), "ref_columns": [], "on_delete": "NO ACTION", "on_update": "NO ACTION"}
+        if self.accept_op("("):
+            append(fk["ref_columns"], self.ident())
+            while self.accept_op(","):
+                append(fk["ref_columns"], self.ident())
+            self.expect_op(")")
+        while self.is_kw("ON") and (self.is_kw("DELETE", 1) or self.is_kw("UPDATE", 1)):
+            self.next()
+            quand := "on_delete" if self.next()[1] == "DELETE" else "on_update"
+            if self.accept_word("CASCADE"):
+                fk[quand] = "CASCADE"
+            elif self.accept_word("RESTRICT"):
+                fk[quand] = "RESTRICT"
+            elif self.accept_kw("SET"):
+                if self.accept_kw("NULL"):
+                    fk[quand] = "SET NULL"
+                elif self.accept_kw("DEFAULT"):
+                    fk[quand] = "SET DEFAULT"
+                else:
+                    self.fail("attendu NULL ou DEFAULT")
+            elif self.accept_word("NO"):
+                if not self.accept_word("ACTION"):
+                    self.fail("attendu ACTION")
+            else:
+                self.fail("action de clé étrangère attendue (CASCADE, RESTRICT, SET NULL, SET DEFAULT, NO ACTION)")
+        return fk
+
+    func column_def(fks=null):
         nm := self.ident()
         ty := ""
-        while self.peek()[0] == "id":
+        while self.peek()[0] == "id" and not self.is_word("REFERENCES"):
             ty = _s.trim(ty + " " + _s.upper(self.next()[1]))
         if self.accept_op("("):
             while not self.accept_op(")"):
@@ -345,6 +432,12 @@ class SqlParser:
                     self.expect_op(")")
                 else:
                     col["default"] = self.unary()
+            elif self.accept_word("REFERENCES"):
+                fk := self.references([nm])
+                if len(fk["ref_columns"]) > 1:
+                    self.fail("REFERENCES : une seule colonne attendue")
+                if fks != null:
+                    append(fks, fk)
             else:
                 break
         return col
@@ -916,6 +1009,27 @@ func _copy_row(r):
         o[k] = r[k]
     return o
 
+func _with_key(r, key, v):
+    o := _copy_row(r)
+    o[key] = v
+    return o
+
+func _rename_key(r, old, nv):
+    o := {}
+    for k in r:
+        if k == old:
+            o[nv] = r[k]
+        else:
+            o[k] = r[k]
+    return o
+
+func _without_key(r, key):
+    o := {}
+    for k in r:
+        if k != key:
+            o[k] = r[k]
+    return o
+
 class Engine:
     func init():
         self.tables = {}
@@ -1232,6 +1346,8 @@ class Engine:
             return self.delete(stmt, params)
         if k == "create_table":
             return self.create_table(stmt)
+        if _s.starts_with(k, "alter_"):
+            return self.alter_table(stmt)
         if k == "create_index":
             t := self.table(stmt["table"])
             nm := _s.lower(stmt["name"])
@@ -1363,6 +1479,83 @@ class Engine:
                 _e.query_error("colonne en double : " + c["name"])
             names[_s.lower(c["name"])] = true
         self.tables[key] = Table(stmt["name"], stmt["columns"], stmt["uniques"])
+        self.dirty = true
+        return [[], [], 0]
+
+    # Les instantanés de transaction partagent les listes et dictionnaires de colonnes : on les remplace,
+    # jamais modifiés en place (un ROLLBACK rend la table d'avant l'ALTER).
+    func alter_table(stmt):
+        k := stmt["kind"]
+        t := self.table(stmt["table"])
+        if k == "alter_rename":
+            key := _s.lower(stmt["name"])
+            old := _s.lower(t.name)
+            if key in self.tables and key != old:
+                _e.query_error("table déjà existante : " + stmt["name"])
+            out := {}
+            for kk in self.tables:
+                if kk == old:
+                    out[key] = t
+                else:
+                    out[kk] = self.tables[kk]
+            self.tables = out
+            t.name = stmt["name"]
+            self.dirty = true
+            return [[], [], 0]
+        if k == "alter_add_column":
+            c := stmt["column"]
+            if t.column(c["name"]) != null:
+                _e.query_error("colonne en double : " + c["name"])
+            if c["primary"] or c["unique"]:
+                _e.query_error("ALTER TABLE ADD COLUMN : colonne PRIMARY KEY ou UNIQUE impossible : " + c["name"])
+            v := coerce(c, self.default_of(c))
+            if c["not_null"] and v == null:
+                _e.query_error("ALTER TABLE ADD COLUMN : colonne NOT NULL sans valeur par défaut : " + c["name"])
+            t.columns = t.columns + [c]
+            t.rows = [_with_key(r, c["name"], v) for r in t.rows]
+            self.dirty = true
+            return [[], [], 0]
+        col := t.column(stmt["old"] if k == "alter_rename_column" else stmt["name"])
+        if col == null:
+            _e.query_error("colonne inconnue : " + (stmt["old"] if k == "alter_rename_column" else stmt["name"]))
+        nm := col["name"]
+        if k == "alter_rename_column":
+            nv := stmt["name"]
+            other := t.column(nv)
+            if other != null and other["name"] != nm:
+                _e.query_error("colonne en double : " + nv)
+            cols := []
+            for c in t.columns:
+                if c["name"] == nm:
+                    d := _copy_row(c)
+                    d["name"] = nv
+                    append(cols, d)
+                else:
+                    append(cols, c)
+            t.columns = cols
+            t.uniques = [[nv if x == nm else x for x in u] for u in t.uniques]
+            ix := {}
+            for i in t.indexes:
+                ix[i] = {"columns": [nv if x == nm else x for x in t.indexes[i]["columns"]], "unique": t.indexes[i]["unique"]}
+            t.indexes = ix
+            t.rows = [_rename_key(r, nm, nv) for r in t.rows]
+            self.dirty = true
+            return [[], [], 0]
+        # alter_drop_column
+        if col["primary"]:
+            _e.query_error("ALTER TABLE DROP COLUMN : clé primaire : " + nm)
+        if col["unique"]:
+            _e.query_error("ALTER TABLE DROP COLUMN : colonne UNIQUE : " + nm)
+        for u in t.uniques:
+            if nm in u:
+                _e.query_error("ALTER TABLE DROP COLUMN : colonne d'une contrainte UNIQUE : " + nm)
+        for i in t.indexes:
+            if nm in t.indexes[i]["columns"]:
+                _e.query_error("ALTER TABLE DROP COLUMN : colonne de l'index " + i + " : " + nm)
+        if len(t.columns) == 1:
+            _e.query_error("ALTER TABLE DROP COLUMN : dernière colonne de la table : " + nm)
+        t.columns = [c for c in t.columns if c["name"] != nm]
+        t.rows = [_without_key(r, nm) for r in t.rows]
         self.dirty = true
         return [[], [], 0]
 
@@ -1642,7 +1835,8 @@ class Engine:
             off = self.ev(q["offset"], {}, params, null)
         if q["limit"] != null:
             lim := self.ev(q["limit"], {}, params, null)
-            if lim < 0:
+            # LIMIT -1 ou très grand (LIMIT 9223372036854775807 OFFSET n, idiome SQLite) : off + lim déborderait
+            if lim < 0 or lim >= len(rows) - off:
                 rows = rows[off:]
             else:
                 rows = rows[off:off + lim]
