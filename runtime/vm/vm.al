@@ -2910,6 +2910,7 @@ func __vm_dbg_start(cmd: str, evt: str, proto: int, entry: str, lib: str, exc: i
     __store64(vs + 208, 2)
 
 # ---- Module natif _native_reflect (stdlib/reflection) ------------------
+# (les fonctions __nat__native_reflect__* sont dans runtime/alex/native/dyn_nat.al, communes au mode natif)
 
 # Liste native de chaînes triée (ordre des octets, comme std::sort).
 func __vm_sort_strs(l: int):
@@ -2952,57 +2953,6 @@ func __vm_instance(fn: str, v: int) -> int:
         __dyn_err("TypeError", "'" + fn + "' : l'objet doit être une instance (obtenu '" + __dyn_type_name(v) + "')")
     return v
 
-func __nat__native_reflect__type_name(n: int, a: int) -> int:
-    __nat_exact("type_name", n, 1)
-    if __dyn_is(a, 12):
-        return __dyn_str(__as_str(__load64(a + 8)))
-    return __dyn_str(__dyn_type_name(a))
-
-func __nat__native_reflect__display_name(n: int, a: int) -> int:
-    __nat_exact("display_name", n, 1)
-    return __dyn_str(__vm_short(__nat_str("display_name", a, "le nom")))
-
-func __nat__native_reflect__is_instance(n: int, a: int) -> int:
-    __nat_exact("is_instance", n, 1)
-    return __dyn_bool(__dyn_is(a, 12))
-
-func __nat__native_reflect__fields(n: int, a: int) -> int:
-    __nat_exact("fields", n, 1)
-    o := __vm_instance("fields", a)
-    l := __rt_dict_list(__load64(o + 16), 24)
-    __vm_sort_strs(l)
-    return __vm_str_list(l)
-
-func __nat__native_reflect__has_field(n: int, a: int, b: int) -> int:
-    __nat_exact("has_field", n, 2)
-    o := __vm_instance("has_field", a)
-    return __dyn_bool(__rt_dict_index(__load64(o + 16), __str_addr(__nat_str("has_field", b, "le nom")), 1) >= 0)
-
-func __nat__native_reflect__get_field(n: int, a: int, b: int) -> int:
-    __nat_exact("get_field", n, 2)
-    o := __vm_instance("get_field", a)
-    nm := __nat_str("get_field", b, "le nom")
-    e := __rt_dict_index(__load64(o + 16), __str_addr(nm), 1)
-    if e < 0:
-        __dyn_err("AttributeError", "'" + __vm_short(__as_str(__load64(o + 8))) + "' n'a pas de champ '" + nm + "'")
-    return __load64(__load64(__load64(o + 16) + 32) + 8 * e)
-
-func __nat__native_reflect__set_field(n: int, a: int, b: int, c: int) -> int:
-    __nat_exact("set_field", n, 3)
-    o := __vm_instance("set_field", a)
-    __rt_dict_set(__load64(o + 16), __str_addr(__nat_str("set_field", b, "le nom")), c, 1)
-    return 0
-
-func __nat__native_reflect__remove_field(n: int, a: int, b: int) -> int:
-    __nat_exact("remove_field", n, 2)
-    o := __vm_instance("remove_field", a)
-    nm := __nat_str("remove_field", b, "le nom")
-    if __rt_dict_index(__load64(o + 16), __str_addr(nm), 1) < 0:
-        return __dyn_bool(false)
-    __rt_dict_remove(__load64(o + 16), __str_addr(nm), 1)
-    return __dyn_bool(true)
-
-# Méthodes déclarées « Type#m » (fonctions), triées.
 func __vm_methods_of(t: str) -> int:
     out := __rt_list_new(0)
     meths := __load64(__dyn_ds() + 24)
@@ -3020,97 +2970,6 @@ func __vm_methods_of(t: str) -> int:
         e += 1
     __vm_sort_strs(out)
     return out
-
-func __nat__native_reflect__types(n: int) -> int:
-    __nat_exact("types", n, 0)
-    out := __rt_list_new(0)
-    cls := __load64(__dyn_ds() + 16)
-    e := 0
-    while e < __load64(cls + 8):
-        if __load64(__load64(cls + 40) + 8 * e) >= 0:
-            nm := __as_str(__load64(__load64(cls + 24) + 8 * e))
-            if not __vm_has_str(out, nm):
-                __rt_list_push(out, __str_addr(nm))
-        e += 1
-    meths := __load64(__dyn_ds() + 24)
-    e = 0
-    while e < __load64(meths + 8):
-        if __load64(__load64(meths + 40) + 8 * e) >= 0:
-            key := __as_str(__load64(__load64(meths + 24) + 8 * e))
-            g := __load64(__load64(meths + 32) + 8 * e)
-            h := __vm_findb(key, 35)
-            if h > 0 and __dyn_is(__load64(__globals_start() + 8 * g), 10):
-                ty := __nat_sub(key, 0, h)
-                if __vm_findb(ty, 64) < 0 and not __vm_has_str(out, ty):
-                    __rt_list_push(out, __str_addr(ty))
-        e += 1
-    __vm_sort_strs(out)
-    return __vm_str_list(out)
-
-func __nat__native_reflect__class_info(n: int, a: int) -> int:
-    __nat_exact("class_info", n, 1)
-    nm := __nat_str("class_info", a, "le nom")
-    rec := __dyn_class_rec(nm)
-    if rec == 0 and __load64(__vm_methods_of(nm)) == 0:
-        return 0
-    d := __dyn_dict_new()
-    __dyn_dict_lit_set(d, __dyn_str("name"), __dyn_str(nm))
-    base := 0
-    ifs := __dyn_list_new(0)
-    if rec != 0:
-        if __load64(rec) != 0:
-            base = __dyn_str(__as_str(__load64(rec)))
-        ifs = __vm_str_list(__load64(rec + 8))
-    __dyn_dict_lit_set(d, __dyn_str("base"), base)
-    __dyn_dict_lit_set(d, __dyn_str("interfaces"), ifs)
-    __dyn_dict_lit_set(d, __dyn_str("is_class"), __dyn_bool(rec != 0))
-    return d
-
-func __nat__native_reflect__methods(n: int, a: int) -> int:
-    __nat_exact("methods", n, 1)
-    return __vm_str_list(__vm_methods_of(__nat_str("methods", a, "le nom")))
-
-func __nat__native_reflect__method(n: int, a: int, b: int) -> int:
-    __nat_exact("method", n, 2)
-    nm := __nat_str("method", b, "le nom")
-    if not __dyn_is(a, 12):
-        return 0
-    m := __dyn_find_method(__as_str(__load64(a + 8)), nm)
-    if m == 0:
-        return 0
-    return __dyn_bind(m, a)
-
-func __nat__native_reflect__method_arity(n: int, a: int, b: int) -> int:
-    __nat_exact("method_arity", n, 2)
-    t := __nat_str("method_arity", a, "le type")
-    m := __dyn_find_method(t, __nat_str("method_arity", b, "le nom"))
-    if m == 0:
-        return 0
-    l := __dyn_list_new(0)
-    __dyn_list_push(l, __dyn_int(__load64(m + 24)))
-    __dyn_list_push(l, __dyn_int(__load64(m + 32)))
-    return l
-
-func __nat__native_reflect__is_subtype(n: int, a: int, b: int) -> int:
-    __nat_exact("is_subtype", n, 2)
-    t := __nat_str("is_subtype", a, "le type")
-    return __dyn_bool(__dyn_subtype(t, __nat_str("is_subtype", b, "le type parent")))
-
-func __nat__native_reflect__function_name(n: int, a: int) -> int:
-    __nat_exact("function_name", n, 1)
-    if __dyn_is(a, 10) or __dyn_is(a, 11):
-        return __dyn_str(__as_str(__load64(a + 16)))
-    __dyn_err("TypeError", "'function_name' : la valeur doit être une fonction (obtenu '" + __dyn_type_name(a) + "')")
-    return 0
-
-func __nat__native_reflect__function_arity(n: int, a: int) -> int:
-    __nat_exact("function_arity", n, 1)
-    if not __dyn_is(a, 10):
-        return 0
-    l := __dyn_list_new(0)
-    __dyn_list_push(l, __dyn_int(__load64(a + 24)))
-    __dyn_list_push(l, __dyn_int(__load64(a + 32)))
-    return l
 
 # ---- Module natif _native_ffi --------------------------------------------------
 # La VM est un ELF dynamique : dlopen / dlsym / dlclose / dlerror sont liés par ld-linux au chargement

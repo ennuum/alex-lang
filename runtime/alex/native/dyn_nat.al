@@ -9078,17 +9078,296 @@ func __nat__native_tls__peer_certificate(n: int, a0: int) -> int:
     __tls_off("peer_certificate")
     return 0
 
+# ---- SHA-256, HMAC-SHA256, PBKDF2-HMAC-SHA256 (exécutables natifs, sans OpenSSL) ------------------------------
+# _native_tls.digest / hmac / pbkdf2 : « sha256 » calculé ici ; les autres algorithmes rendent null (l'appelant se
+# replie sur le module crypto, écrit en Alex). Mots de 32 bits rangés sur 64 bits ; tampons : __rt_str_new.
+
+func __sha_mask(x: int) -> int:
+    return x & 4294967295
+
+func __sha_rotr(x: int, n: int) -> int:
+    return ((x >> n) | (x << (32 - n))) & 4294967295
+
+# Zone de travail : [0, 512) constantes K ; [512, 1024) W ; [1024, 1088) état ; [1088, 1216) dernier(s) bloc(s) ;
+# [1216, 1280) état intérieur sauvegardé ; [1280, 1344) état extérieur sauvegardé ; [1344, 1408) bloc de clé.
+func __sha_work() -> int:
+    w := __rt_str_new(1408) + 8
+    k := w
+    __store64(k + 0, 1116352408)
+    __store64(k + 8, 1899447441)
+    __store64(k + 16, 3049323471)
+    __store64(k + 24, 3921009573)
+    __store64(k + 32, 961987163)
+    __store64(k + 40, 1508970993)
+    __store64(k + 48, 2453635748)
+    __store64(k + 56, 2870763221)
+    __store64(k + 64, 3624381080)
+    __store64(k + 72, 310598401)
+    __store64(k + 80, 607225278)
+    __store64(k + 88, 1426881987)
+    __store64(k + 96, 1925078388)
+    __store64(k + 104, 2162078206)
+    __store64(k + 112, 2614888103)
+    __store64(k + 120, 3248222580)
+    __store64(k + 128, 3835390401)
+    __store64(k + 136, 4022224774)
+    __store64(k + 144, 264347078)
+    __store64(k + 152, 604807628)
+    __store64(k + 160, 770255983)
+    __store64(k + 168, 1249150122)
+    __store64(k + 176, 1555081692)
+    __store64(k + 184, 1996064986)
+    __store64(k + 192, 2554220882)
+    __store64(k + 200, 2821834349)
+    __store64(k + 208, 2952996808)
+    __store64(k + 216, 3210313671)
+    __store64(k + 224, 3336571891)
+    __store64(k + 232, 3584528711)
+    __store64(k + 240, 113926993)
+    __store64(k + 248, 338241895)
+    __store64(k + 256, 666307205)
+    __store64(k + 264, 773529912)
+    __store64(k + 272, 1294757372)
+    __store64(k + 280, 1396182291)
+    __store64(k + 288, 1695183700)
+    __store64(k + 296, 1986661051)
+    __store64(k + 304, 2177026350)
+    __store64(k + 312, 2456956037)
+    __store64(k + 320, 2730485921)
+    __store64(k + 328, 2820302411)
+    __store64(k + 336, 3259730800)
+    __store64(k + 344, 3345764771)
+    __store64(k + 352, 3516065817)
+    __store64(k + 360, 3600352804)
+    __store64(k + 368, 4094571909)
+    __store64(k + 376, 275423344)
+    __store64(k + 384, 430227734)
+    __store64(k + 392, 506948616)
+    __store64(k + 400, 659060556)
+    __store64(k + 408, 883997877)
+    __store64(k + 416, 958139571)
+    __store64(k + 424, 1322822218)
+    __store64(k + 432, 1537002063)
+    __store64(k + 440, 1747873779)
+    __store64(k + 448, 1955562222)
+    __store64(k + 456, 2024104815)
+    __store64(k + 464, 2227730452)
+    __store64(k + 472, 2361852424)
+    __store64(k + 480, 2428436474)
+    __store64(k + 488, 2756734187)
+    __store64(k + 496, 3204031479)
+    __store64(k + 504, 3329325298)
+    return w
+
+func __sha_init(st: int):
+    __store64(st + 0, 1779033703)
+    __store64(st + 8, 3144134277)
+    __store64(st + 16, 1013904242)
+    __store64(st + 24, 2773480762)
+    __store64(st + 32, 1359893119)
+    __store64(st + 40, 2600822924)
+    __store64(st + 48, 528734635)
+    __store64(st + 56, 1541459225)
+
+func __sha_compress(work: int, st: int, blk: int):
+    k := work
+    w := work + 512
+    t := 0
+    while t < 16:
+        q := blk + t * 4
+        __store64(w + t * 8, (__load8(q) << 24) | (__load8(q + 1) << 16) | (__load8(q + 2) << 8) | __load8(q + 3))
+        t += 1
+    while t < 64:
+        x := __load64(w + (t - 15) * 8)
+        y := __load64(w + (t - 2) * 8)
+        s0 := (((x >> 7) | (x << 25)) & 4294967295) ^ (((x >> 18) | (x << 14)) & 4294967295) ^ (x >> 3)
+        s1 := (((y >> 17) | (y << 15)) & 4294967295) ^ (((y >> 19) | (y << 13)) & 4294967295) ^ (y >> 10)
+        __store64(w + t * 8, (__load64(w + (t - 16) * 8) + s0 + __load64(w + (t - 7) * 8) + s1) & 4294967295)
+        t += 1
+    a := __load64(st)
+    b := __load64(st + 8)
+    c := __load64(st + 16)
+    d := __load64(st + 24)
+    e := __load64(st + 32)
+    f := __load64(st + 40)
+    g := __load64(st + 48)
+    h := __load64(st + 56)
+    t = 0
+    while t < 64:
+        S1 := (((e >> 6) | (e << 26)) & 4294967295) ^ (((e >> 11) | (e << 21)) & 4294967295) ^ (((e >> 25) | (e << 7)) & 4294967295)
+        ch := (e & f) ^ ((e ^ 4294967295) & g)
+        t1 := (h + S1 + ch + __load64(k + t * 8) + __load64(w + t * 8)) & 4294967295
+        S0 := (((a >> 2) | (a << 30)) & 4294967295) ^ (((a >> 13) | (a << 19)) & 4294967295) ^ (((a >> 22) | (a << 10)) & 4294967295)
+        mj := (a & b) ^ (a & c) ^ (b & c)
+        t2 := (S0 + mj) & 4294967295
+        h = g
+        g = f
+        f = e
+        e = (d + t1) & 4294967295
+        d = c
+        c = b
+        b = a
+        a = (t1 + t2) & 4294967295
+        t += 1
+    __store64(st, (__load64(st) + a) & 4294967295)
+    __store64(st + 8, (__load64(st + 8) + b) & 4294967295)
+    __store64(st + 16, (__load64(st + 16) + c) & 4294967295)
+    __store64(st + 24, (__load64(st + 24) + d) & 4294967295)
+    __store64(st + 32, (__load64(st + 32) + e) & 4294967295)
+    __store64(st + 40, (__load64(st + 40) + f) & 4294967295)
+    __store64(st + 48, (__load64(st + 48) + g) & 4294967295)
+    __store64(st + 56, (__load64(st + 56) + h) & 4294967295)
+
+# Termine le hachage de st (prefix octets déjà traités) avec n octets en p ; empreinte dans st.
+func __sha_tail(work: int, st: int, p: int, n: int, prefix: int):
+    i := 0
+    while i + 64 <= n:
+        __sha_compress(work, st, p + i)
+        i += 64
+    last := work + 1088
+    r := n - i
+    j := 0
+    while j < 128:
+        __store8(last + j, 0)
+        j += 1
+    __copy(last, p + i, r)
+    __store8(last + r, 128)
+    blocks := 1
+    if r >= 56:
+        blocks = 2
+    bits := (prefix + n) * 8
+    end := last + blocks * 64
+    j = 1
+    while j <= 8:
+        __store8(end - j, bits & 255)
+        bits = bits >> 8
+        j += 1
+    __sha_compress(work, st, last)
+    if blocks == 2:
+        __sha_compress(work, st, last + 64)
+
+func __sha_out(st: int, out: int):
+    i := 0
+    while i < 8:
+        v := __load64(st + i * 8)
+        __store8(out + i * 4, (v >> 24) & 255)
+        __store8(out + i * 4 + 1, (v >> 16) & 255)
+        __store8(out + i * 4 + 2, (v >> 8) & 255)
+        __store8(out + i * 4 + 3, v & 255)
+        i += 1
+
+# États intérieur et extérieur d'HMAC pour une clé (sauvegardés dans la zone de travail).
+func __sha_hmac_keys(work: int, key: int, klen: int):
+    kb := work + 1344
+    j := 0
+    while j < 64:
+        __store8(kb + j, 0)
+        j += 1
+    st := work + 1024
+    if klen > 64:
+        __sha_init(st)
+        __sha_tail(work, st, key, klen, 0)
+        __sha_out(st, kb)
+    else:
+        __copy(kb, key, klen)
+    pad := __rt_str_new(64) + 8
+    j = 0
+    while j < 64:
+        __store8(pad + j, __load8(kb + j) ^ 54)
+        j += 1
+    inner := work + 1216
+    __sha_init(inner)
+    __sha_compress(work, inner, pad)
+    j = 0
+    while j < 64:
+        __store8(pad + j, __load8(kb + j) ^ 92)
+        j += 1
+    outer := work + 1280
+    __sha_init(outer)
+    __sha_compress(work, outer, pad)
+
+# HMAC de n octets en p avec les états sauvegardés ; 32 octets écrits en out.
+func __sha_hmac(work: int, p: int, n: int, out: int):
+    st := work + 1024
+    __copy(st, work + 1216, 64)
+    __sha_tail(work, st, p, n, 64)
+    __sha_out(st, out)
+    __copy(st, work + 1280, 64)
+    __sha_tail(work, st, out, 32, 64)
+    __sha_out(st, out)
+
+func __sha_is256(fn: str, v: int) -> bool:
+    a := __nat_str(fn, v, "l'algorithme")
+    return a == "sha256" or a == "SHA256" or a == "sha-256"
+
 func __nat__native_tls__digest(n: int, a0: int, a1: int) -> int:
     __nat_range("digest", n, 2, 2)
-    return 0
+    if not __sha_is256("digest", a0):
+        return 0
+    data := __nat_str("digest", a1, "les données")
+    work := __sha_work()
+    st := work + 1024
+    __sha_init(st)
+    __sha_tail(work, st, __nat_bp(data), __nat_blen(data), 0)
+    r := __rt_str_new(32)
+    __sha_out(st, r + 8)
+    return __dyn_str(__as_str(r))
 
 func __nat__native_tls__hmac(n: int, a0: int, a1: int, a2: int) -> int:
     __nat_range("hmac", n, 3, 3)
-    return 0
+    if not __sha_is256("hmac", a0):
+        return 0
+    key := __nat_str("hmac", a1, "la clé")
+    data := __nat_str("hmac", a2, "les données")
+    work := __sha_work()
+    __sha_hmac_keys(work, __nat_bp(key), __nat_blen(key))
+    r := __rt_str_new(32)
+    __sha_hmac(work, __nat_bp(data), __nat_blen(data), r + 8)
+    return __dyn_str(__as_str(r))
 
 func __nat__native_tls__pbkdf2(n: int, a0: int, a1: int, a2: int, a3: int, a4: int) -> int:
     __nat_range("pbkdf2", n, 5, 5)
-    return 0
+    if not __sha_is256("pbkdf2", a0):
+        return 0
+    pw := __nat_str("pbkdf2", a1, "le mot de passe")
+    salt := __nat_str("pbkdf2", a2, "le sel")
+    iters := __nat_int("pbkdf2", a3, "le nombre d'itérations")
+    length := __nat_int("pbkdf2", a4, "la longueur")
+    if iters < 1 or length < 1 or length > 1048576:
+        __dyn_err("ArgumentError", "'pbkdf2' : itérations >= 1 et longueur 1..1048576 attendues")
+    work := __sha_work()
+    __sha_hmac_keys(work, __nat_bp(pw), __nat_blen(pw))
+    slen := __nat_blen(salt)
+    msg := __rt_str_new(slen + 4) + 8
+    __copy(msg, __nat_bp(salt), slen)
+    u := __rt_str_new(32) + 8
+    acc := __rt_str_new(32) + 8
+    r := __rt_str_new(length)
+    out := r + 8
+    done := 0
+    block := 1
+    while done < length:
+        __store8(msg + slen, (block >> 24) & 255)
+        __store8(msg + slen + 1, (block >> 16) & 255)
+        __store8(msg + slen + 2, (block >> 8) & 255)
+        __store8(msg + slen + 3, block & 255)
+        __sha_hmac(work, msg, slen + 4, u)
+        __copy(acc, u, 32)
+        i := 1
+        while i < iters:
+            __sha_hmac(work, u, 32, u)
+            j := 0
+            while j < 32:
+                __store8(acc + j, __load8(acc + j) ^ __load8(u + j))
+                j += 1
+            i += 1
+        take := length - done
+        if take > 32:
+            take = 32
+        __copy(out + done, acc, take)
+        done += take
+        block += 1
+    return __dyn_str(__as_str(r))
 
 func __nat__native_tls__close(n: int, a0: int) -> int:
     __nat_range("close", n, 1, 1)
@@ -12568,3 +12847,233 @@ func __nat__native_net__interfaces(n: int) -> int:
         i += 1
     return out
 
+# ---- Module natif _native_reflect (stdlib/reflection) : aussi pour les exécutables natifs ----------------------
+# (repris de runtime/vm/vm.al ; même représentation des valeurs dans la VM et en mode dynamique)
+
+# Liste native de chaînes triée (ordre des octets, comme std::sort).
+func __rf_sort_strs(l: int):
+    n := __load64(l)
+    d := __load64(l + 16)
+    i := 1
+    while i < n:
+        v := __load64(d + 8 * i)
+        j := i - 1
+        while j >= 0 and __rt_str_cmp(__as_str(__load64(d + 8 * j)), __as_str(v)) > 0:
+            __store64(d + 8 * (j + 1), __load64(d + 8 * j))
+            j -= 1
+        __store64(d + 8 * (j + 1), v)
+        i += 1
+
+func __rf_str_list(l: int) -> int:
+    out := __dyn_list_new(0)
+    i := 0
+    while i < __load64(l):
+        __dyn_list_push(out, __dyn_str(__as_str(__rt_vec_at(l, i))))
+        i += 1
+    return out
+
+func __rf_has_str(l: int, s: str) -> bool:
+    i := 0
+    while i < __load64(l):
+        if __as_str(__rt_vec_at(l, i)) == s:
+            return true
+        i += 1
+    return false
+
+func __rf_short(n: str) -> str:
+    q := __rf_rfind_colons(n)
+    if q < 0:
+        return n
+    return __rf_after(n, q + 2)
+
+func __rf_instance(fn: str, v: int) -> int:
+    if not __dyn_is(v, 12):
+        __dyn_err("TypeError", "'" + fn + "' : l'objet doit être une instance (obtenu '" + __dyn_type_name(v) + "')")
+    return v
+
+func __nat__native_reflect__type_name(n: int, a: int) -> int:
+    __nat_exact("type_name", n, 1)
+    if __dyn_is(a, 12):
+        return __dyn_str(__as_str(__load64(a + 8)))
+    return __dyn_str(__dyn_type_name(a))
+
+func __nat__native_reflect__display_name(n: int, a: int) -> int:
+    __nat_exact("display_name", n, 1)
+    return __dyn_str(__rf_short(__nat_str("display_name", a, "le nom")))
+
+func __nat__native_reflect__is_instance(n: int, a: int) -> int:
+    __nat_exact("is_instance", n, 1)
+    return __dyn_bool(__dyn_is(a, 12))
+
+func __nat__native_reflect__fields(n: int, a: int) -> int:
+    __nat_exact("fields", n, 1)
+    o := __rf_instance("fields", a)
+    l := __rt_dict_list(__load64(o + 16), 24)
+    __rf_sort_strs(l)
+    return __rf_str_list(l)
+
+func __nat__native_reflect__has_field(n: int, a: int, b: int) -> int:
+    __nat_exact("has_field", n, 2)
+    o := __rf_instance("has_field", a)
+    return __dyn_bool(__rt_dict_index(__load64(o + 16), __str_addr(__nat_str("has_field", b, "le nom")), 1) >= 0)
+
+func __nat__native_reflect__get_field(n: int, a: int, b: int) -> int:
+    __nat_exact("get_field", n, 2)
+    o := __rf_instance("get_field", a)
+    nm := __nat_str("get_field", b, "le nom")
+    e := __rt_dict_index(__load64(o + 16), __str_addr(nm), 1)
+    if e < 0:
+        __dyn_err("AttributeError", "'" + __rf_short(__as_str(__load64(o + 8))) + "' n'a pas de champ '" + nm + "'")
+    return __load64(__load64(__load64(o + 16) + 32) + 8 * e)
+
+func __nat__native_reflect__set_field(n: int, a: int, b: int, c: int) -> int:
+    __nat_exact("set_field", n, 3)
+    o := __rf_instance("set_field", a)
+    __rt_dict_set(__load64(o + 16), __str_addr(__nat_str("set_field", b, "le nom")), c, 1)
+    return 0
+
+func __nat__native_reflect__remove_field(n: int, a: int, b: int) -> int:
+    __nat_exact("remove_field", n, 2)
+    o := __rf_instance("remove_field", a)
+    nm := __nat_str("remove_field", b, "le nom")
+    if __rt_dict_index(__load64(o + 16), __str_addr(nm), 1) < 0:
+        return __dyn_bool(false)
+    __rt_dict_remove(__load64(o + 16), __str_addr(nm), 1)
+    return __dyn_bool(true)
+
+# Méthodes déclarées « Type#m » (fonctions), triées.
+func __rf_methods_of(t: str) -> int:
+    out := __rt_list_new(0)
+    meths := __load64(__dyn_ds() + 24)
+    used := __load64(meths + 8)
+    pre := __nat_blen(t)
+    e := 0
+    while e < used:
+        if __load64(__load64(meths + 40) + 8 * e) >= 0:
+            key := __as_str(__load64(__load64(meths + 24) + 8 * e))
+            g := __load64(__load64(meths + 32) + 8 * e)
+            if __nat_blen(key) > pre + 1 and __nat_sub(key, 0, pre) == t and __load8(__nat_bp(key) + pre) == 35 and __dyn_is(__load64(__globals_start() + 8 * g), 10):
+                m := __rf_after(key, pre + 1)
+                if __rf_findb(m, 35) < 0 and __rf_findb(m, 64) < 0:
+                    __rt_list_push(out, __str_addr(m))
+        e += 1
+    __rf_sort_strs(out)
+    return out
+
+func __nat__native_reflect__types(n: int) -> int:
+    __nat_exact("types", n, 0)
+    out := __rt_list_new(0)
+    cls := __load64(__dyn_ds() + 16)
+    e := 0
+    while e < __load64(cls + 8):
+        if __load64(__load64(cls + 40) + 8 * e) >= 0:
+            nm := __as_str(__load64(__load64(cls + 24) + 8 * e))
+            if not __rf_has_str(out, nm):
+                __rt_list_push(out, __str_addr(nm))
+        e += 1
+    meths := __load64(__dyn_ds() + 24)
+    e = 0
+    while e < __load64(meths + 8):
+        if __load64(__load64(meths + 40) + 8 * e) >= 0:
+            key := __as_str(__load64(__load64(meths + 24) + 8 * e))
+            g := __load64(__load64(meths + 32) + 8 * e)
+            h := __rf_findb(key, 35)
+            if h > 0 and __dyn_is(__load64(__globals_start() + 8 * g), 10):
+                ty := __nat_sub(key, 0, h)
+                if __rf_findb(ty, 64) < 0 and not __rf_has_str(out, ty):
+                    __rt_list_push(out, __str_addr(ty))
+        e += 1
+    __rf_sort_strs(out)
+    return __rf_str_list(out)
+
+func __nat__native_reflect__class_info(n: int, a: int) -> int:
+    __nat_exact("class_info", n, 1)
+    nm := __nat_str("class_info", a, "le nom")
+    rec := __dyn_class_rec(nm)
+    if rec == 0 and __load64(__rf_methods_of(nm)) == 0:
+        return 0
+    d := __dyn_dict_new()
+    __dyn_dict_lit_set(d, __dyn_str("name"), __dyn_str(nm))
+    base := 0
+    ifs := __dyn_list_new(0)
+    if rec != 0:
+        if __load64(rec) != 0:
+            base = __dyn_str(__as_str(__load64(rec)))
+        ifs = __rf_str_list(__load64(rec + 8))
+    __dyn_dict_lit_set(d, __dyn_str("base"), base)
+    __dyn_dict_lit_set(d, __dyn_str("interfaces"), ifs)
+    __dyn_dict_lit_set(d, __dyn_str("is_class"), __dyn_bool(rec != 0))
+    return d
+
+func __nat__native_reflect__methods(n: int, a: int) -> int:
+    __nat_exact("methods", n, 1)
+    return __rf_str_list(__rf_methods_of(__nat_str("methods", a, "le nom")))
+
+func __nat__native_reflect__method(n: int, a: int, b: int) -> int:
+    __nat_exact("method", n, 2)
+    nm := __nat_str("method", b, "le nom")
+    if not __dyn_is(a, 12):
+        return 0
+    m := __dyn_find_method(__as_str(__load64(a + 8)), nm)
+    if m == 0:
+        return 0
+    return __dyn_bind(m, a)
+
+func __nat__native_reflect__method_arity(n: int, a: int, b: int) -> int:
+    __nat_exact("method_arity", n, 2)
+    t := __nat_str("method_arity", a, "le type")
+    m := __dyn_find_method(t, __nat_str("method_arity", b, "le nom"))
+    if m == 0:
+        return 0
+    l := __dyn_list_new(0)
+    __dyn_list_push(l, __dyn_int(__load64(m + 24)))
+    __dyn_list_push(l, __dyn_int(__load64(m + 32)))
+    return l
+
+func __nat__native_reflect__is_subtype(n: int, a: int, b: int) -> int:
+    __nat_exact("is_subtype", n, 2)
+    t := __nat_str("is_subtype", a, "le type")
+    return __dyn_bool(__dyn_subtype(t, __nat_str("is_subtype", b, "le type parent")))
+
+func __nat__native_reflect__function_name(n: int, a: int) -> int:
+    __nat_exact("function_name", n, 1)
+    if __dyn_is(a, 10) or __dyn_is(a, 11):
+        return __dyn_str(__as_str(__load64(a + 16)))
+    __dyn_err("TypeError", "'function_name' : la valeur doit être une fonction (obtenu '" + __dyn_type_name(a) + "')")
+    return 0
+
+func __nat__native_reflect__function_arity(n: int, a: int) -> int:
+    __nat_exact("function_arity", n, 1)
+    if not __dyn_is(a, 10):
+        return 0
+    l := __dyn_list_new(0)
+    __dyn_list_push(l, __dyn_int(__load64(a + 24)))
+    __dyn_list_push(l, __dyn_int(__load64(a + 32)))
+    return l
+
+
+func __rf_findb(s: str, c: int) -> int:
+    n := __nat_blen(s)
+    p := __nat_bp(s)
+    i := 0
+    while i < n:
+        if __load8(p + i) == c:
+            return i
+        i += 1
+    return -1
+
+# Dernière occurrence de « :: », ou -1.
+
+func __rf_rfind_colons(s: str) -> int:
+    p := __nat_bp(s)
+    i := __nat_blen(s) - 2
+    while i >= 0:
+        if __load8(p + i) == 58 and __load8(p + i + 1) == 58:
+            return i
+        i -= 1
+    return -1
+
+func __rf_after(s: str, k: int) -> str:
+    return __nat_sub(s, k, __nat_blen(s) - k)
+
+# Nom lisible d'une fonction (displayFunctionName de VM.cpp).

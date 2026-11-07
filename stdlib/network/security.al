@@ -97,6 +97,14 @@ func constant_time_equals(a, b):
 
 # ---------------------------------------------------------------- empreintes et HMAC
 
+# Sans OpenSSL : les exécutables natifs calculent SHA-256 (empreinte, HMAC, PBKDF2) dans leur runtime ; la VM sans
+# libcrypto lève une erreur, et l'on se replie alors sur le module crypto (écrit en Alex, plus lent).
+func _quiet(f):
+    try:
+        return f()
+    catch e:
+        return null
+
 func _check_algo(algo):
     if algo != "md5" and algo != "sha1" and algo != "sha256" and algo != "sha512" and algo != "sha384" and algo != "sha224":
         raise("ArgumentError", "security : algorithme inconnu '" + str(algo) + "'")
@@ -108,6 +116,8 @@ func digest(data, algo="sha256"):
     r := null
     if _t.supported():
         r = _t.digest(algo, raw)
+    elif algo == "sha256":
+        r = _quiet(() => _t.digest(algo, raw))
     if r != null:
         return r
     if algo == "sha224" or algo == "sha384":
@@ -124,6 +134,8 @@ func hmac(key, data, algo="sha256"):
     r := null
     if _t.supported():
         r = _t.hmac(algo, k, d)
+    elif algo == "sha256":
+        r = _quiet(() => _t.hmac(algo, k, d))
     if r != null:
         return r
     return _n.from_bytes(_crypto.hmac_bytes(algo, _n.to_bytes(k), _n.to_bytes(d)))
@@ -141,6 +153,8 @@ func pbkdf2(password, salt, iterations, length=32, algo="sha256"):
     r := null
     if _t.supported():
         r = _t.pbkdf2(algo, p, s, iterations, length)
+    elif algo == "sha256":
+        r = _quiet(() => _t.pbkdf2(algo, p, s, iterations, length))
     if r != null:
         return r
     return _n.from_bytes(_crypto.pbkdf2_bytes(_n.to_bytes(p), _n.to_bytes(s), iterations, length, algo))
