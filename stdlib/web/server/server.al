@@ -56,6 +56,7 @@ use web.server.concurrency as _conc
 use web.server.tls_server as _tls
 use web.server.websocket as _wsk
 use web.server.streaming as _stream
+use web.server.http2 as _h2
 use thread.offload as _offload
 use web.http.date_header as _date
 use web.http.protocol_writer as _pw
@@ -83,6 +84,7 @@ class Server:
         self.async_mode = false          # vrai pendant serve_forever_async / serve_async / serve_for_async
         self.websockets = []             # sessions WebSocket ouvertes (web.server.websocket.ServerWebSocket)
         self.streams = []                # réponses en flux en cours (web.server.streaming.Stream)
+        self.h2_sessions = []            # connexions HTTP/2 (web.server.http2.H2Session)
         if isinstance(app, _dispatch.Router):
             app.debug = app.debug or c.debug
 
@@ -117,6 +119,8 @@ class Server:
     func stop(graceful=true, grace=null):
         if not graceful:
             self._stop_accepting()
+            for h in self.h2_sessions:
+                h.close()
             self.manager.close_all()
             self.shutdown.request("stop", 0)
             self.shutdown.finish()
@@ -214,6 +218,9 @@ class Server:
         for ws in self.websockets:
             if ws.is_busy():
                 return 0.002             # session qui attend autre chose que son socket (minuteur, E/S)
+        for h in self.h2_sessions:
+            if h.waiting():
+                return 0
         if _offload.pending() > 0:
             return 0.002                 # calculs délégués à des fils : résultats relevés toutes les 2 ms
         if len(self.streams) > 0:
@@ -241,6 +248,9 @@ class Server:
     func _tasks_progressing():
         if len(self.waiting) > 0:
             return true
+        for h in self.h2_sessions:
+            if h.waiting():
+                return true
         for ws in self.websockets:
             if ws.is_busy():
                 return true
@@ -262,7 +272,16 @@ class Server:
         if self.shutdown.is_draining():
             self._stop_accepting()
             self.manager.close_idle()
-            if self.shutdown.should_finish(self.manager):
+            h2_busy := false
+            for h in self.h2_sessions:
+                h.shutdown()
+                if h.active() == 0:
+                    h.close()
+                else:
+                    h2_busy = true
+            if (self.shutdown.should_finish(self.manager) and not h2_busy) or self.shutdown.remaining() <= 0:
+                for h in self.h2_sessions:
+                    h.close()
                 self.manager.close_all()
                 self.shutdown.finish()
                 return
@@ -274,6 +293,12 @@ class Server:
             append(socks, self.listener.socket)
         for c in self.manager.readable_candidates():
             append(socks, c.raw_socket())
+        live := []
+        for h in self.h2_sessions:
+            if not h.closed:
+                append(live, h)
+                append(socks, h.raw_socket())
+        self.h2_sessions = live
         for ws in self.websockets:
             if ws.wake != null and not ws.closed:
                 if ws.conn.has_buffered_input():
@@ -289,13 +314,17 @@ class Server:
                 c := self.manager.by_socket(s)
                 if c != null:
                     self._read(c)
-                else:
+                elif not self._wake_h2(s):
                     self._wake_websocket(s)
         for c in self.manager.all():
             if c.has_buffered_input() and not c.closed:
                 self._read(c)
         _offload.poll()
         self._complete()
+        for h in self.h2_sessions:
+            if h.conn.has_buffered_input():
+                h.on_readable()          # TLS : octets déjà déchiffrés, le socket brut ne se signalera plus
+            h.poll()
         self._process(tick)
         self._expire()
         for st in self.streams:
@@ -335,6 +364,17 @@ class Server:
                         ignored := e2
                     continue
             conn := _conn.ServerConnection(s, addr, self.config.tls != null, self.config.limits, local)
+            if self.config.tls != null:
+                alpn := null
+                try:
+                    alpn = s.alpn
+                catch e:
+                    alpn = null
+                if alpn == "h2":
+                    self._start_h2(conn, "")
+                    continue
+            else:
+                conn.h2c = self.config.http2
             self.manager.add(conn)
             self._read(conn)
 
@@ -342,6 +382,10 @@ class Server:
         n := 0
         try:
             n = conn.read_available()
+            if conn.h2_initial != null:
+                self.manager.detach(conn)
+                self._start_h2(conn, conn.h2_initial)
+                return
         catch e:
             st := _rp.error_status(e)
             self.metrics.protocol_error()
@@ -663,6 +707,56 @@ class Server:
             if x != st:
                 append(kept, x)
         self.streams = kept
+
+    # ---------------------------------------------------------------- HTTP/2 (web.server.http2)
+
+    func _start_h2(conn, initial):
+        self.metrics.http2_sessions += 1
+        h := _h2.H2Session(conn, self, initial)
+        append(self.h2_sessions, h)
+        h.on_readable()
+
+    func _wake_h2(sock):
+        for h in self.h2_sessions:
+            if h.raw_socket() == sock:
+                h.on_readable()
+                return true
+        return false
+
+    # Requête d'un flux HTTP/2 : mêmes contrôles et même application qu'en HTTP/1.1 ; Response ou tâche.
+    func _h2_call(req):
+        c := self.config
+        if not _rp.host_allowed(req, c.allowed_hosts):
+            return _dispatch.error_response(req, 421, "hôte non servi ici")
+        if c.trusted_proxies != null:
+            req.state["client_ip"] = _rp.client_ip(req, c.trusted_proxies)
+            req.state["scheme"] = _rp.scheme(req, c.trusted_proxies)
+        else:
+            req.state["client_ip"] = req.remote_address[0] if req.remote_address != null else null
+            req.state["scheme"] = c.scheme()
+        req.state["server"] = self
+        req.state["http_version"] = "2"
+        resp := self._call_app(req)
+        self._collect_router_errors()
+        if _aio.is_future(resp) and not self.async_mode:
+            _aio.cancel(resp)
+            self._record_error("ServerError : gestionnaire async servi par une boucle synchrone (utiliser serve_forever_async, serve_async ou web.server.serve_async)")
+            return _dispatch.error_response(req, 500, null)
+        return resp
+
+    func _h2_done(req, resp, t0, sent):
+        self.handled += 1
+        dt := _time.monotonic() - t0
+        self.metrics.request_done(req.method, resp.status, dt, _s.byte_len(req.body), sent)
+        self._log(req, resp, sent, dt)
+
+    # Réponse en flux (SSE) sur un flux HTTP/2 : même Stream et même producteur qu'en HTTP/1.1.
+    func _h2_flux(pipe, req, info):
+        st := _stream.Stream(pipe, req, false, info["sse"], info["keepalive"])
+        append(self.streams, st)
+        self.metrics.streams_opened += 1
+        self._stream_session(st, info["producer"])
+        return st
 
     # Termine tous les flux en cours (arrêt du serveur) : les producteurs voient flux.closed.
     func close_streams():

@@ -36,6 +36,7 @@ class ServerConfig:
         self.keep_alive = _keep.KeepAlivePolicy(true, 15, 1000)
         self.policy = _conc.Policy()
         self.tls = null                       # web.server.tls_server.TlsServerConfig pour HTTPS
+        self.http2 = true                     # HTTP/2 en clair (h2c, préface) ; sur TLS : ALPN « h2 » (web.server.http2)
         self.server_name = DEFAULT_SERVER_NAME   # en-tête Server (false : absent)
         self.allowed_hosts = null             # null : tout Host accepté
         self.trusted_proxies = null           # IP / préfixes des mandataires de confiance

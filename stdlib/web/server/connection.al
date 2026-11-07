@@ -17,6 +17,7 @@
 
 from core use len, type
 from collections use append
+use web.server.http2 as _h2
 use string as _s
 use time as _time
 use web.http.protocol_parser as _pp
@@ -47,6 +48,8 @@ class ServerConnection:
         self.eof = false
         self.in_flight = null            # [requête, futur, début] : réponse d'un gestionnaire async attendue
         self.outgoing = null             # envoi de fichier en cours, morceau par morceau (web.server.response_writer)
+        self.h2c = false                 # vrai : une préface HTTP/2 en début de connexion bascule en HTTP/2
+        self.h2_initial = null           # octets reçus quand la préface HTTP/2 a été reconnue
 
     # Vrai si la connexion attend la réponse d'un gestionnaire async (ses requêtes suivantes patientent, pour
     # que les réponses partent dans l'ordre des requêtes).
@@ -94,6 +97,10 @@ class ServerConnection:
                     return -1
                 break
             n := _s.byte_len(data)
+            if self.h2c and self.bytes_in == 0 and _h2.looks_like_preface(data):
+                self.h2_initial = data
+                self.bytes_in += n
+                return n
             total += n
             self.bytes_in += n
             self.last_activity = _time.monotonic()
