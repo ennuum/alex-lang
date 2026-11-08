@@ -17,6 +17,9 @@ use crypto.x25519 as x25519
 use network.tcp as tcp
 use network.tls13 as tls13
 use concurrency.thread as thread
+use thread.offload as offload
+use asyncio as aio
+use time
 
 const D := "tests/stdlib2/data/tls/"
 
@@ -189,6 +192,51 @@ res := serveur(lst, tls13.context(D + "p256.pem", D + "p256.key"), 0)
 fil.join(20.0)
 lst.close()
 t.check(res[0] == "erreur" and s.contains(res[2], "ne parle pas TLS"), "requête en clair refusée")
+
+# poignée de main serveur sans attente (server_step) : calcul sur un fil de thread.offload
+class FilOffload:
+    func init():
+        self.soumis = 0
+
+    func submit(fn, args):
+        self.soumis += 1
+        return offload.submit(fn, args)
+
+    func done(h):
+        offload.poll()
+        return aio.done(h)
+
+    func result(h):
+        return aio.result(h)
+
+func serveur_nb(lst, ctx):
+    sock := lst.socket.accept(20.0)[0]
+    ts := tls13.TlsSocket13(sock, ctx)
+    ex := FilOffload()
+    etats := []
+    t0 := time.monotonic()
+    while time.monotonic() - t0 < 20.0:
+        r := ts.server_step(ex)
+        if len(etats) == 0 or etats[len(etats) - 1] != r:
+            append(etats, r)
+        if r == "done":
+            break
+        time.sleep(0.001)
+    conn := tcp.Connection(ts)
+    l := conn.read_line(20.0)
+    conn.write("re " + l + " sni=" + str(ts.server_name) + "\n")
+    conn.close()
+    return [etats, ex.soumis, ts.cipher]
+
+for cert in [["p256.pem", "p256.key", {}], ["rsa.pem", "rsa.key", {"groups": [23]}]]:
+    lst2 := tcp.listen("127.0.0.1", 0)
+    ctx2 := tls13.ServerContext(D + cert[0], D + cert[1], ["http/1.1"], cert[2])
+    f2 := thread.spawn(client, [lst2.port(), {"host": "localhost", "alpn": ["http/1.1"], "verify": true, "ca": D + cert[0], "big": 0}])
+    sr := serveur_nb(lst2, ctx2)
+    cr := f2.join(30.0)
+    lst2.close()
+    t.eq(cr[4], "re bonjour sni=localhost", "server_step " + cert[0] + " : échange")
+    t.check(sr[1] == 1 and "busy" in sr[0] and sr[0][len(sr[0]) - 1] == "done", "server_step " + cert[0] + " : calcul sur un fil " + str(sr[0]))
 
 t.check(ax.has("x25519") or os.getenv("ALEX_CRYPTO_ACCEL") == "0", "calcul du runtime disponible")
 t.summary("test_tls13")

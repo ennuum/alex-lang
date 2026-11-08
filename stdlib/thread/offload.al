@@ -44,6 +44,14 @@ func _pool():
 func run(fn, args=null):
     return run_on(_pool(), fn, args)
 
+# Comme run, sans tâche async : rend la promesse (asyncio.future) que poll() termine ; pour une boucle qui relève
+# elle-même les résultats (web.server : poignées de main TLS). asyncio.done / result pour la lire.
+func submit(fn, args=null):
+    tf := _pool().submit(fn, args if args != null else [])
+    promise := _aio.future()
+    append(_state["pending"], [_pool(), tf, promise])
+    return promise
+
 # Comme run, sur une réserve donnée (thread.thread_pool.ThreadPool).
 func run_on(pool, fn, args=null):
     tf := pool.submit(fn, args if args != null else [])

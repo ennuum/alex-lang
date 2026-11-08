@@ -307,6 +307,7 @@ class ServerContext:
         self.cert_file = cert_file
         self.key_file = key_file
         self.alpn = alpn
+        self.options = options
         o := options if options != null else {}
         self.suites = o["suites"] if "suites" in o else SUITE_ORDER
         self.groups = o["groups"] if "groups" in o else GROUP_ORDER
@@ -514,6 +515,99 @@ func _server_hello(random, session_id, suite, exts):
     body := _u16(771) + random + _vec8(session_id) + _u16(suite) + [0] + _vec16(exts)
     return _msg(HS_SERVER_HELLO, body)
 
+# ---------------------------------------------------------------- enregistrements et premier vol du serveur
+
+# Enregistrement(s) de type ct pour data (liste d'octets) : en clair si aead est null, sinon protégés (str).
+func _protect(aead, ct, data):
+    out := []
+    i := 0
+    while true:
+        n := len(data) - i
+        if n > MAX_PLAINTEXT:
+            n = MAX_PLAINTEXT
+        chunk := data[i:i + n]
+        if aead == null:
+            append(out, _s.byte_pack([ct, 3, 3] + _u16(len(chunk)) + chunk))
+        else:
+            header := _s.byte_pack([CT_APP, 3, 3] + _u16(len(chunk) + 17))
+            append(out, header)
+            append(out, aead.seal_str(_s.byte_pack(chunk + [ct]), header))
+        i += n
+        if i >= len(data):
+            break
+    return _s.byte_join(out)
+
+# Calcul lourd de la poignée de main serveur, sans socket : échange de clés, ServerHello, EncryptedExtensions,
+# Certificate, CertificateVerify (signature), Finished, secrets. args (copiables) : [suite, groupe, part du
+# client, schéma de signature, legacy_session_id, transcript jusqu'au dernier ClientHello, ALPN choisi,
+# change_cipher_spec déjà envoyé] (octets en str). Rend ["ok", vol (str), s_hs, c_hs, c_ap, s_ap, Finished
+# attendu du client (str), numéro de séquence d'écriture] ou ["erreur", type, message] : jamais d'exception, pour
+# que le message traverse les fils intact.
+func _flight(ctx, args):
+    try:
+        return _flight_unsafe(ctx, args)
+    catch e:
+        return ["erreur", e.type, e.message]
+
+func _flight_unsafe(ctx, args):
+    suite_code := args[0]
+    group := args[1]
+    client_share := _s.byte_unpack(args[2])
+    scheme := args[3]
+    session_id := _s.byte_unpack(args[4])
+    transcript := _s.byte_unpack(args[5])
+    alpn := args[6]
+    ccs_sent := args[7]
+    suite := SUITES[suite_code]
+    h := suite["hash"]
+    kx := _key_exchange(group, client_share)
+    sh := _server_hello(_rnd.random_bytes(32), session_id, suite_code,
+                        _ext(EXT_SUPPORTED_VERSIONS, _u16(772)) + _ext(EXT_KEY_SHARE, _u16(group) + _vec16(kx[0])))
+    transcript = transcript + sh
+    flight := _protect(null, CT_HANDSHAKE, sh)
+    if len(session_id) > 0 and not ccs_sent:
+        flight = flight + _protect(null, CT_CCS, [1])
+    hl := len(_hash(h, []))
+    zeros := [0] * hl
+    empty_hash := _hash(h, [])
+    early := _hkdf.extract(h, zeros, zeros)
+    hs := _hkdf.extract(h, derive_secret(h, early, "derived", empty_hash), kx[1])
+    th := _hash(h, transcript)
+    c_hs := derive_secret(h, hs, "c hs traffic", th)
+    s_hs := derive_secret(h, hs, "s hs traffic", th)
+    exts := []
+    if alpn != null:
+        exts = _ext(EXT_ALPN, _vec16(_vec8(_c.utf8_encode(alpn))))
+    ee := _msg(HS_ENCRYPTED_EXTENSIONS, _vec16(exts))
+    entries := []
+    for d in ctx.chain:
+        entries = entries + _vec24(d) + [0, 0]
+    cert := _msg(HS_CERTIFICATE, [0] + _vec24(entries))
+    transcript = transcript + ee + cert
+    content := [32] * 64 + _c.utf8_encode("TLS 1.3, server CertificateVerify") + [0] + _hash(h, transcript)
+    cv := _msg(HS_CERTIFICATE_VERIFY, _u16(scheme) + _vec16(ctx.sign(scheme, content)))
+    transcript = transcript + cv
+    fin := _msg(HS_FINISHED, _hmac(h, expand_label(h, s_hs, "finished", [], hl), _hash(h, transcript)))
+    transcript = transcript + fin
+    w := _Aead(suite, s_hs)
+    flight = flight + _protect(w, CT_HANDSHAKE, ee + cert + cv + fin)
+    th2 := _hash(h, transcript)
+    master := _hkdf.extract(h, derive_secret(h, hs, "derived", empty_hash), zeros)
+    c_ap := derive_secret(h, master, "c ap traffic", th2)
+    s_ap := derive_secret(h, master, "s ap traffic", th2)
+    expected := _hmac(h, expand_label(h, c_hs, "finished", [], hl), th2)
+    P := _s.byte_pack
+    return ["ok", flight, P(s_hs), P(c_hs), P(c_ap), P(s_ap), P(expected), w.seq]
+
+# Point d'entrée de premier niveau pour un fil (thread.offload) : contexte relu (et gardé) dans le fil.
+func server_flight(cert_file, key_file, alpn, options, args):
+    ctx := null
+    try:
+        ctx = context(cert_file, key_file, alpn, options)
+    catch e:
+        return ["erreur", e.type, e.message]
+    return _flight(ctx, args)
+
 # ---------------------------------------------------------------- session
 
 class TlsSocket13:
@@ -552,6 +646,7 @@ class TlsSocket13:
         self.client_opts = null
         self.peer_certificates = null      # client : chaîne reçue du serveur (crypto.x509.Certificate)
         self.strict_eof = false            # vrai : une coupure sans close_notify est une erreur (troncature)
+        self.hs = null                     # serveur : état de la poignée de main pas à pas (server_step)
 
     # ------------------------------------------------------------ enregistrements
 
@@ -564,23 +659,7 @@ class TlsSocket13:
 
     # Enregistrement(s) de type ct pour data (liste d'octets), chiffrés si une clé d'écriture est en place.
     func _records(ct, data):
-        out := []
-        i := 0
-        while true:
-            n := len(data) - i
-            if n > MAX_PLAINTEXT:
-                n = MAX_PLAINTEXT
-            chunk := data[i:i + n]
-            if self.write_aead == null:
-                append(out, self._record(ct, chunk))
-            else:
-                header := _s.byte_pack([CT_APP, 3, 3] + _u16(len(chunk) + 17))
-                append(out, header)
-                append(out, self.write_aead.seal_str(_s.byte_pack(chunk + [ct]), header))
-            i += n
-            if i >= len(data):
-                break
-        return _s.byte_join(out)
+        return _protect(self.write_aead, ct, data)
 
     # Enregistrement complet en tête de rbuf : [type, octets du contenu (str), en-tête (liste)] ou null.
     func _take_record():
@@ -645,30 +724,40 @@ class TlsSocket13:
             raise("TlsError", "tls.handshake(serveur) : connexion fermée par le client pendant la poignée de main")
         self.rbuf = self.rbuf + data
 
-    # Prochain message de poignée de main : [type, corps, octets complets].
+    # Message de poignée de main complet déjà réassemblé, ou null.
+    func _take_hs_message():
+        if len(self.hsbuf) >= 4:
+            l := (self.hsbuf[1] << 16) | (self.hsbuf[2] << 8) | self.hsbuf[3]
+            if l > _MAX_HANDSHAKE:
+                _abort(ALERT_DECODE_ERROR, "message de poignée de main trop long")
+            if len(self.hsbuf) >= 4 + l:
+                full := self.hsbuf[0:4 + l]
+                self.hsbuf = self.hsbuf[4 + l:len(self.hsbuf)]
+                return [full[0], full[4:4 + l], full]
+        return null
+
+    func _absorb_handshake_record(rec):
+        p := self._unprotect(rec)
+        if p == null:
+            return
+        if p[0] == CT_ALERT:
+            self._on_alert(_s.byte_unpack(p[1]))
+            raise("TlsError", "tls.handshake : le pair a fermé la connexion")
+        if p[0] != CT_HANDSHAKE or p[1] == "":
+            _abort(ALERT_UNEXPECTED_MESSAGE, "message de poignée de main attendu")
+        self.hsbuf = self.hsbuf + _s.byte_unpack(p[1])
+
+    # Prochain message de poignée de main (attente jusqu'à deadline) : [type, corps, octets complets].
     func _read_handshake(deadline):
         while true:
-            if len(self.hsbuf) >= 4:
-                l := (self.hsbuf[1] << 16) | (self.hsbuf[2] << 8) | self.hsbuf[3]
-                if l > _MAX_HANDSHAKE:
-                    _abort(ALERT_DECODE_ERROR, "message de poignée de main trop long")
-                if len(self.hsbuf) >= 4 + l:
-                    full := self.hsbuf[0:4 + l]
-                    self.hsbuf = self.hsbuf[4 + l:len(self.hsbuf)]
-                    return [full[0], full[4:4 + l], full]
+            m := self._take_hs_message()
+            if m != null:
+                return m
             rec := self._take_record()
             if rec == null:
                 self._fill(deadline)
                 continue
-            p := self._unprotect(rec)
-            if p == null:
-                continue
-            if p[0] == CT_ALERT:
-                self._on_alert(_s.byte_unpack(p[1]))
-                raise("TlsError", "tls.handshake(serveur) : le client a fermé la connexion")
-            if p[0] != CT_HANDSHAKE or p[1] == "":
-                _abort(ALERT_UNEXPECTED_MESSAGE, "message de poignée de main attendu")
-            self.hsbuf = self.hsbuf + _s.byte_unpack(p[1])
+            self._absorb_handshake_record(rec)
 
     func _on_alert(b):
         if len(b) != 2:
@@ -693,27 +782,124 @@ class TlsSocket13:
 
     func handshake(timeout=10.0):
         deadline := _time.monotonic() + (timeout if timeout != null else 3600.0)
-        side := "client" if self.is_client else "serveur"
         try:
             if self.is_client:
                 self._client_handshake(deadline)
             else:
                 self._handshake(deadline)
         catch e:
-            if e.type == "TlsAlert":
-                a := _split_abort(e.message)
-                if a[0] >= 0:
-                    self._send_alert(a[0])
-                self.failed = a[1]
-                raise("TlsError", "tls.handshake(" + side + ") : " + a[1] + (" (alerte " + _alert_name(a[0]) + ")" if a[0] >= 0 else ""))
-            raise(e)
+            self._handshake_failed(e)
+        if not self.is_client:
+            self._server_done()
         self.handshaking = false
+
+    # TlsAlert -> alerte envoyée au pair, puis TlsError ; les autres erreurs passent telles quelles.
+    func _handshake_failed(e):
+        side := "client" if self.is_client else "serveur"
+        if e.type == "TlsAlert":
+            a := _split_abort(e.message)
+            if a[0] >= 0:
+                self._send_alert(a[0])
+            self.failed = a[1]
+            raise("TlsError", "tls.handshake(" + side + ") : " + a[1] + (" (alerte " + _alert_name(a[0]) + ")" if a[0] >= 0 else ""))
+        raise(e)
+
+    # Poignée de main serveur bloquante (délai deadline) : la machine à états, calcul sur place.
+    func _handshake(deadline):
+        while true:
+            r := self._server_step(null)
+            if r == "done":
+                return
+            left := deadline - _time.monotonic()
+            if left <= 0:
+                raise("TimeoutError", "tls.handshake(serveur) : délai dépassé")
+            if r == "write":
+                self._flush(left)
+            else:
+                self._fill(deadline)
+
+    # Poignée de main serveur SANS ATTENTE, pour une boucle d'événements (web.server). Chaque appel avance autant
+    # que possible avec les octets déjà arrivés et rend :
+    #   « read »   octets du client attendus (attendre que le socket brut soit lisible)
+    #   « write »  envoi en attente (réseau plein)
+    #   « busy »   calcul en cours sur executor
+    #   « done »   connexion prête (send / recv / try_recv)
+    # executor : objet {submit(fn, args) -> poignée, done(poignée), result(poignée)} qui exécute server_flight
+    # ailleurs (web.server : un fil de thread.offload), de sorte que la boucle ne porte ni l'échange de clés ni la
+    # signature (RSA : 35 ms) ; null : calcul sur place. TlsError (alerte envoyée) ou ValueError en cas d'échec.
+    func server_step(executor=null):
+        r := null
+        try:
+            r = self._server_step(executor)
+        catch e:
+            self._handshake_failed(e)
+        if r == "done" and self.handshaking:
+            self._server_done()
+            self.handshaking = false
+        return r
+
+    func _server_done():
         if self.ctx != null:
             self.ctx.handshakes += 1
 
-    func _handshake(deadline):
+    # Message de poignée de main complet sans attendre : [type, corps, octets complets], ou null.
+    func _poll_handshake():
+        while true:
+            m := self._take_hs_message()
+            if m != null:
+                return m
+            rec := self._take_record()
+            if rec == null:
+                data := self.socket.try_recv(65536)
+                if data == null:
+                    return null
+                if data == "":
+                    self.eof = true
+                    raise("TlsError", "tls.handshake(serveur) : connexion fermée par le client pendant la poignée de main")
+                self.rbuf = self.rbuf + data
+                continue
+            self._absorb_handshake_record(rec)
+
+    func _server_step(executor):
+        if self.hs == null:
+            self.hs = {"state": "hello"}
+        hs := self.hs
+        while true:
+            st := hs["state"]
+            if self.out != "" and not self._flush(0):
+                if st != "busy":
+                    return "write"
+            if st == "hello" or st == "hello2":
+                m := self._poll_handshake()
+                if m == null:
+                    return "read"
+                if st == "hello":
+                    self._on_client_hello(m)
+                else:
+                    self._on_second_hello(m)
+            elif st == "compute":
+                args := self._flight_args()
+                if executor == null:
+                    self._on_flight(_flight(self.ctx, args))
+                else:
+                    hs["job"] = executor.submit(server_flight, [self.ctx.cert_file, self.ctx.key_file, self.ctx.alpn, self.ctx.options, args])
+                    hs["state"] = "busy"
+            elif st == "busy":
+                if not executor.done(hs["job"]):
+                    return "busy"
+                self._on_flight(executor.result(hs["job"]))
+            elif st == "finished":
+                m := self._poll_handshake()
+                if m == null:
+                    return "read"
+                self._on_client_finished(m)
+                hs["state"] = "done"
+            else:
+                return "done"
+
+    func _on_client_hello(m):
         ctx := self.ctx
-        m := self._read_handshake(deadline)
+        hs := self.hs
         if m[0] != HS_CLIENT_HELLO:
             _abort(ALERT_UNEXPECTED_MESSAGE, "ClientHello attendu")
         hello := _parse_client_hello(m[1])
@@ -722,8 +908,7 @@ class TlsSocket13:
         suite_code := _choose_suite(hello, ctx.suites)
         if suite_code == null:
             _abort(ALERT_HANDSHAKE_FAILURE, "aucune suite TLS 1.3 commune (AES-GCM, ChaCha20-Poly1305)")
-        suite := SUITES[suite_code]
-        h := suite["hash"]
+        h := SUITES[suite_code]["hash"]
         if not (EXT_SIGNATURE_ALGORITHMS in hello.exts):
             _abort(ALERT_MISSING_EXTENSION, "signature_algorithms absente")
         if not (EXT_SUPPORTED_GROUPS in hello.exts) or not (EXT_KEY_SHARE in hello.exts):
@@ -731,35 +916,53 @@ class TlsSocket13:
         scheme := ctx.signature_scheme(hello.sigalgs)
         if scheme == null:
             _abort(ALERT_HANDSHAKE_FAILURE, "aucun schéma de signature commun avec la clé du serveur (" + ctx.key.kind + ")")
-        transcript := m[2]
         choice := _choose_group(hello, ctx.groups)
         if choice == null:
             _abort(ALERT_HANDSHAKE_FAILURE, "aucun groupe commun (x25519, secp256r1, secp384r1)")
-        ccs_sent := false
-        if choice[1] == null:
-            # HelloRetryRequest (RFC 8446, 4.1.4) : le transcript commence par l'empreinte du premier ClientHello
-            hrr := _server_hello(_HRR_RANDOM, hello.session_id, suite_code,
-                                 _ext(EXT_SUPPORTED_VERSIONS, _u16(772)) + _ext(EXT_KEY_SHARE, _u16(choice[0])))
-            transcript = _msg(HS_MESSAGE_HASH, _hash(h, transcript)) + hrr
-            self._raw_send(self._records(CT_HANDSHAKE, hrr), 5.0)
-            if len(hello.session_id) > 0:
-                self._raw_send(self._record(CT_CCS, [1]), 5.0)
-                ccs_sent = true
-            m = self._read_handshake(deadline)
-            if m[0] != HS_CLIENT_HELLO:
-                _abort(ALERT_UNEXPECTED_MESSAGE, "second ClientHello attendu")
-            hello2 := _parse_client_hello(m[1])
-            if len(self.hsbuf) > 0:
-                _abort(ALERT_UNEXPECTED_MESSAGE, "données après le ClientHello")
-            if hello2.session_id != hello.session_id or not (suite_code in hello2.suites):
-                _abort(ALERT_ILLEGAL_PARAMETER, "second ClientHello incohérent")
-            if len(hello2.shares) != 1 or hello2.shares[0][0] != choice[0]:
-                _abort(ALERT_ILLEGAL_PARAMETER, "second ClientHello : part du groupe demandé attendue")
-            if ctx.signature_scheme(hello2.sigalgs) != scheme:
-                _abort(ALERT_ILLEGAL_PARAMETER, "second ClientHello incohérent (signatures)")
-            transcript = transcript + m[2]
-            hello = hello2
-            choice = [choice[0], hello2.shares[0][1]]
+        hs["hello"] = hello
+        hs["suite"] = suite_code
+        hs["scheme"] = scheme
+        hs["choice"] = choice
+        hs["transcript"] = m[2]
+        hs["ccs"] = false
+        if choice[1] != null:
+            hs["state"] = "compute"
+            return
+        # HelloRetryRequest (RFC 8446, 4.1.4) : le transcript commence par l'empreinte du premier ClientHello
+        hrr := _server_hello(_HRR_RANDOM, hello.session_id, suite_code,
+                             _ext(EXT_SUPPORTED_VERSIONS, _u16(772)) + _ext(EXT_KEY_SHARE, _u16(choice[0])))
+        hs["transcript"] = _msg(HS_MESSAGE_HASH, _hash(h, m[2])) + hrr
+        self.out = self.out + self._records(CT_HANDSHAKE, hrr)
+        if len(hello.session_id) > 0:
+            self.out = self.out + self._record(CT_CCS, [1])
+            hs["ccs"] = true
+        hs["state"] = "hello2"
+
+    func _on_second_hello(m):
+        hs := self.hs
+        hello := hs["hello"]
+        choice := hs["choice"]
+        if m[0] != HS_CLIENT_HELLO:
+            _abort(ALERT_UNEXPECTED_MESSAGE, "second ClientHello attendu")
+        hello2 := _parse_client_hello(m[1])
+        if len(self.hsbuf) > 0:
+            _abort(ALERT_UNEXPECTED_MESSAGE, "données après le ClientHello")
+        if hello2.session_id != hello.session_id or not (hs["suite"] in hello2.suites):
+            _abort(ALERT_ILLEGAL_PARAMETER, "second ClientHello incohérent")
+        if len(hello2.shares) != 1 or hello2.shares[0][0] != choice[0]:
+            _abort(ALERT_ILLEGAL_PARAMETER, "second ClientHello : part du groupe demandé attendue")
+        if self.ctx.signature_scheme(hello2.sigalgs) != hs["scheme"]:
+            _abort(ALERT_ILLEGAL_PARAMETER, "second ClientHello incohérent (signatures)")
+        hs["transcript"] = hs["transcript"] + m[2]
+        hs["hello"] = hello2
+        hs["choice"] = [choice[0], hello2.shares[0][1]]
+        hs["state"] = "compute"
+
+    # Arguments de server_flight (copiables d'un fil à l'autre : nombres, str, listes).
+    func _flight_args():
+        hs := self.hs
+        hello := hs["hello"]
+        ctx := self.ctx
         alpn := null
         if hello.alpn != null and ctx.alpn != null and len(ctx.alpn) > 0:
             for p in ctx.alpn:
@@ -767,66 +970,47 @@ class TlsSocket13:
                     alpn = p
             if alpn == null:
                 _abort(ALERT_NO_APPLICATION_PROTOCOL, "aucun protocole ALPN commun (proposés : " + _s.join(", ", hello.alpn) + ")")
-        kx := _key_exchange(choice[0], choice[1])
-        sh := _server_hello(_rnd.random_bytes(32), hello.session_id, suite_code,
-                            _ext(EXT_SUPPORTED_VERSIONS, _u16(772)) + _ext(EXT_KEY_SHARE, _u16(choice[0]) + _vec16(kx[0])))
-        transcript = transcript + sh
-        flight := self._records(CT_HANDSHAKE, sh)
-        if len(hello.session_id) > 0 and not ccs_sent:
-            flight = flight + self._record(CT_CCS, [1])
-        # secrets de poignée de main
-        hl := len(_hash(h, []))
-        zeros := [0] * hl
-        empty_hash := _hash(h, [])
-        early := _hkdf.extract(h, zeros, zeros)
-        hs := _hkdf.extract(h, derive_secret(h, early, "derived", empty_hash), kx[1])
-        th := _hash(h, transcript)
-        c_hs := derive_secret(h, hs, "c hs traffic", th)
-        s_hs := derive_secret(h, hs, "s hs traffic", th)
+        hs["alpn"] = alpn
+        return [hs["suite"], hs["choice"][0], _s.byte_pack(hs["choice"][1]), hs["scheme"], _s.byte_pack(hello.session_id),
+                _s.byte_pack(hs["transcript"]), alpn, hs["ccs"]]
+
+    # Résultat de server_flight : premier vol à envoyer, clés de la suite de la poignée de main.
+    func _on_flight(res):
+        hs := self.hs
+        if res[0] != "ok":
+            if res[1] == "TlsAlert":
+                raise("TlsAlert", res[2])
+            raise(res[1], res[2])
+        suite := SUITES[hs["suite"]]
         self.suite = suite
-        self.write_aead = _Aead(suite, s_hs)
-        # EncryptedExtensions, Certificate, CertificateVerify, Finished
-        exts := []
-        if alpn != null:
-            p := _c.utf8_encode(alpn)
-            exts = _ext(EXT_ALPN, _vec16(_vec8(p)))
-        ee := _msg(HS_ENCRYPTED_EXTENSIONS, _vec16(exts))
-        entries := []
-        for d in ctx.chain:
-            entries = entries + _vec24(d) + [0, 0]
-        cert := _msg(HS_CERTIFICATE, [0] + _vec24(entries))
-        transcript = transcript + ee + cert
-        content := [32] * 64 + _c.utf8_encode("TLS 1.3, server CertificateVerify") + [0] + _hash(h, transcript)
-        cv := _msg(HS_CERTIFICATE_VERIFY, _u16(scheme) + _vec16(ctx.sign(scheme, content)))
-        transcript = transcript + cv
-        s_fin := _hmac(h, expand_label(h, s_hs, "finished", [], hl), _hash(h, transcript))
-        fin := _msg(HS_FINISHED, s_fin)
-        transcript = transcript + fin
-        flight = flight + self._records(CT_HANDSHAKE, ee + cert + cv + fin)
-        self._raw_send(flight, _max(deadline - _time.monotonic(), 0.5))
-        # secrets applicatifs, puis Finished du client
-        th2 := _hash(h, transcript)
-        master := _hkdf.extract(h, derive_secret(h, hs, "derived", empty_hash), zeros)
-        c_ap := derive_secret(h, master, "c ap traffic", th2)
-        s_ap := derive_secret(h, master, "s ap traffic", th2)
-        self.read_aead = _Aead(suite, c_hs)
-        if hello.early_data:
+        self.write_aead = _Aead(suite, _s.byte_unpack(res[2]))
+        self.write_aead.seq = res[7]
+        self.read_aead = _Aead(suite, _s.byte_unpack(res[3]))
+        hs["c_ap"] = _s.byte_unpack(res[4])
+        hs["s_ap"] = _s.byte_unpack(res[5])
+        hs["expected"] = _s.byte_unpack(res[6])
+        if hs["hello"].early_data:
             self.early_budget = _EARLY_DATA_BUDGET
-        m = self._read_handshake(deadline)
+        self.out = self.out + res[1]
+        hs["state"] = "finished"
+
+    func _on_client_finished(m):
+        hs := self.hs
         if m[0] != HS_FINISHED:
             _abort(ALERT_UNEXPECTED_MESSAGE, "Finished du client attendu")
-        expected := _hmac(h, expand_label(h, c_hs, "finished", [], hl), th2)
-        if not _c.equals(m[1], expected):
+        if not _c.equals(m[1], hs["expected"]):
             _abort(ALERT_DECRYPT_ERROR, "Finished du client invalide")
         if len(self.hsbuf) > 0:
             _abort(ALERT_UNEXPECTED_MESSAGE, "données après le Finished du client")
-        self.read_aead = _Aead(suite, c_ap)
-        self.write_aead = _Aead(suite, s_ap)
+        suite := self.suite
+        self.read_aead = _Aead(suite, hs["c_ap"])
+        self.write_aead = _Aead(suite, hs["s_ap"])
         self.cipher = suite["name"]
-        self.alpn = alpn
-        self.server_name = hello.server_name
-        self.group = _GROUP_NAMES[choice[0]]
-        self.signature_scheme = scheme
+        self.alpn = hs["alpn"]
+        self.server_name = hs["hello"].server_name
+        self.group = _GROUP_NAMES[hs["choice"][0]]
+        self.signature_scheme = hs["scheme"]
+        self.hs = null
 
     # ------------------------------------------------------------ poignée de main client
 

@@ -85,6 +85,8 @@ class Server:
         self.websockets = []             # sessions WebSocket ouvertes (web.server.websocket.ServerWebSocket)
         self.streams = []                # réponses en flux en cours (web.server.streaming.Stream)
         self.h2_sessions = []            # connexions HTTP/2 (web.server.http2.H2Session)
+        self.tls_pending = []            # poignées de main TLS en cours : [session, adresse, locale, échéance, état]
+        self.tls_executor = _TlsExecutor()
         if isinstance(app, _dispatch.Router):
             app.debug = app.debug or c.debug
 
@@ -272,6 +274,7 @@ class Server:
         if self.shutdown.is_draining():
             self._stop_accepting()
             self.manager.close_idle()
+            self._drop_tls_pending()
             h2_busy := false
             for h in self.h2_sessions:
                 h.shutdown()
@@ -291,6 +294,13 @@ class Server:
         socks := []
         if self.accepting:
             append(socks, self.listener.socket)
+        if len(self.tls_pending) > 0:
+            # poignées de main : on attend le client (lecture), ou on repasse vite (calcul sur un fil, envoi)
+            for p in self.tls_pending:
+                if p[4] == "read":
+                    append(socks, p[0].socket)
+                elif timeout > 0.002:
+                    timeout = 0.002
         for c in self.manager.readable_candidates():
             append(socks, c.raw_socket())
         live := []
@@ -314,8 +324,11 @@ class Server:
                 c := self.manager.by_socket(s)
                 if c != null:
                     self._read(c)
-                elif not self._wake_h2(s):
+                elif not self._wake_h2(s) and not self._is_tls_pending(s):
                     self._wake_websocket(s)
+        _offload.poll()
+        if len(self.tls_pending) > 0:
+            self._advance_tls()
         for c in self.manager.all():
             if c.has_buffered_input() and not c.closed:
                 self._read(c)
@@ -360,6 +373,19 @@ class Server:
                 ignored := e
             s := sock
             if self.config.tls != null:
+                ts := null
+                try:
+                    ts = self.config.tls.start(sock)
+                catch e:
+                    ts = null
+                if ts != null:
+                    # poignée de main sans attente : avancée à chaque tour (_advance_tls), calcul sur un fil
+                    if len(self.tls_pending) >= self.config.limits.max_connections:
+                        self.metrics.connection_rejected()
+                        sock.close()
+                        continue
+                    append(self.tls_pending, [ts, addr, local, _time.monotonic() + self.config.timeouts.handshake, "read"])
+                    continue
                 try:
                     s = self.config.tls.wrap(sock, self.config.timeouts.handshake)
                 catch e:
@@ -369,20 +395,66 @@ class Server:
                     catch e2:
                         ignored := e2
                     continue
-            conn := _conn.ServerConnection(s, addr, self.config.tls != null, self.config.limits, local)
-            if self.config.tls != null:
-                alpn := null
+            self._open(s, addr, local)
+
+    # Connexion prête (en clair, ou TLS négociée) : HTTP/2 si ALPN l'a choisi, sinon HTTP/1.1 (h2c possible).
+    func _open(s, addr, local):
+        conn := _conn.ServerConnection(s, addr, self.config.tls != null, self.config.limits, local)
+        if self.config.tls != null:
+            alpn := null
+            try:
+                alpn = s.alpn
+            catch e:
+                alpn = null
+            if alpn == "h2":
+                self._start_h2(conn, "")
+                return
+        else:
+            conn.h2c = self.config.http2
+        self.manager.add(conn)
+        self._read(conn)
+
+    # Fait avancer les poignées de main TLS en cours (network.tls13.TlsSocket13.server_step) : la boucle ne fait que
+    # lire, écrire et assembler ; échange de clés et signature partent sur un fil (thread.offload) si
+    # tls.offload. Une poignée de main qui échoue ou dépasse timeouts.handshake ferme simplement la connexion.
+    func _advance_tls():
+        now := _time.monotonic()
+        ex := self.tls_executor if self.config.tls.offload else null
+        kept := []
+        for p in self.tls_pending:
+            ts := p[0]
+            r := null
+            try:
+                r = ts.server_step(ex)
+            catch e:
+                r = "failed"
+            if r == "done":
+                self._open(ts, p[1], p[2])
+                continue
+            if r == "failed" or now > p[3]:
+                self.metrics.tls_handshake_failures += 1
                 try:
-                    alpn = s.alpn
-                catch e:
-                    alpn = null
-                if alpn == "h2":
-                    self._start_h2(conn, "")
-                    continue
-            else:
-                conn.h2c = self.config.http2
-            self.manager.add(conn)
-            self._read(conn)
+                    ts.socket.close()
+                catch e2:
+                    ignored := e2
+                continue
+            p[4] = r
+            append(kept, p)
+        self.tls_pending = kept
+
+    func _is_tls_pending(sock):
+        for p in self.tls_pending:
+            if p[0].socket == sock:
+                return true
+        return false
+
+    func _drop_tls_pending():
+        for p in self.tls_pending:
+            try:
+                p[0].socket.close()
+            catch e:
+                ignored := e
+        self.tls_pending = []
 
     func _read(conn):
         n := 0
@@ -860,3 +932,16 @@ async func serve_async(app, host="127.0.0.1", port=8080, cfg=null):
 # Interrompt un gestionnaire avec une réponse d'erreur (voir server_errors.abort).
 func abort(status, message=null):
     _err.abort(status, message)
+
+# Exécuteur des poignées de main TLS (network.tls13.server_step) : thread.offload, résultats relevés par la boucle.
+class _TlsExecutor:
+    func submit(fn, args):
+        return _offload.submit(fn, args)
+
+    func done(h):
+        return _aio.done(h)
+
+    func result(h):
+        if _aio.failed(h):
+            return ["erreur", "TlsError", "calcul de la poignée de main interrompu"]
+        return _aio.result(h)

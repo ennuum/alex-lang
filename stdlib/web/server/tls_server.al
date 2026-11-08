@@ -24,7 +24,9 @@ use network.certificates as _certs
 use web.server.server_errors as _err
 
 class TlsServerConfig:
-    func init(cert_file, key_file, alpn=null, handshake_timeout=10.0):
+    # offload : avec l'implémentation ALEX, le calcul de la poignée de main (échange de clés, signature) part sur un
+    # fil (thread.offload) et la boucle du serveur continue de servir pendant ce temps.
+    func init(cert_file, key_file, alpn=null, handshake_timeout=10.0, offload=true):
         if cert_file == null or key_file == null:
             _err.config_error("TlsServerConfig", "cert_file et key_file sont requis")
         for f in [cert_file, key_file]:
@@ -34,12 +36,20 @@ class TlsServerConfig:
         self.key_file = key_file
         self.alpn = alpn if alpn != null else ["http/1.1"]
         self.handshake_timeout = handshake_timeout
+        self.offload = offload
         if _tls.server_backend() == "alex":
             # certificat et clé lus et contrôlés dès la configuration (et non à la première connexion)
             try:
                 _tls13.context(cert_file, key_file, self.alpn)
             catch e:
                 _err.config_error("TlsServerConfig", e.message)
+
+    # Poignée de main SANS ATTENTE (implémentation ALEX) : session à faire avancer par server_step(executor)
+    # (network.tls13) ; null avec OpenSSL, dont la poignée de main reste bloquante (wrap).
+    func start(sock):
+        if _tls.server_backend() != "alex":
+            return null
+        return _tls13.TlsSocket13(sock, _tls13.context(self.cert_file, self.key_file, self.alpn))
 
     # Poignée de main serveur sur un socket accepté ; renvoie le TlsSocket (TlsError en cas d'échec).
     func wrap(sock, timeout=null):
