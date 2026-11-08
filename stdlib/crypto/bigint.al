@@ -18,6 +18,8 @@
 
 from core use len, type
 from collections use append
+use string as _s
+use crypto.accel as _ax
 
 const BITS := 26
 const BASE := 67108864
@@ -394,7 +396,7 @@ class Montgomery:
             inv = (inv * (2 - m[0] * inv)) & MASK
             k += 1
         self.mprime = (BASE - inv) & MASK
-        self.r2 = mod(shl([1], 2 * BITS * self.n), m)
+        self.r2 = null                   # R^2 mod m, calculé au premier to_mont
 
     func _pad(x):
         if len(x) == self.n:
@@ -434,6 +436,8 @@ class Montgomery:
         return r
 
     func to_mont(x):
+        if self.r2 == null:
+            self.r2 = mod(shl([1], 2 * BITS * self.n), self.m)
         return self.mul(mod(x, self.m), self.r2)
 
     func from_mont(x):
@@ -441,6 +445,11 @@ class Montgomery:
 
     # base^e mod m, fenêtre fixe de 4 bits.
     func pow(base, e):
+        if _ax.has("modpow") and len(self.m) > 1:
+            # calcul du runtime (crypto.accel) : entrées et sortie en octets big-endian
+            nb := (bit_length(self.m) + 7) // 8
+            r := _ax.native().modpow(_s.byte_pack(to_bytes(mod(base, self.m), nb)), _s.byte_pack(to_bytes(e)), _s.byte_pack(to_bytes(self.m, nb)))
+            return from_bytes(_s.byte_unpack(r))
         one := self.to_mont([1])
         if len(e) == 0:
             return mod([1], self.m)
@@ -478,6 +487,10 @@ func modpow(base, e, m):
     if eq(m, [1]):
         return []
     if is_odd(m):
+        if _ax.has("modpow"):
+            nb := (bit_length(m) + 7) // 8
+            r := _ax.native().modpow(_s.byte_pack(to_bytes(mod(base, m), nb)), _s.byte_pack(to_bytes(e)), _s.byte_pack(to_bytes(m, nb)))
+            return from_bytes(_s.byte_unpack(r))
         return Montgomery(m).pow(base, e)
     acc := [1]
     b := mod(base, m)

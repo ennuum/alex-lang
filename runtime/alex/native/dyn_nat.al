@@ -9369,6 +9369,1037 @@ func __nat__native_tls__pbkdf2(n: int, a0: int, a1: int, a2: int, a3: int, a4: i
         block += 1
     return __dyn_str(__as_str(r))
 
+# ---- Calcul de TLS 1.3 (network.tls13) : X25519, grands entiers de Montgomery, courbes P-256 / P-384, AES-GCM ------
+# _native_tls.x25519 / modpow / mulmod / ec_mul / aes_gcm : le calcul lourd de la poignée de main et des
+# enregistrements, écrit dans le dialecte typé (entiers machine, mémoire brute) au lieu d'Alex dynamique, où chaque
+# entier est un objet : X25519 et la signature ECDSA passent de plus de 100 ms à moins d'une milliseconde. Rien ne
+# dépend d'OpenSSL : la VM et les exécutables natifs ont les mêmes. Octets en str ; grands entiers big-endian.
+# LIMITES : seul X25519 est en temps constant (comme crypto.x25519) ; AES par tables, exponentiation à fenêtre.
+
+# -- X25519 (RFC 7748) : corps 2^255 - 19, 16 limbes de 16 bits signés sur 64 bits (forme de TweetNaCl).
+
+func __x_car(o: int):
+    i := 0
+    while i < 16:
+        v := __load64(o + i * 8) + 65536
+        c := v >> 16
+        if i < 15:
+            __store64(o + i * 8 + 8, __load64(o + i * 8 + 8) + c - 1)
+        else:
+            __store64(o, __load64(o) + 38 * (c - 1))
+        __store64(o + i * 8, v - (c << 16))
+        i += 1
+
+# Échange conditionnel (b = 0 ou 1) sans branchement.
+func __x_sel(p: int, q: int, b: int):
+    m := 0 - b
+    i := 0
+    while i < 16:
+        x := __load64(p + i * 8)
+        y := __load64(q + i * 8)
+        t := m & (x ^ y)
+        __store64(p + i * 8, x ^ t)
+        __store64(q + i * 8, y ^ t)
+        i += 1
+
+func __x_add(o: int, a: int, b: int):
+    i := 0
+    while i < 16:
+        __store64(o + i * 8, __load64(a + i * 8) + __load64(b + i * 8))
+        i += 1
+
+func __x_sub(o: int, a: int, b: int):
+    i := 0
+    while i < 16:
+        __store64(o + i * 8, __load64(a + i * 8) - __load64(b + i * 8))
+        i += 1
+
+# o = a * b (t : 31 mots de travail ; o peut être a ou b).
+func __x_mul(o: int, a: int, b: int, t: int):
+    i := 0
+    while i < 31:
+        __store64(t + i * 8, 0)
+        i += 1
+    i = 0
+    while i < 16:
+        ai := __load64(a + i * 8)
+        j := 0
+        while j < 16:
+            p := t + (i + j) * 8
+            __store64(p, __load64(p) + ai * __load64(b + j * 8))
+            j += 1
+        i += 1
+    i = 0
+    while i < 15:
+        __store64(t + i * 8, __load64(t + i * 8) + 38 * __load64(t + (i + 16) * 8))
+        i += 1
+    __copy(o, t, 128)
+    __x_car(o)
+    __x_car(o)
+
+# o = a^(p - 2) (inverse) ; c : 16 mots de travail.
+func __x_inv(o: int, a: int, t: int, c: int):
+    __copy(c, a, 128)
+    k := 253
+    while k >= 0:
+        __x_mul(c, c, c, t)
+        if k != 2 and k != 4:
+            __x_mul(c, c, a, t)
+        k -= 1
+    __copy(o, c, 128)
+
+# 32 octets (little-endian) de n réduit modulo p ; t, m : 16 mots de travail chacun.
+func __x_pack(out: int, n: int, t: int, m: int):
+    __copy(t, n, 128)
+    __x_car(t)
+    __x_car(t)
+    __x_car(t)
+    j := 0
+    while j < 2:
+        __store64(m, __load64(t) - 65517)
+        i := 1
+        while i < 15:
+            prev := __load64(m + (i - 1) * 8)
+            __store64(m + i * 8, __load64(t + i * 8) - 65535 - ((prev >> 16) & 1))
+            __store64(m + (i - 1) * 8, prev & 65535)
+            i += 1
+        m14 := __load64(m + 112)
+        __store64(m + 120, __load64(t + 120) - 32767 - ((m14 >> 16) & 1))
+        b := (__load64(m + 120) >> 16) & 1
+        __store64(m + 112, m14 & 65535)
+        __x_sel(t, m, 1 - b)
+        j += 1
+    k := 0
+    while k < 16:
+        v := __load64(t + k * 8)
+        __store8(out + 2 * k, v & 255)
+        __store8(out + 2 * k + 1, (v >> 8) & 255)
+        k += 1
+
+func __nat__native_tls__x25519(n: int, a0: int, a1: int) -> int:
+    __nat_range("x25519", n, 2, 2)
+    ks := __nat_str("x25519", a0, "le scalaire")
+    us := __nat_str("x25519", a1, "la coordonnée")
+    if __nat_blen(ks) != 32 or __nat_blen(us) != 32:
+        __dyn_err("ValueError", "'x25519' : scalaire et coordonnée de 32 octets attendus")
+    w := __rt_str_new(1600) + 8
+    q := 0
+    while q < 1600:
+        __store64(w + q, 0)
+        q += 8
+    z := w
+    __copy(z, __nat_bp(ks), 32)
+    __store8(z + 31, (__load8(z + 31) & 127) | 64)
+    __store8(z, __load8(z) & 248)
+    x := w + 32
+    up := __nat_bp(us)
+    i := 0
+    while i < 16:
+        __store64(x + i * 8, __load8(up + 2 * i) + (__load8(up + 2 * i + 1) << 8))
+        i += 1
+    __store64(x + 120, __load64(x + 120) & 32767)
+    a := w + 160
+    b := w + 288
+    c := w + 416
+    d := w + 544
+    e := w + 672
+    f := w + 800
+    a24 := w + 928
+    t := w + 1056
+    m := w + 1312
+    cc := w + 1440
+    __store64(a, 1)
+    __store64(d, 1)
+    __store64(a24, 121665)
+    __copy(b, x, 128)
+    i = 254
+    while i >= 0:
+        r := (__load8(z + (i >> 3)) >> (i & 7)) & 1
+        __x_sel(a, b, r)
+        __x_sel(c, d, r)
+        __x_add(e, a, c)
+        __x_sub(a, a, c)
+        __x_add(c, b, d)
+        __x_sub(b, b, d)
+        __x_mul(d, e, e, t)
+        __x_mul(f, a, a, t)
+        __x_mul(a, c, a, t)
+        __x_mul(c, b, e, t)
+        __x_add(e, a, c)
+        __x_sub(a, a, c)
+        __x_mul(b, a, a, t)
+        __x_sub(c, d, f)
+        __x_mul(a, c, a24, t)
+        __x_add(a, a, d)
+        __x_mul(c, c, a, t)
+        __x_mul(a, d, f, t)
+        __x_mul(d, b, x, t)
+        __x_mul(b, e, e, t)
+        __x_sel(a, b, r)
+        __x_sel(c, d, r)
+        i -= 1
+    __x_inv(cc, c, t, m)
+    __x_mul(a, a, cc, t)
+    res := __rt_str_new(32)
+    __x_pack(res + 8, a, t, m)
+    return __dyn_str(__as_str(res))
+
+# -- Grands entiers : limbes de 26 bits (little-endian) sur 64 bits, multiplication de Montgomery (CIOS) comme
+#    crypto.bigint. Chaque tour : t[j] + a_i b_j + u m_j + c < 2^26 + 2^53 + 2^28 : tient dans 64 bits.
+
+func __mp_limbs(nbytes: int) -> int:
+    nl := 0
+    while nl * 26 < nbytes * 8:
+        nl += 1
+    if nl == 0:
+        nl = 1
+    return nl
+
+# nl limbes depuis des octets big-endian (les bits au-delà de 26 nl sont perdus).
+func __mp_from(dst: int, p: int, ln: int, nl: int):
+    i := 0
+    while i < nl:
+        __store64(dst + i * 8, 0)
+        i += 1
+    acc := 0
+    nb := 0
+    li := 0
+    k := ln - 1
+    while k >= 0:
+        acc = acc | (__load8(p + k) << nb)
+        nb += 8
+        while nb >= 26:
+            if li < nl:
+                __store64(dst + li * 8, acc & 67108863)
+            li += 1
+            acc = acc >> 26
+            nb -= 26
+        k -= 1
+    if nb > 0 and li < nl:
+        __store64(dst + li * 8, acc)
+
+# ln octets big-endian depuis nl limbes.
+func __mp_to(out: int, ln: int, src: int, nl: int):
+    acc := 0
+    nb := 0
+    li := 0
+    k := ln - 1
+    while k >= 0:
+        while nb < 8 and li < nl:
+            acc = acc | (__load64(src + li * 8) << nb)
+            nb += 26
+            li += 1
+        __store8(out + k, acc & 255)
+        acc = acc >> 8
+        nb -= 8
+        if nb < 0:
+            nb = 0
+        k -= 1
+
+func __mp_cmp(a: int, b: int, nl: int) -> int:
+    i := nl - 1
+    while i >= 0:
+        x := __load64(a + i * 8)
+        y := __load64(b + i * 8)
+        if x > y:
+            return 1
+        if x < y:
+            return -1
+        i -= 1
+    return 0
+
+func __mp_is_zero(a: int, nl: int) -> bool:
+    i := 0
+    while i < nl:
+        if __load64(a + i * 8) != 0:
+            return false
+        i += 1
+    return true
+
+# o = a - b (a >= b, ou retenue finale ignorée) ; rend la retenue.
+func __mp_subn(o: int, a: int, b: int, nl: int) -> int:
+    br := 0
+    i := 0
+    while i < nl:
+        d := __load64(a + i * 8) - __load64(b + i * 8) - br
+        if d < 0:
+            d += 67108864
+            br = 1
+        else:
+            br = 0
+        __store64(o + i * 8, d)
+        i += 1
+    return br
+
+# o = a + b ; rend la retenue.
+func __mp_addn(o: int, a: int, b: int, nl: int) -> int:
+    c := 0
+    i := 0
+    while i < nl:
+        s := __load64(a + i * 8) + __load64(b + i * 8) + c
+        __store64(o + i * 8, s & 67108863)
+        c = s >> 26
+        i += 1
+    return c
+
+func __mp_addmod(o: int, a: int, b: int, m: int, nl: int):
+    c := __mp_addn(o, a, b, nl)
+    if c != 0 or __mp_cmp(o, m, nl) >= 0:
+        __mp_subn(o, o, m, nl)
+
+func __mp_submod(o: int, a: int, b: int, m: int, nl: int):
+    if __mp_subn(o, a, b, nl) != 0:
+        __mp_addn(o, o, m, nl)
+
+# o = a * b * R^-1 mod m (a, b < m) ; t : nl + 2 mots de travail ; o peut être a ou b.
+func __mp_mul(o: int, a: int, b: int, m: int, nl: int, mp: int, t: int):
+    i := 0
+    while i <= nl:
+        __store64(t + i * 8, 0)
+        i += 1
+    b0 := __load64(b)
+    m0 := __load64(m)
+    i = 0
+    while i < nl:
+        ai := __load64(a + i * 8)
+        t0 := __load64(t)
+        u := (((t0 + ai * b0) & 67108863) * mp) & 67108863
+        s := t0 + ai * b0 + u * m0
+        c := s >> 26
+        j := 1
+        while j < nl:
+            s = __load64(t + j * 8) + ai * __load64(b + j * 8) + u * __load64(m + j * 8) + c
+            __store64(t + (j - 1) * 8, s & 67108863)
+            c = s >> 26
+            j += 1
+        s = __load64(t + nl * 8) + c
+        __store64(t + (nl - 1) * 8, s & 67108863)
+        __store64(t + nl * 8, s >> 26)
+        i += 1
+    if __load64(t + nl * 8) != 0 or __mp_cmp(t, m, nl) >= 0:
+        __mp_subn(o, t, m, nl)
+    else:
+        __copy(o, t, nl * 8)
+
+# m' = -m^-1 mod 2^26 (Newton).
+func __mp_prime(m: int) -> int:
+    m0 := __load64(m)
+    inv := 1
+    k := 0
+    while k < 5:
+        x := (m0 * inv) & 67108863
+        inv = (inv * ((2 - x) & 67108863)) & 67108863
+        k += 1
+    return (67108864 - inv) & 67108863
+
+# r2 = R^2 mod m = 2^(52 nl) mod m, par doublements (m > 1).
+func __mp_r2(r2: int, m: int, nl: int):
+    i := 0
+    while i < nl:
+        __store64(r2 + i * 8, 0)
+        i += 1
+    __store64(r2, 1)
+    k := 0
+    while k < 52 * nl:
+        __mp_addmod(r2, r2, r2, m, nl)
+        k += 1
+
+# Contexte de Montgomery (mémoire) : [0] m [8] nl [16] m' [24] t [32] r2 [40] un (Montgomery) [48] trois
+# [56] zone des temporaires (16 éléments) ; rend son adresse. m : octets big-endian (impair).
+func __mp_ctx(mp_bytes: int, mlen: int) -> int:
+    nl := __mp_limbs(mlen)
+    nl8 := nl * 8
+    total := 64 + nl8 * 22 + 16
+    base := __rt_str_new(total) + 8
+    m := base + 64
+    t := m + nl8
+    r2 := t + nl8 + 16
+    one := r2 + nl8
+    three := one + nl8
+    tmp := three + nl8
+    __mp_from(m, mp_bytes, mlen, nl)
+    __store64(base, m)
+    __store64(base + 8, nl)
+    __store64(base + 16, __mp_prime(m))
+    __store64(base + 24, t)
+    __store64(base + 32, r2)
+    __store64(base + 40, one)
+    __store64(base + 48, three)
+    __store64(base + 56, tmp)
+    __mp_r2(r2, m, nl)
+    i := 0
+    while i < nl:
+        __store64(three + i * 8, 0)
+        i += 1
+    __store64(three, 1)
+    __mp_mul(one, three, r2, m, nl, __load64(base + 16), t)
+    __store64(three, 3)
+    __mp_mul(three, three, r2, m, nl, __load64(base + 16), t)
+    return base
+
+func __f_nl(C: int) -> int:
+    return __load64(C + 8)
+
+func __f_mul(o: int, a: int, b: int, C: int):
+    __mp_mul(o, a, b, __load64(C), __load64(C + 8), __load64(C + 16), __load64(C + 24))
+
+func __f_add(o: int, a: int, b: int, C: int):
+    __mp_addmod(o, a, b, __load64(C), __load64(C + 8))
+
+func __f_sub(o: int, a: int, b: int, C: int):
+    __mp_submod(o, a, b, __load64(C), __load64(C + 8))
+
+func __f_cp(o: int, a: int, C: int):
+    __copy(o, a, __load64(C + 8) * 8)
+
+func __f_tmp(C: int, i: int) -> int:
+    return __load64(C + 56) + i * __load64(C + 8) * 8
+
+# Nombre ordinaire (octets big-endian, < m) -> forme de Montgomery.
+func __f_load(o: int, p: int, ln: int, C: int):
+    nl := __load64(C + 8)
+    __mp_from(o, p, ln, nl)
+    __f_mul(o, o, __load64(C + 32), C)
+
+# Forme de Montgomery -> octets big-endian.
+func __f_store(out: int, ln: int, a: int, C: int):
+    nl := __load64(C + 8)
+    x := __f_tmp(C, 15)
+    y := __f_tmp(C, 14)
+    i := 0
+    while i < nl:
+        __store64(y + i * 8, 0)
+        i += 1
+    __store64(y, 1)
+    __f_mul(x, a, y, C)
+    __mp_to(out, ln, x, nl)
+
+# o = a^e (forme de Montgomery), e : octets big-endian ; fenêtre fixe de 4 bits ; tab : 16 éléments.
+func __f_pow(o: int, a: int, ep: int, elen: int, C: int, tab: int):
+    nl8 := __load64(C + 8) * 8
+    __f_cp(tab, __load64(C + 40), C)
+    __f_cp(tab + nl8, a, C)
+    k := 2
+    while k < 16:
+        __f_mul(tab + k * nl8, tab + (k - 1) * nl8, a, C)
+        k += 1
+    acc := __f_tmp(C, 13)
+    __f_cp(acc, __load64(C + 40), C)
+    started := false
+    i := 0
+    while i < elen * 2:
+        byte := __load8(ep + (i >> 1))
+        w := byte >> 4
+        if (i & 1) == 1:
+            w = byte & 15
+        if started:
+            __f_mul(acc, acc, acc, C)
+            __f_mul(acc, acc, acc, C)
+            __f_mul(acc, acc, acc, C)
+            __f_mul(acc, acc, acc, C)
+        if w != 0:
+            __f_mul(acc, acc, tab + w * nl8, C)
+            started = true
+        i += 1
+    __f_cp(o, acc, C)
+
+func __mp_odd_mod(fn: str, s: str):
+    if __nat_blen(s) == 0 or (__load8(__nat_bp(s) + __nat_blen(s) - 1) & 1) == 0:
+        __dyn_err("ValueError", "'" + fn + "' : module impair attendu")
+    if __nat_blen(s) > 2048:
+        __dyn_err("ValueError", "'" + fn + "' : module de 16384 bits au plus")
+
+# Nombre (octets big-endian) < m attendu.
+func __mp_check_below(fn: str, s: str, C: int):
+    nl := __load64(C + 8)
+    p := __nat_bp(s)
+    ln := __nat_blen(s)
+    lead := 0
+    while lead < ln and __load8(p + lead) == 0:
+        lead += 1
+    x := __f_tmp(C, 15)
+    if (ln - lead) * 8 > nl * 26:
+        __dyn_err("ValueError", "'" + fn + "' : nombre plus grand que le module")
+    __mp_from(x, p + lead, ln - lead, nl)
+    if __mp_cmp(x, __load64(C), nl) >= 0:
+        __dyn_err("ValueError", "'" + fn + "' : nombre plus grand que le module")
+
+# modpow(base, e, m) = base^e mod m (octets big-endian ; m impair, base < m) ; résultat de la taille de m.
+func __nat__native_tls__modpow(n: int, a0: int, a1: int, a2: int) -> int:
+    __nat_range("modpow", n, 3, 3)
+    bs := __nat_str("modpow", a0, "la base")
+    es := __nat_str("modpow", a1, "l'exposant")
+    ms := __nat_str("modpow", a2, "le module")
+    __mp_odd_mod("modpow", ms)
+    C := __mp_ctx(__nat_bp(ms), __nat_blen(ms))
+    __mp_check_below("modpow", bs, C)
+    nl8 := __load64(C + 8) * 8
+    w := __rt_str_new(nl8 * 18) + 8
+    b := w
+    tab := w + nl8 * 2
+    __f_load(b, __nat_bp(bs), __nat_blen(bs), C)
+    __f_pow(b, b, __nat_bp(es), __nat_blen(es), C, tab)
+    res := __rt_str_new(__nat_blen(ms))
+    __f_store(res + 8, __nat_blen(ms), b, C)
+    return __dyn_str(__as_str(res))
+
+# mulmod(a, b, m) = a * b mod m (octets big-endian ; m impair ; a, b < m).
+func __nat__native_tls__mulmod(n: int, a0: int, a1: int, a2: int) -> int:
+    __nat_range("mulmod", n, 3, 3)
+    xa := __nat_str("mulmod", a0, "a")
+    bs := __nat_str("mulmod", a1, "b")
+    ms := __nat_str("mulmod", a2, "le module")
+    __mp_odd_mod("mulmod", ms)
+    C := __mp_ctx(__nat_bp(ms), __nat_blen(ms))
+    __mp_check_below("mulmod", xa, C)
+    __mp_check_below("mulmod", bs, C)
+    nl := __load64(C + 8)
+    x := __f_tmp(C, 0)
+    y := __f_tmp(C, 1)
+    __mp_from(x, __nat_bp(xa), __nat_blen(xa), nl)
+    __mp_from(y, __nat_bp(bs), __nat_blen(bs), nl)
+    __f_mul(x, x, y, C)
+    __f_mul(x, x, __load64(C + 32), C)
+    res := __rt_str_new(__nat_blen(ms))
+    __mp_to(res + 8, __nat_blen(ms), x, nl)
+    return __dyn_str(__as_str(res))
+
+# -- Courbes y^2 = x^3 - 3x + b sur F_p (P-256, P-384) : points jacobiens [X, Y, Z] en forme de Montgomery,
+#    Z = 0 pour l'infini ; dbl-2001-b et add-2007-bl (mêmes formules que crypto.ec).
+
+func __ec_inf(P: int, C: int) -> bool:
+    nl := __load64(C + 8)
+    return __mp_is_zero(P + 2 * nl * 8, nl)
+
+func __ec_set_inf(P: int, C: int):
+    nl := __load64(C + 8)
+    i := 0
+    while i < 3 * nl:
+        __store64(P + i * 8, 0)
+        i += 1
+
+func __ec_cp(O: int, P: int, C: int):
+    __copy(O, P, __load64(C + 8) * 24)
+
+func __ec_double(O: int, P: int, C: int):
+    nl := __load64(C + 8)
+    nl8 := nl * 8
+    X := P
+    Y := P + nl8
+    Z := P + 2 * nl8
+    if __mp_is_zero(Z, nl) or __mp_is_zero(Y, nl):
+        __ec_set_inf(O, C)
+        return
+    delta := __f_tmp(C, 0)
+    gamma := __f_tmp(C, 1)
+    beta := __f_tmp(C, 2)
+    alpha := __f_tmp(C, 3)
+    b4 := __f_tmp(C, 4)
+    b8 := __f_tmp(C, 5)
+    X3 := __f_tmp(C, 6)
+    yz := __f_tmp(C, 7)
+    Z3 := __f_tmp(C, 8)
+    g8 := __f_tmp(C, 9)
+    Y3 := __f_tmp(C, 10)
+    tmp := __f_tmp(C, 11)
+    __f_mul(delta, Z, Z, C)
+    __f_mul(gamma, Y, Y, C)
+    __f_mul(beta, X, gamma, C)
+    __f_sub(tmp, X, delta, C)
+    __f_add(alpha, X, delta, C)
+    __f_mul(alpha, tmp, alpha, C)
+    __f_mul(alpha, __load64(C + 48), alpha, C)
+    __f_add(b4, beta, beta, C)
+    __f_add(b4, b4, b4, C)
+    __f_add(b8, b4, b4, C)
+    __f_mul(X3, alpha, alpha, C)
+    __f_sub(X3, X3, b8, C)
+    __f_add(yz, Y, Z, C)
+    __f_mul(Z3, yz, yz, C)
+    __f_sub(Z3, Z3, gamma, C)
+    __f_sub(Z3, Z3, delta, C)
+    __f_mul(g8, gamma, gamma, C)
+    __f_add(g8, g8, g8, C)
+    __f_add(g8, g8, g8, C)
+    __f_add(g8, g8, g8, C)
+    __f_sub(tmp, b4, X3, C)
+    __f_mul(Y3, alpha, tmp, C)
+    __f_sub(Y3, Y3, g8, C)
+    __f_cp(O, X3, C)
+    __f_cp(O + nl8, Y3, C)
+    __f_cp(O + 2 * nl8, Z3, C)
+
+func __ec_add(O: int, P: int, Q: int, C: int):
+    if __ec_inf(P, C):
+        __ec_cp(O, Q, C)
+        return
+    if __ec_inf(Q, C):
+        __ec_cp(O, P, C)
+        return
+    nl := __load64(C + 8)
+    nl8 := nl * 8
+    X1 := P
+    Y1 := P + nl8
+    Z1 := P + 2 * nl8
+    X2 := Q
+    Y2 := Q + nl8
+    Z2 := Q + 2 * nl8
+    z1z1 := __f_tmp(C, 0)
+    z2z2 := __f_tmp(C, 1)
+    u1 := __f_tmp(C, 2)
+    u2 := __f_tmp(C, 3)
+    s1 := __f_tmp(C, 4)
+    s2 := __f_tmp(C, 5)
+    h := __f_tmp(C, 6)
+    r := __f_tmp(C, 7)
+    ii := __f_tmp(C, 8)
+    jj := __f_tmp(C, 9)
+    v := __f_tmp(C, 10)
+    X3 := __f_tmp(C, 11)
+    Y3 := __f_tmp(C, 12)
+    tmp := __f_tmp(C, 13)
+    __f_mul(z1z1, Z1, Z1, C)
+    __f_mul(z2z2, Z2, Z2, C)
+    __f_mul(u1, X1, z2z2, C)
+    __f_mul(u2, X2, z1z1, C)
+    __f_mul(tmp, Z2, z2z2, C)
+    __f_mul(s1, Y1, tmp, C)
+    __f_mul(tmp, Z1, z1z1, C)
+    __f_mul(s2, Y2, tmp, C)
+    __f_sub(h, u2, u1, C)
+    __f_sub(r, s2, s1, C)
+    if __mp_is_zero(h, nl):
+        if __mp_is_zero(r, nl):
+            __ec_double(O, P, C)
+        else:
+            __ec_set_inf(O, C)
+        return
+    __f_add(r, r, r, C)
+    __f_add(ii, h, h, C)
+    __f_mul(ii, ii, ii, C)
+    __f_mul(jj, h, ii, C)
+    __f_mul(v, u1, ii, C)
+    __f_mul(X3, r, r, C)
+    __f_sub(X3, X3, jj, C)
+    __f_add(tmp, v, v, C)
+    __f_sub(X3, X3, tmp, C)
+    __f_mul(tmp, s1, jj, C)
+    __f_add(tmp, tmp, tmp, C)
+    __f_sub(Y3, v, X3, C)
+    __f_mul(Y3, r, Y3, C)
+    __f_sub(Y3, Y3, tmp, C)
+    __f_add(u1, Z1, Z2, C)
+    __f_mul(u1, u1, u1, C)
+    __f_sub(u1, u1, z1z1, C)
+    __f_sub(u1, u1, z2z2, C)
+    __f_mul(O + 2 * nl8, u1, h, C)
+    __f_cp(O, X3, C)
+    __f_cp(O + nl8, Y3, C)
+
+# ec_mul(p, k, x, y) : k * (x, y) sur la courbe de module p (a = -3) ; x || y affines (octets de la taille de p),
+# ou "" pour le point à l'infini. Le point doit être sur la courbe (vérifié par l'appelant : crypto.ec).
+func __nat__native_tls__ec_mul(n: int, a0: int, a1: int, a2: int, a3: int) -> int:
+    __nat_range("ec_mul", n, 4, 4)
+    ps := __nat_str("ec_mul", a0, "le module")
+    ks := __nat_str("ec_mul", a1, "le scalaire")
+    xs := __nat_str("ec_mul", a2, "x")
+    ys := __nat_str("ec_mul", a3, "y")
+    __mp_odd_mod("ec_mul", ps)
+    plen := __nat_blen(ps)
+    if plen > 128 or __nat_blen(xs) != plen or __nat_blen(ys) != plen:
+        __dyn_err("ValueError", "'ec_mul' : coordonnées de la taille du module attendues")
+    C := __mp_ctx(__nat_bp(ps), plen)
+    __mp_check_below("ec_mul", xs, C)
+    __mp_check_below("ec_mul", ys, C)
+    nl := __load64(C + 8)
+    nl8 := nl * 8
+    pt := nl8 * 3
+    w := __rt_str_new(pt * 18 + nl8 * 18 + plen) + 8
+    tab := w
+    acc := w + pt * 16
+    ftab := acc + pt * 2
+    eb := ftab + nl8 * 16
+    __ec_set_inf(tab, C)
+    P := tab + pt
+    __f_load(P, __nat_bp(xs), plen, C)
+    __f_load(P + nl8, __nat_bp(ys), plen, C)
+    __f_cp(P + 2 * nl8, __load64(C + 40), C)
+    k := 2
+    while k < 16:
+        if (k & 1) == 1:
+            __ec_add(tab + k * pt, tab + (k - 1) * pt, P, C)
+        else:
+            __ec_double(tab + k * pt, tab + (k >> 1) * pt, C)
+        k += 1
+    __ec_set_inf(acc, C)
+    kp := __nat_bp(ks)
+    klen := __nat_blen(ks)
+    i := 0
+    while i < klen * 2:
+        byte := __load8(kp + (i >> 1))
+        wv := byte >> 4
+        if (i & 1) == 1:
+            wv = byte & 15
+        __ec_double(acc, acc, C)
+        __ec_double(acc, acc, C)
+        __ec_double(acc, acc, C)
+        __ec_double(acc, acc, C)
+        if wv != 0:
+            __ec_add(acc, acc, tab + wv * pt, C)
+        i += 1
+    if __ec_inf(acc, C):
+        return __dyn_str(__nat_make(eb, 0))
+    # affines : Z^-1 = Z^(p - 2)
+    __copy(eb, __nat_bp(ps), plen)
+    j := plen - 1
+    sub := 2
+    while j >= 0 and sub > 0:
+        v := __load8(eb + j) - sub
+        if v < 0:
+            __store8(eb + j, v + 256)
+            sub = 1
+        else:
+            __store8(eb + j, v)
+            sub = 0
+        j -= 1
+    zi := acc + pt
+    __f_pow(zi, acc + 2 * nl8, eb, plen, C, ftab)
+    zi2 := zi + nl8
+    __f_mul(zi2, zi, zi, C)
+    res := __rt_str_new(plen * 2)
+    __f_mul(acc, acc, zi2, C)
+    __f_store(res + 8, plen, acc, C)
+    __f_mul(zi2, zi2, zi, C)
+    __f_mul(acc + nl8, acc + nl8, zi2, C)
+    __f_store(res + 8 + plen, plen, acc + nl8, C)
+    return __dyn_str(__as_str(res))
+
+# -- AES (FIPS 197, tables T) et GCM (SP 800-38D, GHASH par tables de 4 bits sur deux mots de 64 bits).
+
+func __aes_xtime(x: int) -> int:
+    y := x << 1
+    if (y & 256) != 0:
+        y = y ^ 283
+    return y & 255
+
+func __aes_gmul(a: int, b: int) -> int:
+    r := 0
+    x := a
+    y := b
+    while y > 0:
+        if (y & 1) != 0:
+            r = r ^ x
+        x = __aes_xtime(x)
+        y = y >> 1
+    return r
+
+# Zone : [0, 256) boîte S (octets) ; [256, 8448) T0..T3 (mots) ; [8448, 8928) clé étendue (60 mots) ;
+# [8928, 9184) HH / HL (16 + 16 mots) ; [9184, ...) blocs de travail.
+func __aes_tables(w: int):
+    ex := w + 9300
+    lg := ex + 256
+    x := 1
+    i := 0
+    while i < 255:
+        __store8(ex + i, x)
+        __store8(lg + x, i)
+        x = x ^ __aes_xtime(x)
+        i += 1
+    i = 0
+    while i < 256:
+        inv := 0
+        if i != 0:
+            inv = __load8(ex + (255 - __load8(lg + i)) % 255)
+        s := inv
+        y := inv
+        k := 0
+        while k < 4:
+            y = ((y << 1) | (y >> 7)) & 255
+            s = s ^ y
+            k += 1
+        __store8(w + i, s ^ 99)
+        i += 1
+    i = 0
+    while i < 256:
+        s := __load8(w + i)
+        v := (__aes_gmul(s, 2) << 24) | (s << 16) | (s << 8) | __aes_gmul(s, 3)
+        __store64(w + 256 + i * 8, v)
+        __store64(w + 256 + 2048 + i * 8, ((v >> 8) | (v << 24)) & 4294967295)
+        __store64(w + 256 + 4096 + i * 8, ((v >> 16) | (v << 16)) & 4294967295)
+        __store64(w + 256 + 6144 + i * 8, ((v >> 24) | (v << 8)) & 4294967295)
+        i += 1
+
+func __aes_sub(w: int, t: int) -> int:
+    return (__load8(w + (t >> 24)) << 24) | (__load8(w + ((t >> 16) & 255)) << 16) | (__load8(w + ((t >> 8) & 255)) << 8) | __load8(w + (t & 255))
+
+# Clé étendue ; rend le nombre de tours.
+func __aes_expand(w: int, kp: int, klen: int) -> int:
+    nk := klen // 4
+    rounds := nk + 6
+    rk := w + 8448
+    i := 0
+    while i < nk:
+        __store64(rk + i * 8, (__load8(kp + 4 * i) << 24) | (__load8(kp + 4 * i + 1) << 16) | (__load8(kp + 4 * i + 2) << 8) | __load8(kp + 4 * i + 3))
+        i += 1
+    rcon := 1
+    while i < 4 * (rounds + 1):
+        t := __load64(rk + (i - 1) * 8)
+        if i % nk == 0:
+            t = ((t << 8) | (t >> 24)) & 4294967295
+            t = __aes_sub(w, t) ^ (rcon << 24)
+            rcon = __aes_xtime(rcon)
+        elif nk > 6 and i % nk == 4:
+            t = __aes_sub(w, t)
+        __store64(rk + i * 8, __load64(rk + (i - nk) * 8) ^ t)
+        i += 1
+    return rounds
+
+# Chiffre le bloc de 16 octets en src vers dst (peuvent coïncider).
+func __aes_block(w: int, rounds: int, src: int, dst: int):
+    rk := w + 8448
+    T0 := w + 256
+    T1 := T0 + 2048
+    T2 := T1 + 2048
+    T3 := T2 + 2048
+    s0 := ((__load8(src) << 24) | (__load8(src + 1) << 16) | (__load8(src + 2) << 8) | __load8(src + 3)) ^ __load64(rk)
+    s1 := ((__load8(src + 4) << 24) | (__load8(src + 5) << 16) | (__load8(src + 6) << 8) | __load8(src + 7)) ^ __load64(rk + 8)
+    s2 := ((__load8(src + 8) << 24) | (__load8(src + 9) << 16) | (__load8(src + 10) << 8) | __load8(src + 11)) ^ __load64(rk + 16)
+    s3 := ((__load8(src + 12) << 24) | (__load8(src + 13) << 16) | (__load8(src + 14) << 8) | __load8(src + 15)) ^ __load64(rk + 24)
+    r := 1
+    o := rk + 32
+    while r < rounds:
+        t0 := __load64(T0 + (s0 >> 24) * 8) ^ __load64(T1 + ((s1 >> 16) & 255) * 8) ^ __load64(T2 + ((s2 >> 8) & 255) * 8) ^ __load64(T3 + (s3 & 255) * 8) ^ __load64(o)
+        t1 := __load64(T0 + (s1 >> 24) * 8) ^ __load64(T1 + ((s2 >> 16) & 255) * 8) ^ __load64(T2 + ((s3 >> 8) & 255) * 8) ^ __load64(T3 + (s0 & 255) * 8) ^ __load64(o + 8)
+        t2 := __load64(T0 + (s2 >> 24) * 8) ^ __load64(T1 + ((s3 >> 16) & 255) * 8) ^ __load64(T2 + ((s0 >> 8) & 255) * 8) ^ __load64(T3 + (s1 & 255) * 8) ^ __load64(o + 16)
+        t3 := __load64(T0 + (s3 >> 24) * 8) ^ __load64(T1 + ((s0 >> 16) & 255) * 8) ^ __load64(T2 + ((s1 >> 8) & 255) * 8) ^ __load64(T3 + (s2 & 255) * 8) ^ __load64(o + 24)
+        s0 = t0
+        s1 = t1
+        s2 = t2
+        s3 = t3
+        o += 32
+        r += 1
+    __aes_out(dst, ((__load8(w + (s0 >> 24)) << 24) | (__load8(w + ((s1 >> 16) & 255)) << 16) | (__load8(w + ((s2 >> 8) & 255)) << 8) | __load8(w + (s3 & 255))) ^ __load64(o))
+    __aes_out(dst + 4, ((__load8(w + (s1 >> 24)) << 24) | (__load8(w + ((s2 >> 16) & 255)) << 16) | (__load8(w + ((s3 >> 8) & 255)) << 8) | __load8(w + (s0 & 255))) ^ __load64(o + 8))
+    __aes_out(dst + 8, ((__load8(w + (s2 >> 24)) << 24) | (__load8(w + ((s3 >> 16) & 255)) << 16) | (__load8(w + ((s0 >> 8) & 255)) << 8) | __load8(w + (s1 & 255))) ^ __load64(o + 16))
+    __aes_out(dst + 12, ((__load8(w + (s3 >> 24)) << 24) | (__load8(w + ((s0 >> 16) & 255)) << 16) | (__load8(w + ((s1 >> 8) & 255)) << 8) | __load8(w + (s2 & 255))) ^ __load64(o + 24))
+
+func __aes_out(p: int, v: int):
+    __store8(p, (v >> 24) & 255)
+    __store8(p + 1, (v >> 16) & 255)
+    __store8(p + 2, (v >> 8) & 255)
+    __store8(p + 3, v & 255)
+
+# Décalage logique à droite d'un mot de 64 bits (>> est arithmétique).
+func __gcm_shr(x: int, n: int) -> int:
+    return (x >> n) & ((1 << (64 - n)) - 1)
+
+func __gcm_be64(p: int) -> int:
+    v := 0
+    j := 0
+    while j < 8:
+        v = (v << 8) | __load8(p + j)
+        j += 1
+    return v
+
+func __gcm_put64(p: int, v: int):
+    j := 0
+    while j < 8:
+        __store8(p + j, (v >> (56 - 8 * j)) & 255)
+        j += 1
+
+# Tables HH / HL à partir de H = E(0^128).
+func __gcm_init(w: int, rounds: int):
+    hb := w + 9184
+    j := 0
+    while j < 16:
+        __store8(hb + j, 0)
+        j += 1
+    __aes_block(w, rounds, hb, hb)
+    hh := w + 8928
+    hl := hh + 128
+    j = 0
+    while j < 16:
+        __store64(hh + j * 8, 0)
+        __store64(hl + j * 8, 0)
+        j += 1
+    vh := __gcm_be64(hb)
+    vl := __gcm_be64(hb + 8)
+    __store64(hh + 64, vh)
+    __store64(hl + 64, vl)
+    i := 4
+    while i > 0:
+        t := 0
+        if (vl & 1) != 0:
+            t = 225 << 56
+        vl = (vh << 63) | __gcm_shr(vl, 1)
+        vh = __gcm_shr(vh, 1) ^ t
+        __store64(hh + i * 8, vh)
+        __store64(hl + i * 8, vl)
+        i = i >> 1
+    i = 2
+    while i <= 8:
+        k := 1
+        while k < i:
+            __store64(hh + (i + k) * 8, __load64(hh + i * 8) ^ __load64(hh + k * 8))
+            __store64(hl + (i + k) * 8, __load64(hl + i * 8) ^ __load64(hl + k * 8))
+            k += 1
+        i = i * 2
+
+func __gcm_last4(r: int) -> int:
+    if r < 8:
+        if r < 4:
+            if r == 0:
+                return 0
+            if r == 1:
+                return 7200
+            if r == 2:
+                return 14400
+            return 9312
+        if r == 4:
+            return 28800
+        if r == 5:
+            return 27808
+        if r == 6:
+            return 18624
+        return 21728
+    if r < 12:
+        if r == 8:
+            return 57600
+        if r == 9:
+            return 64800
+        if r == 10:
+            return 55616
+        return 50528
+    if r == 12:
+        return 37248
+    if r == 13:
+        return 36256
+    if r == 14:
+        return 43456
+    return 46560
+
+# y (16 octets) <- y * H dans GF(2^128).
+func __gcm_mult(w: int, y: int):
+    hh := w + 8928
+    hl := hh + 128
+    lo := __load8(y + 15) & 15
+    zh := __load64(hh + lo * 8)
+    zl := __load64(hl + lo * 8)
+    i := 15
+    while i >= 0:
+        lo = __load8(y + i) & 15
+        hi := __load8(y + i) >> 4
+        if i != 15:
+            rem := zl & 15
+            zl = (zh << 60) | __gcm_shr(zl, 4)
+            zh = __gcm_shr(zh, 4) ^ (__gcm_last4(rem) << 48)
+            zh = zh ^ __load64(hh + lo * 8)
+            zl = zl ^ __load64(hl + lo * 8)
+        rem2 := zl & 15
+        zl = (zh << 60) | __gcm_shr(zl, 4)
+        zh = __gcm_shr(zh, 4) ^ (__gcm_last4(rem2) << 48)
+        zh = zh ^ __load64(hh + hi * 8)
+        zl = zl ^ __load64(hl + hi * 8)
+        i -= 1
+    __gcm_put64(y, zh)
+    __gcm_put64(y + 8, zl)
+
+func __gcm_absorb(w: int, y: int, p: int, n: int):
+    i := 0
+    while i < n:
+        j := 0
+        while j < 16 and i + j < n:
+            __store8(y + j, __load8(y + j) ^ __load8(p + i + j))
+            j += 1
+        __gcm_mult(w, y)
+        i += 16
+
+# Étiquette GHASH(aad, ct) xor E(J0) en tag (16 octets).
+func __gcm_tag(w: int, rounds: int, j0: int, aad: int, alen: int, ct: int, clen: int, tag: int):
+    y := w + 9200
+    j := 0
+    while j < 16:
+        __store8(y + j, 0)
+        j += 1
+    __gcm_absorb(w, y, aad, alen)
+    __gcm_absorb(w, y, ct, clen)
+    lens := w + 9216
+    __gcm_put64(lens, alen * 8)
+    __gcm_put64(lens + 8, clen * 8)
+    j = 0
+    while j < 16:
+        __store8(y + j, __load8(y + j) ^ __load8(lens + j))
+        j += 1
+    __gcm_mult(w, y)
+    e := w + 9232
+    __aes_block(w, rounds, j0, e)
+    j = 0
+    while j < 16:
+        __store8(tag + j, __load8(y + j) ^ __load8(e + j))
+        j += 1
+
+# CTR à partir de inc32(J0) : out = data xor flux.
+func __gcm_ctr(w: int, rounds: int, j0: int, data: int, n: int, out: int):
+    ctr := w + 9248
+    ks := w + 9264
+    __copy(ctr, j0, 16)
+    i := 0
+    while i < n:
+        c := ((__load8(ctr + 12) << 24) | (__load8(ctr + 13) << 16) | (__load8(ctr + 14) << 8) | __load8(ctr + 15)) + 1
+        __aes_out(ctr + 12, c & 4294967295)
+        __aes_block(w, rounds, ctr, ks)
+        j := 0
+        while j < 16 and i < n:
+            __store8(out + i, __load8(data + i) ^ __load8(ks + j))
+            i += 1
+            j += 1
+
+# aes_gcm(chiffrer, clé, nonce, données, aad) : chiffrer vrai -> chiffré || étiquette ; faux -> clair, ou null si
+# l'étiquette est fausse (comparaison en temps constant). Clé de 16, 24 ou 32 octets, nonce de 12.
+func __nat__native_tls__aes_gcm(n: int, a0: int, a1: int, a2: int, a3: int, a4: int) -> int:
+    __nat_range("aes_gcm", n, 5, 5)
+    enc := __dyn_truthy(a0)
+    ks := __nat_str("aes_gcm", a1, "la clé")
+    ns := __nat_str("aes_gcm", a2, "le nonce")
+    ds := __nat_str("aes_gcm", a3, "les données")
+    ad := __nat_str("aes_gcm", a4, "les données associées")
+    klen := __nat_blen(ks)
+    if klen != 16 and klen != 24 and klen != 32:
+        __dyn_err("ValueError", "'aes_gcm' : clé de 16, 24 ou 32 octets attendue")
+    if __nat_blen(ns) != 12:
+        __dyn_err("ValueError", "'aes_gcm' : nonce de 12 octets attendu")
+    w := __rt_str_new(9900) + 8
+    __aes_tables(w)
+    rounds := __aes_expand(w, __nat_bp(ks), klen)
+    __gcm_init(w, rounds)
+    j0 := w + 9280
+    __copy(j0, __nat_bp(ns), 12)
+    __store8(j0 + 12, 0)
+    __store8(j0 + 13, 0)
+    __store8(j0 + 14, 0)
+    __store8(j0 + 15, 1)
+    dl := __nat_blen(ds)
+    if enc:
+        res := __rt_str_new(dl + 16)
+        __gcm_ctr(w, rounds, j0, __nat_bp(ds), dl, res + 8)
+        __gcm_tag(w, rounds, j0, __nat_bp(ad), __nat_blen(ad), res + 8, dl, res + 8 + dl)
+        return __dyn_str(__as_str(res))
+    if dl < 16:
+        return 0
+    cl := dl - 16
+    tag := w + 9184
+    __gcm_tag(w, rounds, j0, __nat_bp(ad), __nat_blen(ad), __nat_bp(ds), cl, tag)
+    diff := 0
+    k := 0
+    while k < 16:
+        diff = diff | (__load8(tag + k) ^ __load8(__nat_bp(ds) + cl + k))
+        k += 1
+    if diff != 0:
+        return 0
+    res := __rt_str_new(cl)
+    __gcm_ctr(w, rounds, j0, __nat_bp(ds), cl, res + 8)
+    return __dyn_str(__as_str(res))
+
 func __nat__native_tls__close(n: int, a0: int) -> int:
     __nat_range("close", n, 1, 1)
     return 0

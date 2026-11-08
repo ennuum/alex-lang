@@ -6,16 +6,20 @@
 #
 #   use web.server.tls_server as ts
 #   tls := ts.TlsServerConfig("/etc/ssl/site.pem", "/etc/ssl/site.key")
-#   ts.supported()                         # OpenSSL disponible ?
+#   ts.supported()                         # HTTPS possible ? (OpenSSL, ou TLS 1.3 en ALEX pur)
+#   ts.backend()                           # « openssl » ou « alex » (network.tls13 : exécutables natifs)
 #   ts.hsts(31536000, true)                # « max-age=31536000; includeSubDomains »
 #   dev := ts.development_certificate("/tmp/alex-dev")   # TlsServerConfig avec un certificat auto-signé localhost
 #
-# TLS repose sur network.tls (OpenSSL chargé à l'exécution). Erreurs : ServerConfigError (fichier absent, TLS
-# indisponible), TlsError (poignée de main refusée : la connexion est simplement fermée par le serveur).
+# TLS repose sur network.tls : OpenSSL chargé à l'exécution s'il est présent, sinon TLS 1.3 écrit en ALEX
+# (network.tls13), ce qui donne HTTPS et h2 aux exécutables natifs. ALEX_TLS=alex / openssl force le choix.
+# Erreurs : ServerConfigError (fichier absent, clé illisible ou différente du certificat, TLS indisponible),
+# TlsError (poignée de main refusée : la connexion est simplement fermée par le serveur).
 
 from core use len, type
 use os as _os
 use network.tls as _tls
+use network.tls13 as _tls13
 use network.certificates as _certs
 use web.server.server_errors as _err
 
@@ -30,21 +34,31 @@ class TlsServerConfig:
         self.key_file = key_file
         self.alpn = alpn if alpn != null else ["http/1.1"]
         self.handshake_timeout = handshake_timeout
+        if _tls.server_backend() == "alex":
+            # certificat et clé lus et contrôlés dès la configuration (et non à la première connexion)
+            try:
+                _tls13.context(cert_file, key_file, self.alpn)
+            catch e:
+                _err.config_error("TlsServerConfig", e.message)
 
     # Poignée de main serveur sur un socket accepté ; renvoie le TlsSocket (TlsError en cas d'échec).
     func wrap(sock, timeout=null):
         return _tls.wrap_server(sock, self.cert_file, self.key_file, self.alpn, timeout if timeout != null else self.handshake_timeout)
 
 func supported():
-    return _tls.supported()
+    return _tls.server_supported()
 
 func why():
-    return _tls.why()
+    return _tls.server_why()
+
+# « openssl » ou « alex ».
+func backend():
+    return _tls.server_backend()
 
 # Vérifie que TLS est utilisable ; ServerConfigError sinon.
 func require():
-    if not _tls.supported():
-        _err.config_error("tls_server", "TLS indisponible : " + str(_tls.why()))
+    if not _tls.server_supported():
+        _err.config_error("tls_server", "TLS indisponible : " + str(_tls.server_why()))
 
 # Valeur de Strict-Transport-Security.
 func hsts(max_age=31536000, include_subdomains=false, preload=false):

@@ -13,6 +13,8 @@
 
 from core use len
 from collections use append
+use string as _s
+use crypto.accel as _ax
 
 const _BASE := [9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 const _A24 := 121665
@@ -127,6 +129,8 @@ const _I16 := _range16()
 func scalar_mult(k, u):
     if len(k) != 32 or len(u) != 32:
         _fail("scalaire et coordonnée de 32 octets attendus")
+    if _ax.has("x25519"):
+        return _s.byte_unpack(_ax.native().x25519(_s.byte_pack(k), _s.byte_pack(u)))
     z := k + []
     z[31] = (z[31] & 127) | 64
     z[0] = z[0] & 248

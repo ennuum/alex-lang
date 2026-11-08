@@ -12,6 +12,7 @@
 from core use len, type
 from collections use append
 use crypto as _c
+use crypto.accel as _ax
 
 const _SIZES := {"sha256": 32, "sha384": 48, "sha512": 64}
 
@@ -23,7 +24,7 @@ func hash_len(algo):
 func extract(algo, salt, ikm):
     n := hash_len(algo)
     s := salt if salt != null and len(salt) > 0 else [0] * n
-    return _c.hmac_bytes(algo, s, ikm)
+    return _ax.hmac(algo, s, ikm)
 
 func expand(algo, prk, info, length):
     n := hash_len(algo)
@@ -34,7 +35,7 @@ func expand(algo, prk, info, length):
     t := []
     i := 1
     while len(out) < length:
-        t = _c.hmac_bytes(algo, prk, t + inf + [i])
+        t = _ax.hmac(algo, prk, t + inf + [i])
         for b in t:
             if len(out) < length:
                 append(out, b)

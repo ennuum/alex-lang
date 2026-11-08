@@ -3,9 +3,15 @@
 # TLS 1.2 / 1.3 (client et serveur) au-dessus de network.socket : la même interface que Socket, donc une
 # network.tcp.Connection fonctionne à l'identique (lignes, tailles exactes, tampon) sur un flux chiffré.
 #
-# Cryptographie : OpenSSL, chargé À L'EXÉCUTION (dlopen de libssl.so.3 / 1.1) — rien n'est réimplémenté en ALEX et
-# rien n'est lié à la compilation. Sans OpenSSL, supported() vaut false et why() dit pourquoi ; le reste du runtime
-# n'est pas touché.
+# Cryptographie : OpenSSL, chargé À L'EXÉCUTION (dlopen de libssl.so.3 / 1.1) — rien n'est lié à la compilation.
+# Sans OpenSSL, supported() vaut false et why() dit pourquoi ; le reste du runtime n'est pas touché.
+#
+# Une seconde implémentation existe : network.tls13, TLS 1.3 écrit en ALEX pur (calcul lourd dans le runtime,
+# crypto.accel). Elle prend le relais quand OpenSSL manque (exécutables natifs) ; backend() dit laquelle sert.
+# Variable ALEX_TLS : « openssl » (OpenSSL exigé), « alex » (TLS 1.3 en ALEX même si OpenSSL est là), absente :
+# OpenSSL s'il est disponible. Limites de l'implémentation ALEX : TLS 1.3 seulement, pas de certificat client ;
+# côté client, vérification par crypto.x509.verify_chain (ca_file ou magasin du système, noms, dates ; pas de
+# révocation). supported() est vrai dès que le réseau l'est.
 #
 # Sécurité par défaut
 #   - le certificat du serveur ET son nom sont vérifiés (verify=true) contre les autorités du système, ou contre
@@ -38,31 +44,69 @@ use _native_net as _n
 use _native_tls as _t
 use network.socket as _sk
 use network.tcp as _tcp
+use network.tls13 as _tls13
 use os as _os
 
 func supported():
-    return _t.supported() and _sk.supported()
+    return _sk.supported() and (_t.supported() or backend() == "alex")
 
 # Raison de l'indisponibilité (« » si TLS est disponible).
 func why():
     if not _sk.supported():
         return "réseau non pris en charge sur cette plateforme"
+    if supported():
+        return ""
     return _t.why()
+
+# Implémentation utilisée : « openssl » ou « alex » (network.tls13).
+func backend():
+    choice := _os.getenv("ALEX_TLS")
+    if choice == "alex":
+        return "alex"
+    if choice == "openssl":
+        return "openssl"
+    return "openssl" if _t.supported() else "alex"
 
 # Version de la bibliothèque OpenSSL utilisée.
 func library_version():
-    _require()
+    _require_openssl("library_version")
     return _t.version()
 
 # Nombre de sessions TLS ouvertes (diagnostic : une session non fermée reste ouverte jusqu'à la fin du programme).
 func open_count():
     return _t.live_count()
 
+# Implémentation des poignées de main serveur (même choix que backend()).
+func server_backend():
+    return backend()
+
+# Un serveur TLS est-il possible ? (OpenSSL, ou TLS 1.3 en ALEX dès que le réseau est pris en charge)
+func server_supported():
+    if not _sk.supported():
+        return false
+    return server_backend() == "alex" or _t.supported()
+
+# Raison pour laquelle un serveur TLS est impossible (« » sinon).
+func server_why():
+    if server_supported():
+        return ""
+    return why()
+
+func _require_server():
+    if not _sk.supported():
+        raise("IoError", "tls : réseau non pris en charge sur cette plateforme")
+    if server_backend() == "openssl" and not _t.supported():
+        raise("IoError", "tls : OpenSSL exigé par ALEX_TLS=openssl mais indisponible — " + _t.why())
+
 func _require():
     if not _sk.supported():
         raise("IoError", "tls : réseau non pris en charge sur cette plateforme")
-    if not _t.supported():
+    if backend() == "openssl" and not _t.supported():
         raise("IoError", "tls : indisponible — " + _t.why())
+
+func _require_openssl(what):
+    if not _t.supported():
+        raise("IoError", "tls : " + what + " demande OpenSSL — " + _t.why())
 
 # Traduit le résultat d'une primitive : valeur utile, ou erreur ALEX (-errno -> NetworkError / TimeoutError,
 # liste -> TlsError).
@@ -218,6 +262,12 @@ func wrap_client(sock, hostname=null, verify=true, ca_file=null, alpn=null, time
     _sk._check_timeout("wrap_client", timeout)
     if verify and hostname == null:
         raise("ArgumentError", "network.tls.wrap_client : vérifier le certificat exige un nom d'hôte (hostname) ou verify=false")
+    if backend() == "alex":
+        if cert_file != null or key_file != null:
+            raise("ArgumentError", "network.tls.wrap_client : certificat client non pris en charge par l'implémentation ALEX (OpenSSL requis)")
+        ts := _tls13.wrap_client(sock, hostname, alpn, timeout, verify, ca_file)
+        ts.strict_eof = strict_eof
+        return ts
     label := "tls.handshake"
     if hostname != null:
         label = "tls.handshake(" + hostname + ")"
@@ -225,15 +275,18 @@ func wrap_client(sock, hostname=null, verify=true, ca_file=null, alpn=null, time
     return TlsSocket(sock, h)
 
 # Poignée de main TLS SERVEUR sur un socket accepté (certificat : chaîne PEM ; clé : PEM). alpn : protocoles
-# acceptés, par ordre de préférence.
+# acceptés, par ordre de préférence. Avec l'implémentation ALEX (server_backend() == « alex »), rend un
+# network.tls13.TlsSocket13 (même interface ; TLS 1.3 seulement ; certificat et clé lus une fois et gardés).
 func wrap_server(sock, cert_file, key_file, alpn=null, timeout=null):
-    _require()
+    _require_server()
     _check_opt_str("wrap_server", "cert_file", cert_file)
     _check_opt_str("wrap_server", "key_file", key_file)
     if cert_file == null or key_file == null:
         raise("ArgumentError", "network.tls.wrap_server : cert_file et key_file sont requis")
     _check_alpn("wrap_server", alpn)
     _sk._check_timeout("wrap_server", timeout)
+    if server_backend() == "alex":
+        return _tls13.wrap_server(sock, _tls13.context(cert_file, key_file, alpn), timeout)
     h := _check("tls.handshake(serveur)", _t.server(_n.fd(sock._h("wrap_server")), cert_file, key_file, alpn, timeout))
     return TlsSocket(sock, h)
 
@@ -297,7 +350,7 @@ class TlsListener:
 # Serveur TLS en écoute sur host:port (voir network.tcp.listen). handshake_timeout : temps accordé à chaque client
 # pour terminer la poignée de main (un client muet ne bloque pas le serveur plus longtemps).
 func listen(host="127.0.0.1", port=0, cert_file=null, key_file=null, alpn=null, backlog=128, reuse_address=true, handshake_timeout=10.0):
-    _require()
+    _require_server()
     if cert_file == null or key_file == null:
         raise("ArgumentError", "network.tls.listen : cert_file et key_file sont requis")
     _check_opt_str("listen", "cert_file", cert_file)

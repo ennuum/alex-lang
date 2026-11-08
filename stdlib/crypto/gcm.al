@@ -14,6 +14,8 @@
 from core use len, type
 from collections use append
 use crypto.aes as _aes
+use string as _s
+use crypto.accel as _ax
 
 const _M32 := 4294967295
 const _LAST4 := [0, 7200, 14400, 9312, 28800, 27808, 18624, 21728, 57600, 64800, 55616, 50528, 37248, 36256, 43456, 46560]
@@ -41,6 +43,13 @@ func _put64(out, v):
 
 class AesGcm:
     func init(k):
+        self.raw = _s.byte_pack(k)
+        self.fast = _ax.has("aes_gcm")
+        if self.fast:
+            if len(k) != 16 and len(k) != 24 and len(k) != 32:
+                _fail("clé de 16, 24 ou 32 octets attendue (obtenu " + str(len(k)) + ")")
+            self.key = null              # tables inutiles : le runtime chiffre (crypto.accel)
+            return
         self.key = _aes.key(k)
         h := _aes.encrypt_block(self.key, [0] * 16)
         vh := _be64(h, 0)
@@ -135,6 +144,10 @@ class AesGcm:
     # Chiffré || étiquette.
     func seal(nonce, plaintext, aad=null):
         a := aad if aad != null else []
+        if self.fast:
+            if len(nonce) != 12:
+                _fail("nonce de 12 octets attendu (obtenu " + str(len(nonce)) + ")")
+            return _s.byte_unpack(_ax.native().aes_gcm(true, self.raw, _s.byte_pack(nonce), _s.byte_pack(plaintext), _s.byte_pack(a)))
         j0 := self._j0(nonce)
         ct := _aes.ctr(self.key, _inc32(j0), plaintext)
         return ct + self._tag(j0, a, ct)
@@ -144,6 +157,13 @@ class AesGcm:
         a := aad if aad != null else []
         if len(sealed) < 16:
             raise("AuthenticationError", "gcm : message trop court")
+        if self.fast:
+            if len(nonce) != 12:
+                _fail("nonce de 12 octets attendu (obtenu " + str(len(nonce)) + ")")
+            r := _ax.native().aes_gcm(false, self.raw, _s.byte_pack(nonce), _s.byte_pack(sealed), _s.byte_pack(a))
+            if r == null:
+                raise("AuthenticationError", "gcm : étiquette d'authentification invalide")
+            return _s.byte_unpack(r)
         j0 := self._j0(nonce)
         ct := sealed[0:len(sealed) - 16]
         tag := sealed[len(sealed) - 16:len(sealed)]

@@ -19,6 +19,8 @@ from core use len, type
 from collections use append
 use crypto as _c
 use crypto.bigint as bn
+use string as _s
+use crypto.accel as _ax
 
 func _fail(message):
     raise("ValueError", "ec : " + message)
@@ -50,6 +52,7 @@ class Curve:
         self.three = self.fp.to_mont([3])
         self.g = [self.fp.to_mont(bn.from_hex(d["gx"])), self.fp.to_mont(bn.from_hex(d["gy"])), self.one]
         self._gtab = null
+        self.p_raw = _s.byte_pack(bn.to_bytes(self.p, self.size))
 
     # ------------------------------------------------------------ corps (valeurs de Montgomery, < p)
 
@@ -138,6 +141,8 @@ class Curve:
 
     # k * P (k : bigint), fenêtre fixe de 4 bits.
     func mul(k, P, tab=null):
+        if _ax.has("ec_mul"):
+            return self._mul_native(k, P)
         t := tab if tab != null else self._table(P)
         acc := self.infinity()
         nbits := bn.bit_length(k)
@@ -154,6 +159,18 @@ class Curve:
             top -= 4
         return acc
 
+    # k * P par le runtime (crypto.accel) : résultat affine remis en forme jacobienne de Montgomery.
+    func _mul_native(k, P):
+        if self.is_inf(P) or len(k) == 0:
+            return self.infinity()
+        a := self.affine(P)
+        sz := self.size
+        r := _ax.native().ec_mul(self.p_raw, _s.byte_pack(bn.to_bytes(k)), _s.byte_pack(bn.to_bytes(a[0], sz)), _s.byte_pack(bn.to_bytes(a[1], sz)))
+        if r == "":
+            return self.infinity()
+        b := _s.byte_unpack(r)
+        return [self.fp.to_mont(bn.from_bytes(b[0:sz])), self.fp.to_mont(bn.from_bytes(b[sz:2 * sz])), self.one]
+
     func mul_base(k):
         if self._gtab == null:
             self._gtab = self._table(self.g)
@@ -163,6 +180,8 @@ class Curve:
     func affine(P):
         if self.is_inf(P):
             _fail("point à l'infini")
+        if bn.eq(P[2], self.one):
+            return [self.fp.from_mont(P[0]), self.fp.from_mont(P[1])]
         zi := self.finv(P[2])
         zi2 := self.fmul(zi, zi)
         x := self.fp.from_mont(self.fmul(P[0], zi2))
@@ -247,7 +266,7 @@ func _bits2int(c, b):
     return bn.shr(x, excess) if excess > 0 else x
 
 func _hmac(algo, k, data):
-    return _c.hmac_bytes(algo, k, data)
+    return _ax.hmac(algo, k, data)
 
 # Nonce déterministe de la RFC 6979 (3.2) pour la clé x et l'empreinte h1, HMAC avec algo.
 func rfc6979_k(c, x, h1, algo):
@@ -281,15 +300,28 @@ func sign_digest(priv, digest, algo=null):
     while true:
         r := bn.mod(c.affine(c.mul_base(k))[0], c.n)
         if len(r) > 0:
-            kinv := bn.modinv(k, c.n)
-            s := bn.mod(bn.mul(kinv, bn.add(e, bn.mod(bn.mul(r, priv.d), c.n))), c.n)
+            s := null
+            if _ax.has("mulmod") and _ax.has("modpow"):
+                # k^-1 = k^(n - 2) mod n (n premier), produits modulo n : calculs du runtime
+                nb := c.size
+                t := _ax.native()
+                n_raw := _s.byte_pack(bn.to_bytes(c.n, nb))
+                kinv := t.modpow(_s.byte_pack(bn.to_bytes(k, nb)), _s.byte_pack(bn.to_bytes(bn.sub(c.n, [2]))), n_raw)
+                rd := bn.from_bytes(_s.byte_unpack(t.mulmod(_s.byte_pack(bn.to_bytes(r, nb)), _s.byte_pack(bn.to_bytes(priv.d, nb)), n_raw)))
+                sum := bn.add(e, rd)
+                if bn.cmp(sum, c.n) >= 0:
+                    sum = bn.sub(sum, c.n)
+                s = bn.from_bytes(_s.byte_unpack(t.mulmod(kinv, _s.byte_pack(bn.to_bytes(sum, nb)), n_raw)))
+            else:
+                kinv := bn.modinv(k, c.n)
+                s = bn.mod(bn.mul(kinv, bn.add(e, bn.mod(bn.mul(r, priv.d), c.n))), c.n)
             if len(s) > 0:
                 return [r, s]
         k = bn.mod(bn.add(k, [1]), c.n)      # cas de probabilité négligeable
 
 func sign(priv, message, algo=null):
     a := algo if algo != null else priv.curve.hash
-    return sign_digest(priv, _c.hash_bytes(a, message), a)
+    return sign_digest(priv, _ax.hash(a, message), a)
 
 func verify_digest(pub, digest, sig):
     c := pub.curve

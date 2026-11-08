@@ -46,7 +46,8 @@ Le paquet est organisé en couches : les modules du haut s'appuient sur ceux du 
 | `network.tcp` | `connect` → `Connection` (`read`, `read_line`, `read_until`, `read_exact`, `read_all`, `write`...), `listen` → `Listener`, `serve` |
 | `network.udp` | `bind` / `open` → `Endpoint` (`send_to`, `receive`, `try_receive`, `set_broadcast`), `send`, `Datagram` |
 | `network.ipaddress` | `IPv4Address` / `IPv6Address` (forme canonique RFC 5952, `exploded`, `packed`, `to_int`, arithmétique, comparaisons, `is_private`, `is_loopback`, `is_link_local`, `is_multicast`, `is_global`, `is_documentation`, `is_shared`..., `ipv4_mapped`, `reverse_pointer`), `IPNetwork` (`contains` / `in`, `netmask`, `hostmask`, `broadcast`, `num_addresses`, `hosts`, `subnets`, `supernet`, `overlaps`, `address_exclude`), `IPInterface`, `ip_address`, `ip_network`, `collapse`, `summarize_range`, `sort_addresses`, `prefix_to_netmask`, `netmask_to_prefix` — calculs exacts sur 128 bits |
-| `network.tls` | TLS 1.2/1.3 (OpenSSL chargé à l'exécution) : `connect`, `listen`, `serve`, `wrap_client`, `wrap_server`, `TlsSocket` (`version`, `cipher`, `alpn`, `peer_subject`...) |
+| `network.tls` | TLS 1.2/1.3 (OpenSSL chargé à l'exécution, ou à défaut TLS 1.3 écrit en ALEX : `network.tls13`) : `connect`, `listen`, `serve`, `wrap_client`, `wrap_server`, `TlsSocket` (`version`, `cipher`, `alpn`, `peer_subject`...), `backend()` (« openssl » / « alex », variable `ALEX_TLS`) |
+| `network.tls13` | TLS 1.3 (RFC 8446) en ALEX, sans OpenSSL (exécutables natifs) : serveur (`ServerContext`, `context`, `wrap_server` ; suites AES-GCM et ChaCha20-Poly1305, groupes x25519 / P-256 / P-384 avec HelloRetryRequest, ECDSA et RSA-PSS, ALPN, SNI, KeyUpdate) et client (`wrap_client`, chaîne vérifiée par `crypto.x509`) ; `TlsSocket13` a l'interface de `TlsSocket` ; calcul lourd dans le runtime (`crypto.accel`) |
 | `network.certificates` | PEM (`pem_decode`, `pem_encode`), ASN.1 DER (`parse_asn1`, `Node`), X.509 : `Certificate` (sujet, émetteur, série, validité, clé — algorithme, courbe, taille —, SAN DNS / IP / courriel / URI, `is_ca`, `key_usage`, `extended_key_usage`, OCSP, `fingerprint("sha256")`, `matches_hostname` selon RFC 6125, `days_remaining`, `summary`), `load(chemin)`, `parse_pem`, `fetch(hôte, port)` (certificat présenté par un serveur), `check(hôte)` (diagnostic), `generate_self_signed(cert, clé, cn, noms)` (outil `openssl`) |
 | `network.security` | aléa (`random_bytes`, `random_token`, `random_hex`, `random_below`, `random_code`), `constant_time_equals`, `digest`, `hmac`, `hmac_sign` / `hmac_verify`, `pbkdf2` (libcrypto si présent, sinon `crypto`), valeurs signées horodatées (`sign_value` / `unsign_value`), jetons CSRF, mots de passe (`hash_password` / `verify_password` / `needs_rehash`, PBKDF2-SHA256 600 000 tours), anti-SSRF (`check_url`, `is_safe_url`, `is_internal_address` : boucle locale, réseaux privés, lien local et métadonnées de nuage, CGNAT...), `is_safe_redirect`, `security_headers` (HSTS, CSP...), `build_csp`, `RateLimiter` (seau à jetons par clé) |
 
@@ -135,7 +136,7 @@ Le paquet est organisé en couches : les modules du haut s'appuient sur ceux du 
 
 ## Limites
 
-- TLS exige OpenSSL (`libssl.so.3` ou `1.1`), chargé à l'exécution ; sans lui `tls.supported()` vaut `false`. Pas
+- TLS passe par OpenSSL (`libssl.so.3` ou `1.1`) chargé à l'exécution ; sans lui (exécutables natifs), par `network.tls13` : TLS 1.3 seulement, sans certificat client, sans reprise de session ni révocation. Pas
   de reprise de session TLS (certains serveurs FTPS l'exigent sur le canal de données), pas de certificat client
   côté serveur.
 - HTTP/2 seulement pour gRPC (`network.grpc`) ; le client et le serveur web parlent HTTP/1.1. Pas de HTTP/3.

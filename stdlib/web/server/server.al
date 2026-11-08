@@ -352,6 +352,12 @@ class Server:
                 local = sock.local_address()
             catch e:
                 local = null
+            try:
+                # pas d'algorithme de Nagle : une réponse écrite en plusieurs fois (enregistrements TLS, trames
+                # HTTP/2) n'attend pas l'accusé de réception retardé du client (40 ms)
+                sock.set_option("no_delay", true)
+            catch e:
+                ignored := e
             s := sock
             if self.config.tls != null:
                 try:

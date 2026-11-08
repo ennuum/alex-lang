@@ -81,7 +81,8 @@ async func serve(app, host="127.0.0.1", port=8080, count=0, cfg=null, quiet=fals
         sup.watch(null, quiet)
     sup.start()
     if not quiet:
-        print("Serveur à l'écoute sur http://" + (host if host != "0.0.0.0" and host != "" else "127.0.0.1") + ":" + str(sup.port) + "/ (" + str(n) + " ouvrier" + ("s" if n > 1 else "") + ", maître " + str(_os.pid()) + ")")
+        scheme := cfg.scheme() if cfg != null else "http"
+        print("Serveur à l'écoute sur " + scheme + "://" + (host if host != "0.0.0.0" and host != "" else "127.0.0.1") + ":" + str(sup.port) + "/ (" + str(n) + " ouvrier" + ("s" if n > 1 else "") + ", maître " + str(_os.pid()) + ")")
         _io.flush()
     sup.run()
     return sup

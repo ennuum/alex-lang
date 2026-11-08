@@ -39,9 +39,11 @@ class PublicKey:
         self.n = n
         self.e = e
         self.size = (bn.bit_length(n) + 7) // 8
-        self.mont = bn.Montgomery(n)
+        self.mont = null                 # contexte de Montgomery construit au premier calcul
 
     func _public(m):
+        if self.mont == null:
+            self.mont = bn.Montgomery(self.n)
         return self.mont.pow(m, self.e)
 
 class PrivateKey:
