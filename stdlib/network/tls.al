@@ -50,6 +50,7 @@ use io as _io
 use string as _s
 use crypto as _c
 use crypto.hkdf as _hkdf
+use crypto.x509 as _x509
 
 func supported():
     return _sk.supported() and (_t.supported() or backend() == "alex")
@@ -354,6 +355,10 @@ func _ticket_material(cert_file, key_file):
     k := cert_file + "\n" + key_file
     if k in _material and _material[k][0] == stamp:
         return _material[k]
+    # fichiers changés : en pleine rotation (clé et certificat pas encore assortis), on garde l'ancienne empreinte,
+    # donc l'ancien contexte OpenSSL, jusqu'à ce que le couple soit de nouveau cohérent
+    if k in _material and _mismatch(cert_file, key_file):
+        return _material[k]
     fixed := _os.getenv("ALEX_TLS_TICKET_KEY")
     ikm := _c.utf8_encode(fixed) if fixed != null and fixed != "" else _s.byte_unpack(_io.read_raw(key_file))
     prk := _hkdf.extract("sha256", _c.utf8_encode("alex openssl tickets"), ikm)
@@ -361,6 +366,13 @@ func _ticket_material(cert_file, key_file):
     r := [stamp if stamp != "" else "?", keys]
     _material[k] = r
     return r
+
+# Vrai si les deux fichiers se lisent mais ne vont pas ensemble (faux si on ne sait pas : OpenSSL tranchera).
+func _mismatch(cert_file, key_file):
+    try:
+        return not _x509.key_matches(_x509.load_certificates(_io.read_raw(cert_file))[0], _x509.load_private_key(_io.read_raw(key_file)))
+    catch e:
+        return false
 
 _step_ok := [null]
 

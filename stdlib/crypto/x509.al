@@ -428,6 +428,21 @@ func utc_now():
 func _two(n):
     return ("0" if n < 10 else "") + str(n)
 
+# Texte UTC (« AAAA-MM-JJThh:mm:ssZ ») -> secondes depuis 1970 (inverse de utc_text).
+func utc_seconds(text):
+    y := to_int(_s.slice(text, 0, 4))
+    m := to_int(_s.slice(text, 5, 7))
+    d := to_int(_s.slice(text, 8, 10))
+    if m <= 2:
+        y -= 1
+    era := y // 400
+    yoe := y - era * 400
+    mp := m - 3 if m > 2 else m + 9
+    doy := (153 * mp + 2) // 5 + d - 1
+    doe := yoe * 365 + yoe // 4 - yoe // 100 + doy
+    days := era * 146097 + doe - 719468
+    return days * 86400 + to_int(_s.slice(text, 11, 13)) * 3600 + to_int(_s.slice(text, 14, 16)) * 60 + to_int(_s.slice(text, 17, 19))
+
 # Secondes depuis 1970 -> texte UTC (algorithme des jours civils de H. Hinnant).
 func utc_text(seconds):
     s := to_int(seconds)
@@ -613,18 +628,10 @@ func self_signed(common_name="localhost", names=null, days=365, now=null):
     sans := names
     if sans == null:
         sans = [common_name]
-    c := ec.curve("P-256")
-    priv := null
-    while priv == null:
-        try:
-            priv = ec.private_key(c, _rnd.random_bytes(32))
-        catch e:
-            priv = null
-    d := bn.to_bytes(priv.d, 32)
+    k := new_ec_key()
+    priv := k.key
     pub := priv.public_bytes()
-    alg := _seq(_oid_der(OID_EC_PUBLIC_KEY) + _oid_der(OID_P256))
-    spki := _seq(alg + _bits(pub))
-    pkcs8 := _seq(_int_der([0]) + alg + _octets(_seq(_int_der([1]) + _octets(d) + der.encode(der.context(1), _bits(pub)))))
+    spki := _spki_p256(pub)
     name := _seq(der.encode(der.SET, _seq(_oid_der(OID_CN) + der.encode(der.UTF8_STRING, _c.utf8_encode(common_name)))))
     sig_alg := _seq(_oid_der("1.2.840.10045.4.3.2"))
     serial := _rnd.random_bytes(16)
@@ -648,4 +655,49 @@ func self_signed(common_name="localhost", names=null, days=365, now=null):
     tbs := _seq(der.encode(der.context(0), _int_der([2])) + _int_der(serial) + sig_alg + name + validity + name + spki + der.encode(der.context(3), _seq(exts)))
     sig := ec.sign_der(priv, tbs, "sha256")
     cert := _seq(tbs + sig_alg + _bits(sig))
-    return [pem_encode(cert, "CERTIFICATE"), pem_encode(pkcs8, "PRIVATE KEY")]
+    return [pem_encode(cert, "CERTIFICATE"), private_key_pem(k)]
+
+func _spki_p256(pub):
+    return _seq(_seq(_oid_der(OID_EC_PUBLIC_KEY) + _oid_der(OID_P256)) + _bits(pub))
+
+# Nouvelle clé EC P-256 (PrivateKey, kind « ec »).
+func new_ec_key():
+    c := ec.curve("P-256")
+    priv := null
+    while priv == null:
+        try:
+            priv = ec.private_key(c, _rnd.random_bytes(32))
+        catch e:
+            priv = null
+    return PrivateKey("ec", priv, "P-256")
+
+# Clé privée EC P-256 en PEM PKCS#8 (« PRIVATE KEY »).
+func private_key_pem(key):
+    if key.kind != "ec" or key.curve != "P-256":
+        _fail("private_key_pem : clé EC P-256 attendue")
+    pub := key.key.public_bytes()
+    alg := _seq(_oid_der(OID_EC_PUBLIC_KEY) + _oid_der(OID_P256))
+    inner := _seq(_int_der([1]) + _octets(bn.to_bytes(key.key.d, 32)) + der.encode(der.context(1), _bits(pub)))
+    return pem_encode(_seq(_int_der([0]) + alg + _octets(inner)), "PRIVATE KEY")
+
+# Demande de signature de certificat (PKCS#10, RFC 2986) pour une clé EC P-256 : sujet CN = premier nom,
+# extensionRequest avec subjectAltName (noms DNS et adresses IP). Rend le DER (octets), signé en ECDSA-SHA256.
+func csr(key, names):
+    if key.kind != "ec" or key.curve != "P-256":
+        _fail("csr : clé EC P-256 attendue")
+    if names == null or len(names) == 0:
+        _fail("csr : au moins un nom")
+    entries := []
+    for n in names:
+        ip := _ip_bytes(_s.lower(n))
+        if ip != null:
+            entries = entries + der.encode(der.context(7, false), ip)
+        else:
+            entries = entries + der.encode(der.context(2, false), _c.utf8_encode(n))
+    # sujet CN = premier nom ; vide au-delà de 64 caractères (limite du CN : les noms sont dans subjectAltName)
+    cn := _c.utf8_encode(names[0])
+    subject := _seq(der.encode(der.SET, _seq(_oid_der(OID_CN) + der.encode(der.UTF8_STRING, cn)))) if len(cn) <= 64 else _seq([])
+    ext_req := _seq(_oid_der("1.2.840.113549.1.9.14") + der.encode(der.SET, _seq(_ext(OID_SAN, false, _seq(entries)))))
+    info := _seq(_int_der([0]) + subject + _spki_p256(key.key.public_bytes()) + der.encode(der.context(0), ext_req))
+    sig_alg := _seq(_oid_der("1.2.840.10045.4.3.2"))
+    return _seq(info + sig_alg + _bits(ec.sign_der(key.key, info, "sha256")))

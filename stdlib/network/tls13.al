@@ -422,13 +422,22 @@ func _stamp(cert_file, key_file):
         return ""
 
 # Contexte mémorisé pour ce couple de fichiers (relu si l'un d'eux a changé : renouvellement de certificat).
+# Pendant une rotation (clé déjà remplacée, certificat pas encore, ou l'inverse), le couple ne correspond plus :
+# l'ancien contexte continue de servir jusqu'à ce que les deux fichiers soient de nouveau cohérents.
 func context(cert_file, key_file, alpn=null, options=null):
     k := cert_file + "\n" + key_file + "\n" + str(alpn) + "\n" + str(options)
+    old := null
     if k in _contexts:
-        c := _contexts[k]
-        if c.stamp == _stamp(cert_file, key_file):
-            return c
-    c := ServerContext(cert_file, key_file, alpn, options)
+        old = _contexts[k]
+        if old.stamp == _stamp(cert_file, key_file):
+            return old
+    c := null
+    try:
+        c = ServerContext(cert_file, key_file, alpn, options)
+    catch e:
+        if old == null:
+            raise(e.type, e.message)
+        return old
     _contexts[k] = c
     return c
 
