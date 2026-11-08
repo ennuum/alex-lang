@@ -9382,109 +9382,367 @@ func __nat__native_tls__pbkdf2(n: int, a0: int, a1: int, a2: int, a3: int, a4: i
 # ---- Calcul de TLS 1.3 (network.tls13) : X25519, grands entiers de Montgomery, courbes P-256 / P-384, AES-GCM ------
 # _native_tls.x25519 / modpow / mulmod / ec_mul / aes_gcm : le calcul lourd de la poignée de main et des
 # enregistrements, écrit dans le dialecte typé (entiers machine, mémoire brute) au lieu d'Alex dynamique, où chaque
-# entier est un objet : X25519 et la signature ECDSA passent de plus de 100 ms à moins d'une milliseconde. Rien ne
+# entier est un objet : X25519 passe de 120 ms à 0,2 ms, la signature ECDSA P-256 de 214 ms à 1,4 ms. Rien ne
 # dépend d'OpenSSL : la VM et les exécutables natifs ont les mêmes. Octets en str ; grands entiers big-endian.
 # LIMITES : seul X25519 est en temps constant (comme crypto.x25519) ; AES par tables, exponentiation à fenêtre.
 
-# -- X25519 (RFC 7748) : corps 2^255 - 19, 16 limbes de 16 bits signés sur 64 bits (forme de TweetNaCl).
+# -- X25519 (RFC 7748) : corps 2^255 - 19 en 10 limbes signés de 26 / 25 bits (base 2^25,5, forme de ref10),
+#    produits déroulés dans des variables locales (code produit par un générateur) ; un élément : 80 octets.
+#    Bornes de ref10 : les entrées d'un produit sont réduites, ou la somme / différence de deux éléments réduits.
 
-func __x_car(o: int):
+# h = f * g (h peut être f ou g).
+func __fe_mul(h: int, f: int, g: int):
+    f0 := __load64(f + 0)
+    f1 := __load64(f + 8)
+    f2 := __load64(f + 16)
+    f3 := __load64(f + 24)
+    f4 := __load64(f + 32)
+    f5 := __load64(f + 40)
+    f6 := __load64(f + 48)
+    f7 := __load64(f + 56)
+    f8 := __load64(f + 64)
+    f9 := __load64(f + 72)
+    g0 := __load64(g + 0)
+    g1 := __load64(g + 8)
+    g2 := __load64(g + 16)
+    g3 := __load64(g + 24)
+    g4 := __load64(g + 32)
+    g5 := __load64(g + 40)
+    g6 := __load64(g + 48)
+    g7 := __load64(g + 56)
+    g8 := __load64(g + 64)
+    g9 := __load64(g + 72)
+    g1_19 := 19 * g1
+    g2_19 := 19 * g2
+    g3_19 := 19 * g3
+    g4_19 := 19 * g4
+    g5_19 := 19 * g5
+    g6_19 := 19 * g6
+    g7_19 := 19 * g7
+    g8_19 := 19 * g8
+    g9_19 := 19 * g9
+    f1_2 := 2 * f1
+    f3_2 := 2 * f3
+    f5_2 := 2 * f5
+    f7_2 := 2 * f7
+    f9_2 := 2 * f9
+    h0 := f0 * g0 + f1_2 * g9_19 + f2 * g8_19 + f3_2 * g7_19 + f4 * g6_19 + f5_2 * g5_19 + f6 * g4_19 + f7_2 * g3_19 + f8 * g2_19 + f9_2 * g1_19
+    h1 := f0 * g1 + f1 * g0 + f2 * g9_19 + f3 * g8_19 + f4 * g7_19 + f5 * g6_19 + f6 * g5_19 + f7 * g4_19 + f8 * g3_19 + f9 * g2_19
+    h2 := f0 * g2 + f1_2 * g1 + f2 * g0 + f3_2 * g9_19 + f4 * g8_19 + f5_2 * g7_19 + f6 * g6_19 + f7_2 * g5_19 + f8 * g4_19 + f9_2 * g3_19
+    h3 := f0 * g3 + f1 * g2 + f2 * g1 + f3 * g0 + f4 * g9_19 + f5 * g8_19 + f6 * g7_19 + f7 * g6_19 + f8 * g5_19 + f9 * g4_19
+    h4 := f0 * g4 + f1_2 * g3 + f2 * g2 + f3_2 * g1 + f4 * g0 + f5_2 * g9_19 + f6 * g8_19 + f7_2 * g7_19 + f8 * g6_19 + f9_2 * g5_19
+    h5 := f0 * g5 + f1 * g4 + f2 * g3 + f3 * g2 + f4 * g1 + f5 * g0 + f6 * g9_19 + f7 * g8_19 + f8 * g7_19 + f9 * g6_19
+    h6 := f0 * g6 + f1_2 * g5 + f2 * g4 + f3_2 * g3 + f4 * g2 + f5_2 * g1 + f6 * g0 + f7_2 * g9_19 + f8 * g8_19 + f9_2 * g7_19
+    h7 := f0 * g7 + f1 * g6 + f2 * g5 + f3 * g4 + f4 * g3 + f5 * g2 + f6 * g1 + f7 * g0 + f8 * g9_19 + f9 * g8_19
+    h8 := f0 * g8 + f1_2 * g7 + f2 * g6 + f3_2 * g5 + f4 * g4 + f5_2 * g3 + f6 * g2 + f7_2 * g1 + f8 * g0 + f9_2 * g9_19
+    h9 := f0 * g9 + f1 * g8 + f2 * g7 + f3 * g6 + f4 * g5 + f5 * g4 + f6 * g3 + f7 * g2 + f8 * g1 + f9 * g0
+    c := 0
+    c = (h0 + 33554432) >> 26
+    h1 = h1 + c
+    h0 = h0 - (c << 26)
+    c = (h4 + 33554432) >> 26
+    h5 = h5 + c
+    h4 = h4 - (c << 26)
+    c = (h1 + 16777216) >> 25
+    h2 = h2 + c
+    h1 = h1 - (c << 25)
+    c = (h5 + 16777216) >> 25
+    h6 = h6 + c
+    h5 = h5 - (c << 25)
+    c = (h2 + 33554432) >> 26
+    h3 = h3 + c
+    h2 = h2 - (c << 26)
+    c = (h6 + 33554432) >> 26
+    h7 = h7 + c
+    h6 = h6 - (c << 26)
+    c = (h3 + 16777216) >> 25
+    h4 = h4 + c
+    h3 = h3 - (c << 25)
+    c = (h7 + 16777216) >> 25
+    h8 = h8 + c
+    h7 = h7 - (c << 25)
+    c = (h4 + 33554432) >> 26
+    h5 = h5 + c
+    h4 = h4 - (c << 26)
+    c = (h8 + 33554432) >> 26
+    h9 = h9 + c
+    h8 = h8 - (c << 26)
+    c = (h9 + 16777216) >> 25
+    h0 = h0 + c * 19
+    h9 = h9 - (c << 25)
+    c = (h0 + 33554432) >> 26
+    h1 = h1 + c
+    h0 = h0 - (c << 26)
+    __store64(h + 0, h0)
+    __store64(h + 8, h1)
+    __store64(h + 16, h2)
+    __store64(h + 24, h3)
+    __store64(h + 32, h4)
+    __store64(h + 40, h5)
+    __store64(h + 48, h6)
+    __store64(h + 56, h7)
+    __store64(h + 64, h8)
+    __store64(h + 72, h9)
+
+# h = f^2.
+func __fe_sq(h: int, f: int):
+    f0 := __load64(f + 0)
+    f1 := __load64(f + 8)
+    f2 := __load64(f + 16)
+    f3 := __load64(f + 24)
+    f4 := __load64(f + 32)
+    f5 := __load64(f + 40)
+    f6 := __load64(f + 48)
+    f7 := __load64(f + 56)
+    f8 := __load64(f + 64)
+    f9 := __load64(f + 72)
+    h0 := f0 * f0 + 76 * f1 * f9 + 38 * f2 * f8 + 76 * f3 * f7 + 38 * f4 * f6 + 38 * f5 * f5
+    h1 := 2 * f0 * f1 + 38 * f2 * f9 + 38 * f3 * f8 + 38 * f4 * f7 + 38 * f5 * f6
+    h2 := 2 * f0 * f2 + 2 * f1 * f1 + 76 * f3 * f9 + 38 * f4 * f8 + 76 * f5 * f7 + 19 * f6 * f6
+    h3 := 2 * f0 * f3 + 2 * f1 * f2 + 38 * f4 * f9 + 38 * f5 * f8 + 38 * f6 * f7
+    h4 := 2 * f0 * f4 + 4 * f1 * f3 + f2 * f2 + 76 * f5 * f9 + 38 * f6 * f8 + 38 * f7 * f7
+    h5 := 2 * f0 * f5 + 2 * f1 * f4 + 2 * f2 * f3 + 38 * f6 * f9 + 38 * f7 * f8
+    h6 := 2 * f0 * f6 + 4 * f1 * f5 + 2 * f2 * f4 + 2 * f3 * f3 + 76 * f7 * f9 + 19 * f8 * f8
+    h7 := 2 * f0 * f7 + 2 * f1 * f6 + 2 * f2 * f5 + 2 * f3 * f4 + 38 * f8 * f9
+    h8 := 2 * f0 * f8 + 4 * f1 * f7 + 2 * f2 * f6 + 4 * f3 * f5 + f4 * f4 + 38 * f9 * f9
+    h9 := 2 * f0 * f9 + 2 * f1 * f8 + 2 * f2 * f7 + 2 * f3 * f6 + 2 * f4 * f5
+    c := 0
+    c = (h0 + 33554432) >> 26
+    h1 = h1 + c
+    h0 = h0 - (c << 26)
+    c = (h4 + 33554432) >> 26
+    h5 = h5 + c
+    h4 = h4 - (c << 26)
+    c = (h1 + 16777216) >> 25
+    h2 = h2 + c
+    h1 = h1 - (c << 25)
+    c = (h5 + 16777216) >> 25
+    h6 = h6 + c
+    h5 = h5 - (c << 25)
+    c = (h2 + 33554432) >> 26
+    h3 = h3 + c
+    h2 = h2 - (c << 26)
+    c = (h6 + 33554432) >> 26
+    h7 = h7 + c
+    h6 = h6 - (c << 26)
+    c = (h3 + 16777216) >> 25
+    h4 = h4 + c
+    h3 = h3 - (c << 25)
+    c = (h7 + 16777216) >> 25
+    h8 = h8 + c
+    h7 = h7 - (c << 25)
+    c = (h4 + 33554432) >> 26
+    h5 = h5 + c
+    h4 = h4 - (c << 26)
+    c = (h8 + 33554432) >> 26
+    h9 = h9 + c
+    h8 = h8 - (c << 26)
+    c = (h9 + 16777216) >> 25
+    h0 = h0 + c * 19
+    h9 = h9 - (c << 25)
+    c = (h0 + 33554432) >> 26
+    h1 = h1 + c
+    h0 = h0 - (c << 26)
+    __store64(h + 0, h0)
+    __store64(h + 8, h1)
+    __store64(h + 16, h2)
+    __store64(h + 24, h3)
+    __store64(h + 32, h4)
+    __store64(h + 40, h5)
+    __store64(h + 48, h6)
+    __store64(h + 56, h7)
+    __store64(h + 64, h8)
+    __store64(h + 72, h9)
+
+# h = f * n (n < 2^17).
+func __fe_mul_small(h: int, f: int, n: int):
+    h0 := __load64(f + 0) * n
+    h1 := __load64(f + 8) * n
+    h2 := __load64(f + 16) * n
+    h3 := __load64(f + 24) * n
+    h4 := __load64(f + 32) * n
+    h5 := __load64(f + 40) * n
+    h6 := __load64(f + 48) * n
+    h7 := __load64(f + 56) * n
+    h8 := __load64(f + 64) * n
+    h9 := __load64(f + 72) * n
+    c := 0
+    c = (h0 + 33554432) >> 26
+    h1 = h1 + c
+    h0 = h0 - (c << 26)
+    c = (h4 + 33554432) >> 26
+    h5 = h5 + c
+    h4 = h4 - (c << 26)
+    c = (h1 + 16777216) >> 25
+    h2 = h2 + c
+    h1 = h1 - (c << 25)
+    c = (h5 + 16777216) >> 25
+    h6 = h6 + c
+    h5 = h5 - (c << 25)
+    c = (h2 + 33554432) >> 26
+    h3 = h3 + c
+    h2 = h2 - (c << 26)
+    c = (h6 + 33554432) >> 26
+    h7 = h7 + c
+    h6 = h6 - (c << 26)
+    c = (h3 + 16777216) >> 25
+    h4 = h4 + c
+    h3 = h3 - (c << 25)
+    c = (h7 + 16777216) >> 25
+    h8 = h8 + c
+    h7 = h7 - (c << 25)
+    c = (h4 + 33554432) >> 26
+    h5 = h5 + c
+    h4 = h4 - (c << 26)
+    c = (h8 + 33554432) >> 26
+    h9 = h9 + c
+    h8 = h8 - (c << 26)
+    c = (h9 + 16777216) >> 25
+    h0 = h0 + c * 19
+    h9 = h9 - (c << 25)
+    c = (h0 + 33554432) >> 26
+    h1 = h1 + c
+    h0 = h0 - (c << 26)
+    __store64(h + 0, h0)
+    __store64(h + 8, h1)
+    __store64(h + 16, h2)
+    __store64(h + 24, h3)
+    __store64(h + 32, h4)
+    __store64(h + 40, h5)
+    __store64(h + 48, h6)
+    __store64(h + 56, h7)
+    __store64(h + 64, h8)
+    __store64(h + 72, h9)
+
+func __fe_add(h: int, f: int, g: int):
     i := 0
-    while i < 16:
-        v := __load64(o + i * 8) + 65536
-        c := v >> 16
-        if i < 15:
-            __store64(o + i * 8 + 8, __load64(o + i * 8 + 8) + c - 1)
-        else:
-            __store64(o, __load64(o) + 38 * (c - 1))
-        __store64(o + i * 8, v - (c << 16))
-        i += 1
+    while i < 80:
+        __store64(h + i, __load64(f + i) + __load64(g + i))
+        i += 8
+
+func __fe_sub(h: int, f: int, g: int):
+    i := 0
+    while i < 80:
+        __store64(h + i, __load64(f + i) - __load64(g + i))
+        i += 8
+
+func __fe_set(h: int, v: int):
+    i := 0
+    while i < 80:
+        __store64(h + i, 0)
+        i += 8
+    __store64(h, v)
 
 # Échange conditionnel (b = 0 ou 1) sans branchement.
-func __x_sel(p: int, q: int, b: int):
+func __fe_cswap(f: int, g: int, b: int):
     m := 0 - b
     i := 0
-    while i < 16:
-        x := __load64(p + i * 8)
-        y := __load64(q + i * 8)
+    while i < 80:
+        x := __load64(f + i)
+        y := __load64(g + i)
         t := m & (x ^ y)
-        __store64(p + i * 8, x ^ t)
-        __store64(q + i * 8, y ^ t)
-        i += 1
+        __store64(f + i, x ^ t)
+        __store64(g + i, y ^ t)
+        i += 8
 
-func __x_add(o: int, a: int, b: int):
-    i := 0
-    while i < 16:
-        __store64(o + i * 8, __load64(a + i * 8) + __load64(b + i * 8))
-        i += 1
+# Rang du premier bit de la limbe k (26, 25, 26, 25... bits) : 0, 26, 51, 77, 102, 128, 153, 179, 204, 230.
+func __fe_pos(k: int) -> int:
+    return k * 25 + (k + 1) // 2
 
-func __x_sub(o: int, a: int, b: int):
-    i := 0
-    while i < 16:
-        __store64(o + i * 8, __load64(a + i * 8) - __load64(b + i * 8))
-        i += 1
-
-# o = a * b (t : 31 mots de travail ; o peut être a ou b).
-func __x_mul(o: int, a: int, b: int, t: int):
-    i := 0
-    while i < 31:
-        __store64(t + i * 8, 0)
-        i += 1
-    i = 0
-    while i < 16:
-        ai := __load64(a + i * 8)
-        j := 0
-        while j < 16:
-            p := t + (i + j) * 8
-            __store64(p, __load64(p) + ai * __load64(b + j * 8))
-            j += 1
-        i += 1
-    i = 0
-    while i < 15:
-        __store64(t + i * 8, __load64(t + i * 8) + 38 * __load64(t + (i + 16) * 8))
-        i += 1
-    __copy(o, t, 128)
-    __x_car(o)
-    __x_car(o)
-
-# o = a^(p - 2) (inverse) ; c : 16 mots de travail.
-func __x_inv(o: int, a: int, t: int, c: int):
-    __copy(c, a, 128)
-    k := 253
-    while k >= 0:
-        __x_mul(c, c, c, t)
-        if k != 2 and k != 4:
-            __x_mul(c, c, a, t)
-        k -= 1
-    __copy(o, c, 128)
-
-# 32 octets (little-endian) de n réduit modulo p ; t, m : 16 mots de travail chacun.
-func __x_pack(out: int, n: int, t: int, m: int):
-    __copy(t, n, 128)
-    __x_car(t)
-    __x_car(t)
-    __x_car(t)
-    j := 0
-    while j < 2:
-        __store64(m, __load64(t) - 65517)
-        i := 1
-        while i < 15:
-            prev := __load64(m + (i - 1) * 8)
-            __store64(m + i * 8, __load64(t + i * 8) - 65535 - ((prev >> 16) & 1))
-            __store64(m + (i - 1) * 8, prev & 65535)
-            i += 1
-        m14 := __load64(m + 112)
-        __store64(m + 120, __load64(t + 120) - 32767 - ((m14 >> 16) & 1))
-        b := (__load64(m + 120) >> 16) & 1
-        __store64(m + 112, m14 & 65535)
-        __x_sel(t, m, 1 - b)
-        j += 1
+# 32 octets little-endian (bit 255 ignoré) -> élément.
+func __fe_frombytes(h: int, s: int):
     k := 0
-    while k < 16:
-        v := __load64(t + k * 8)
-        __store8(out + 2 * k, v & 255)
-        __store8(out + 2 * k + 1, (v >> 8) & 255)
+    while k < 10:
+        pos := __fe_pos(k)
+        width := 26 - (k & 1)
+        v := 0
+        b := 0
+        while b < width:
+            bit := pos + b
+            if bit < 255:
+                v = v | (((__load8(s + (bit >> 3)) >> (bit & 7)) & 1) << b)
+            b += 1
+        __store64(h + k * 8, v)
         k += 1
+
+# Élément -> 32 octets little-endian, réduit modulo p (tobytes de ref10).
+func __fe_tobytes(s: int, f: int, t: int):
+    __copy(t, f, 80)
+    q := (19 * __load64(t + 72) + 16777216) >> 25
+    k := 0
+    while k < 10:
+        q = (__load64(t + k * 8) + q) >> (26 - (k & 1))
+        k += 1
+    __store64(t, __load64(t) + 19 * q)
+    k = 0
+    while k < 9:
+        b := 26 - (k & 1)
+        v := __load64(t + k * 8)
+        c := v >> b
+        __store64(t + k * 8 + 8, __load64(t + k * 8 + 8) + c)
+        __store64(t + k * 8, v - (c << b))
+        k += 1
+    __store64(t + 72, __load64(t + 72) & 33554431)
+    i := 0
+    while i < 32:
+        __store8(s + i, 0)
+        i += 1
+    k = 0
+    while k < 10:
+        pos := __fe_pos(k)
+        width := 26 - (k & 1)
+        v := __load64(t + k * 8)
+        b := 0
+        while b < width:
+            bit := pos + b
+            if ((v >> b) & 1) != 0:
+                __store8(s + (bit >> 3), __load8(s + (bit >> 3)) | (1 << (bit & 7)))
+            b += 1
+        k += 1
+
+# o = z^(p - 2) (inverse, chaîne de ref10 : 254 carrés, 11 produits) ; w : 3 éléments de travail.
+func __fe_invert(o: int, z: int, w: int):
+    t0 := w
+    t1 := w + 80
+    t2 := w + 160
+    t3 := w + 240
+    __fe_sq(t0, z)
+    __fe_sq(t1, t0)
+    __fe_sq(t1, t1)
+    __fe_mul(t1, z, t1)
+    __fe_mul(t0, t0, t1)
+    __fe_sq(t2, t0)
+    __fe_mul(t1, t1, t2)
+    __fe_sq(t2, t1)
+    __fe_sqn(t2, 4)
+    __fe_mul(t1, t2, t1)
+    __fe_sq(t2, t1)
+    __fe_sqn(t2, 9)
+    __fe_mul(t2, t2, t1)
+    __fe_sq(t3, t2)
+    __fe_sqn(t3, 19)
+    __fe_mul(t2, t3, t2)
+    __fe_sq(t2, t2)
+    __fe_sqn(t2, 9)
+    __fe_mul(t1, t2, t1)
+    __fe_sq(t2, t1)
+    __fe_sqn(t2, 49)
+    __fe_mul(t2, t2, t1)
+    __fe_sq(t3, t2)
+    __fe_sqn(t3, 99)
+    __fe_mul(t2, t3, t2)
+    __fe_sq(t2, t2)
+    __fe_sqn(t2, 49)
+    __fe_mul(t1, t2, t1)
+    __fe_sq(t1, t1)
+    __fe_sqn(t1, 4)
+    __fe_mul(o, t1, t0)
+
+func __fe_sqn(h: int, n: int):
+    i := 0
+    while i < n:
+        __fe_sq(h, h)
+        i += 1
 
 func __nat__native_tls__x25519(n: int, a0: int, a1: int) -> int:
     __nat_range("x25519", n, 2, 2)
@@ -9492,66 +9750,63 @@ func __nat__native_tls__x25519(n: int, a0: int, a1: int) -> int:
     us := __nat_str("x25519", a1, "la coordonnée")
     if __nat_blen(ks) != 32 or __nat_blen(us) != 32:
         __dyn_err("ValueError", "'x25519' : scalaire et coordonnée de 32 octets attendus")
-    w := __rt_str_new(1600) + 8
-    q := 0
-    while q < 1600:
-        __store64(w + q, 0)
-        q += 8
+    w := __rt_str_new(1400) + 8
     z := w
     __copy(z, __nat_bp(ks), 32)
     __store8(z + 31, (__load8(z + 31) & 127) | 64)
     __store8(z, __load8(z) & 248)
-    x := w + 32
-    up := __nat_bp(us)
-    i := 0
-    while i < 16:
-        __store64(x + i * 8, __load8(up + 2 * i) + (__load8(up + 2 * i + 1) << 8))
-        i += 1
-    __store64(x + 120, __load64(x + 120) & 32767)
-    a := w + 160
-    b := w + 288
-    c := w + 416
-    d := w + 544
-    e := w + 672
-    f := w + 800
-    a24 := w + 928
-    t := w + 1056
-    m := w + 1312
-    cc := w + 1440
-    __store64(a, 1)
-    __store64(d, 1)
-    __store64(a24, 121665)
-    __copy(b, x, 128)
-    i = 254
-    while i >= 0:
-        r := (__load8(z + (i >> 3)) >> (i & 7)) & 1
-        __x_sel(a, b, r)
-        __x_sel(c, d, r)
-        __x_add(e, a, c)
-        __x_sub(a, a, c)
-        __x_add(c, b, d)
-        __x_sub(b, b, d)
-        __x_mul(d, e, e, t)
-        __x_mul(f, a, a, t)
-        __x_mul(a, c, a, t)
-        __x_mul(c, b, e, t)
-        __x_add(e, a, c)
-        __x_sub(a, a, c)
-        __x_mul(b, a, a, t)
-        __x_sub(c, d, f)
-        __x_mul(a, c, a24, t)
-        __x_add(a, a, d)
-        __x_mul(c, c, a, t)
-        __x_mul(a, d, f, t)
-        __x_mul(d, b, x, t)
-        __x_mul(b, e, e, t)
-        __x_sel(a, b, r)
-        __x_sel(c, d, r)
-        i -= 1
-    __x_inv(cc, c, t, m)
-    __x_mul(a, a, cc, t)
+    x1 := w + 32
+    x2 := x1 + 80
+    z2 := x2 + 80
+    x3 := z2 + 80
+    z3 := x3 + 80
+    a := z3 + 80
+    aa := a + 80
+    b := aa + 80
+    bb := b + 80
+    e := bb + 80
+    c := e + 80
+    d := c + 80
+    tmp := d + 80
+    wk := tmp + 80
+    __fe_frombytes(x1, __nat_bp(us))
+    __fe_set(x2, 1)
+    __fe_set(z2, 0)
+    __copy(x3, x1, 80)
+    __fe_set(z3, 1)
+    swap := 0
+    t := 254
+    while t >= 0:
+        kt := (__load8(z + (t >> 3)) >> (t & 7)) & 1
+        swap = swap ^ kt
+        __fe_cswap(x2, x3, swap)
+        __fe_cswap(z2, z3, swap)
+        swap = kt
+        __fe_add(a, x2, z2)
+        __fe_sq(aa, a)
+        __fe_sub(b, x2, z2)
+        __fe_sq(bb, b)
+        __fe_sub(e, aa, bb)
+        __fe_add(c, x3, z3)
+        __fe_sub(d, x3, z3)
+        __fe_mul(d, d, a)
+        __fe_mul(c, c, b)
+        __fe_add(tmp, d, c)
+        __fe_sq(x3, tmp)
+        __fe_sub(tmp, d, c)
+        __fe_sq(tmp, tmp)
+        __fe_mul(z3, x1, tmp)
+        __fe_mul(x2, aa, bb)
+        __fe_mul_small(tmp, e, 121665)
+        __fe_add(tmp, aa, tmp)
+        __fe_mul(z2, e, tmp)
+        t -= 1
+    __fe_cswap(x2, x3, swap)
+    __fe_cswap(z2, z3, swap)
+    __fe_invert(tmp, z2, wk)
+    __fe_mul(x2, x2, tmp)
     res := __rt_str_new(32)
-    __x_pack(res + 8, a, t, m)
+    __fe_tobytes(res + 8, x2, wk)
     return __dyn_str(__as_str(res))
 
 # -- Grands entiers : limbes de 26 bits (little-endian) sur 64 bits, multiplication de Montgomery (CIOS) comme
@@ -9750,14 +10005,1703 @@ func __mp_ctx(mp_bytes: int, mlen: int) -> int:
 func __f_nl(C: int) -> int:
     return __load64(C + 8)
 
+# o = a * b * R^-1 mod m pour 10 limbes (P-256), CIOS déroulé (code produit par un générateur).
+func __mp_mul10(o: int, a: int, b: int, m: int, mp: int):
+    b0 := __load64(b + 0)
+    b1 := __load64(b + 8)
+    b2 := __load64(b + 16)
+    b3 := __load64(b + 24)
+    b4 := __load64(b + 32)
+    b5 := __load64(b + 40)
+    b6 := __load64(b + 48)
+    b7 := __load64(b + 56)
+    b8 := __load64(b + 64)
+    b9 := __load64(b + 72)
+    m0 := __load64(m + 0)
+    m1 := __load64(m + 8)
+    m2 := __load64(m + 16)
+    m3 := __load64(m + 24)
+    m4 := __load64(m + 32)
+    m5 := __load64(m + 40)
+    m6 := __load64(m + 48)
+    m7 := __load64(m + 56)
+    m8 := __load64(m + 64)
+    m9 := __load64(m + 72)
+    t0 := 0
+    t1 := 0
+    t2 := 0
+    t3 := 0
+    t4 := 0
+    t5 := 0
+    t6 := 0
+    t7 := 0
+    t8 := 0
+    t9 := 0
+    t10 := 0
+    ai := 0
+    u := 0
+    s := 0
+    c := 0
+    ai = __load64(a + 0)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + c
+    t9 = s & 67108863
+    t10 = s >> 26
+    ai = __load64(a + 8)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + c
+    t9 = s & 67108863
+    t10 = s >> 26
+    ai = __load64(a + 16)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + c
+    t9 = s & 67108863
+    t10 = s >> 26
+    ai = __load64(a + 24)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + c
+    t9 = s & 67108863
+    t10 = s >> 26
+    ai = __load64(a + 32)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + c
+    t9 = s & 67108863
+    t10 = s >> 26
+    ai = __load64(a + 40)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + c
+    t9 = s & 67108863
+    t10 = s >> 26
+    ai = __load64(a + 48)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + c
+    t9 = s & 67108863
+    t10 = s >> 26
+    ai = __load64(a + 56)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + c
+    t9 = s & 67108863
+    t10 = s >> 26
+    ai = __load64(a + 64)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + c
+    t9 = s & 67108863
+    t10 = s >> 26
+    ai = __load64(a + 72)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + c
+    t9 = s & 67108863
+    t10 = s >> 26
+    __store64(o + 0, t0)
+    __store64(o + 8, t1)
+    __store64(o + 16, t2)
+    __store64(o + 24, t3)
+    __store64(o + 32, t4)
+    __store64(o + 40, t5)
+    __store64(o + 48, t6)
+    __store64(o + 56, t7)
+    __store64(o + 64, t8)
+    __store64(o + 72, t9)
+    if t10 != 0 or __mp_cmp(o, m, 10) >= 0:
+        __mp_subn(o, o, m, 10)
+
+# o = a * b * R^-1 mod m pour 15 limbes (P-384), CIOS déroulé (code produit par un générateur).
+func __mp_mul15(o: int, a: int, b: int, m: int, mp: int):
+    b0 := __load64(b + 0)
+    b1 := __load64(b + 8)
+    b2 := __load64(b + 16)
+    b3 := __load64(b + 24)
+    b4 := __load64(b + 32)
+    b5 := __load64(b + 40)
+    b6 := __load64(b + 48)
+    b7 := __load64(b + 56)
+    b8 := __load64(b + 64)
+    b9 := __load64(b + 72)
+    b10 := __load64(b + 80)
+    b11 := __load64(b + 88)
+    b12 := __load64(b + 96)
+    b13 := __load64(b + 104)
+    b14 := __load64(b + 112)
+    m0 := __load64(m + 0)
+    m1 := __load64(m + 8)
+    m2 := __load64(m + 16)
+    m3 := __load64(m + 24)
+    m4 := __load64(m + 32)
+    m5 := __load64(m + 40)
+    m6 := __load64(m + 48)
+    m7 := __load64(m + 56)
+    m8 := __load64(m + 64)
+    m9 := __load64(m + 72)
+    m10 := __load64(m + 80)
+    m11 := __load64(m + 88)
+    m12 := __load64(m + 96)
+    m13 := __load64(m + 104)
+    m14 := __load64(m + 112)
+    t0 := 0
+    t1 := 0
+    t2 := 0
+    t3 := 0
+    t4 := 0
+    t5 := 0
+    t6 := 0
+    t7 := 0
+    t8 := 0
+    t9 := 0
+    t10 := 0
+    t11 := 0
+    t12 := 0
+    t13 := 0
+    t14 := 0
+    t15 := 0
+    ai := 0
+    u := 0
+    s := 0
+    c := 0
+    ai = __load64(a + 0)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    ai = __load64(a + 8)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    ai = __load64(a + 16)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    ai = __load64(a + 24)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    ai = __load64(a + 32)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    ai = __load64(a + 40)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    ai = __load64(a + 48)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    ai = __load64(a + 56)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    ai = __load64(a + 64)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    ai = __load64(a + 72)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    ai = __load64(a + 80)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    ai = __load64(a + 88)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    ai = __load64(a + 96)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    ai = __load64(a + 104)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    ai = __load64(a + 112)
+    u = (((t0 + ai * b0) & 67108863) * mp) & 67108863
+    c = (t0 + ai * b0 + u * m0) >> 26
+    s = t1 + ai * b1 + u * m1 + c
+    t0 = s & 67108863
+    c = s >> 26
+    s = t2 + ai * b2 + u * m2 + c
+    t1 = s & 67108863
+    c = s >> 26
+    s = t3 + ai * b3 + u * m3 + c
+    t2 = s & 67108863
+    c = s >> 26
+    s = t4 + ai * b4 + u * m4 + c
+    t3 = s & 67108863
+    c = s >> 26
+    s = t5 + ai * b5 + u * m5 + c
+    t4 = s & 67108863
+    c = s >> 26
+    s = t6 + ai * b6 + u * m6 + c
+    t5 = s & 67108863
+    c = s >> 26
+    s = t7 + ai * b7 + u * m7 + c
+    t6 = s & 67108863
+    c = s >> 26
+    s = t8 + ai * b8 + u * m8 + c
+    t7 = s & 67108863
+    c = s >> 26
+    s = t9 + ai * b9 + u * m9 + c
+    t8 = s & 67108863
+    c = s >> 26
+    s = t10 + ai * b10 + u * m10 + c
+    t9 = s & 67108863
+    c = s >> 26
+    s = t11 + ai * b11 + u * m11 + c
+    t10 = s & 67108863
+    c = s >> 26
+    s = t12 + ai * b12 + u * m12 + c
+    t11 = s & 67108863
+    c = s >> 26
+    s = t13 + ai * b13 + u * m13 + c
+    t12 = s & 67108863
+    c = s >> 26
+    s = t14 + ai * b14 + u * m14 + c
+    t13 = s & 67108863
+    c = s >> 26
+    s = t15 + c
+    t14 = s & 67108863
+    t15 = s >> 26
+    __store64(o + 0, t0)
+    __store64(o + 8, t1)
+    __store64(o + 16, t2)
+    __store64(o + 24, t3)
+    __store64(o + 32, t4)
+    __store64(o + 40, t5)
+    __store64(o + 48, t6)
+    __store64(o + 56, t7)
+    __store64(o + 64, t8)
+    __store64(o + 72, t9)
+    __store64(o + 80, t10)
+    __store64(o + 88, t11)
+    __store64(o + 96, t12)
+    __store64(o + 104, t13)
+    __store64(o + 112, t14)
+    if t15 != 0 or __mp_cmp(o, m, 15) >= 0:
+        __mp_subn(o, o, m, 15)
+
 func __f_mul(o: int, a: int, b: int, C: int):
-    __mp_mul(o, a, b, __load64(C), __load64(C + 8), __load64(C + 16), __load64(C + 24))
+    nl := __load64(C + 8)
+    if nl == 10:
+        __mp_mul10(o, a, b, __load64(C), __load64(C + 16))
+    elif nl == 15:
+        __mp_mul15(o, a, b, __load64(C), __load64(C + 16))
+    else:
+        __mp_mul(o, a, b, __load64(C), nl, __load64(C + 16), __load64(C + 24))
+
+# o = a + b mod m (10 limbes, a, b < m), déroulé.
+func __mp_add10(o: int, a: int, b: int, m: int):
+    c := 0
+    br := 0
+    s0 := __load64(a + 0) + __load64(b + 0) + c
+    c = s0 >> 26
+    s0 = s0 & 67108863
+    s1 := __load64(a + 8) + __load64(b + 8) + c
+    c = s1 >> 26
+    s1 = s1 & 67108863
+    s2 := __load64(a + 16) + __load64(b + 16) + c
+    c = s2 >> 26
+    s2 = s2 & 67108863
+    s3 := __load64(a + 24) + __load64(b + 24) + c
+    c = s3 >> 26
+    s3 = s3 & 67108863
+    s4 := __load64(a + 32) + __load64(b + 32) + c
+    c = s4 >> 26
+    s4 = s4 & 67108863
+    s5 := __load64(a + 40) + __load64(b + 40) + c
+    c = s5 >> 26
+    s5 = s5 & 67108863
+    s6 := __load64(a + 48) + __load64(b + 48) + c
+    c = s6 >> 26
+    s6 = s6 & 67108863
+    s7 := __load64(a + 56) + __load64(b + 56) + c
+    c = s7 >> 26
+    s7 = s7 & 67108863
+    s8 := __load64(a + 64) + __load64(b + 64) + c
+    c = s8 >> 26
+    s8 = s8 & 67108863
+    s9 := __load64(a + 72) + __load64(b + 72) + c
+    c = s9 >> 26
+    s9 = s9 & 67108863
+    d0 := s0 - __load64(m + 0) - br
+    br = 0
+    if d0 < 0:
+        d0 = d0 + 67108864
+        br = 1
+    d1 := s1 - __load64(m + 8) - br
+    br = 0
+    if d1 < 0:
+        d1 = d1 + 67108864
+        br = 1
+    d2 := s2 - __load64(m + 16) - br
+    br = 0
+    if d2 < 0:
+        d2 = d2 + 67108864
+        br = 1
+    d3 := s3 - __load64(m + 24) - br
+    br = 0
+    if d3 < 0:
+        d3 = d3 + 67108864
+        br = 1
+    d4 := s4 - __load64(m + 32) - br
+    br = 0
+    if d4 < 0:
+        d4 = d4 + 67108864
+        br = 1
+    d5 := s5 - __load64(m + 40) - br
+    br = 0
+    if d5 < 0:
+        d5 = d5 + 67108864
+        br = 1
+    d6 := s6 - __load64(m + 48) - br
+    br = 0
+    if d6 < 0:
+        d6 = d6 + 67108864
+        br = 1
+    d7 := s7 - __load64(m + 56) - br
+    br = 0
+    if d7 < 0:
+        d7 = d7 + 67108864
+        br = 1
+    d8 := s8 - __load64(m + 64) - br
+    br = 0
+    if d8 < 0:
+        d8 = d8 + 67108864
+        br = 1
+    d9 := s9 - __load64(m + 72) - br
+    br = 0
+    if d9 < 0:
+        d9 = d9 + 67108864
+        br = 1
+    if c != 0 or br == 0:
+        __store64(o + 0, d0)
+        __store64(o + 8, d1)
+        __store64(o + 16, d2)
+        __store64(o + 24, d3)
+        __store64(o + 32, d4)
+        __store64(o + 40, d5)
+        __store64(o + 48, d6)
+        __store64(o + 56, d7)
+        __store64(o + 64, d8)
+        __store64(o + 72, d9)
+    else:
+        __store64(o + 0, s0)
+        __store64(o + 8, s1)
+        __store64(o + 16, s2)
+        __store64(o + 24, s3)
+        __store64(o + 32, s4)
+        __store64(o + 40, s5)
+        __store64(o + 48, s6)
+        __store64(o + 56, s7)
+        __store64(o + 64, s8)
+        __store64(o + 72, s9)
+
+# o = a - b mod m (10 limbes, a, b < m), déroulé.
+func __mp_sub10(o: int, a: int, b: int, m: int):
+    br := 0
+    c := 0
+    d0 := __load64(a + 0) - __load64(b + 0) - br
+    br = 0
+    if d0 < 0:
+        d0 = d0 + 67108864
+        br = 1
+    d1 := __load64(a + 8) - __load64(b + 8) - br
+    br = 0
+    if d1 < 0:
+        d1 = d1 + 67108864
+        br = 1
+    d2 := __load64(a + 16) - __load64(b + 16) - br
+    br = 0
+    if d2 < 0:
+        d2 = d2 + 67108864
+        br = 1
+    d3 := __load64(a + 24) - __load64(b + 24) - br
+    br = 0
+    if d3 < 0:
+        d3 = d3 + 67108864
+        br = 1
+    d4 := __load64(a + 32) - __load64(b + 32) - br
+    br = 0
+    if d4 < 0:
+        d4 = d4 + 67108864
+        br = 1
+    d5 := __load64(a + 40) - __load64(b + 40) - br
+    br = 0
+    if d5 < 0:
+        d5 = d5 + 67108864
+        br = 1
+    d6 := __load64(a + 48) - __load64(b + 48) - br
+    br = 0
+    if d6 < 0:
+        d6 = d6 + 67108864
+        br = 1
+    d7 := __load64(a + 56) - __load64(b + 56) - br
+    br = 0
+    if d7 < 0:
+        d7 = d7 + 67108864
+        br = 1
+    d8 := __load64(a + 64) - __load64(b + 64) - br
+    br = 0
+    if d8 < 0:
+        d8 = d8 + 67108864
+        br = 1
+    d9 := __load64(a + 72) - __load64(b + 72) - br
+    br = 0
+    if d9 < 0:
+        d9 = d9 + 67108864
+        br = 1
+    if br != 0:
+        d0 = d0 + __load64(m + 0) + c
+        c = d0 >> 26
+        d0 = d0 & 67108863
+        d1 = d1 + __load64(m + 8) + c
+        c = d1 >> 26
+        d1 = d1 & 67108863
+        d2 = d2 + __load64(m + 16) + c
+        c = d2 >> 26
+        d2 = d2 & 67108863
+        d3 = d3 + __load64(m + 24) + c
+        c = d3 >> 26
+        d3 = d3 & 67108863
+        d4 = d4 + __load64(m + 32) + c
+        c = d4 >> 26
+        d4 = d4 & 67108863
+        d5 = d5 + __load64(m + 40) + c
+        c = d5 >> 26
+        d5 = d5 & 67108863
+        d6 = d6 + __load64(m + 48) + c
+        c = d6 >> 26
+        d6 = d6 & 67108863
+        d7 = d7 + __load64(m + 56) + c
+        c = d7 >> 26
+        d7 = d7 & 67108863
+        d8 = d8 + __load64(m + 64) + c
+        c = d8 >> 26
+        d8 = d8 & 67108863
+        d9 = d9 + __load64(m + 72) + c
+        c = d9 >> 26
+        d9 = d9 & 67108863
+    __store64(o + 0, d0)
+    __store64(o + 8, d1)
+    __store64(o + 16, d2)
+    __store64(o + 24, d3)
+    __store64(o + 32, d4)
+    __store64(o + 40, d5)
+    __store64(o + 48, d6)
+    __store64(o + 56, d7)
+    __store64(o + 64, d8)
+    __store64(o + 72, d9)
+
+# o = a + b mod m (15 limbes, a, b < m), déroulé.
+func __mp_add15(o: int, a: int, b: int, m: int):
+    c := 0
+    br := 0
+    s0 := __load64(a + 0) + __load64(b + 0) + c
+    c = s0 >> 26
+    s0 = s0 & 67108863
+    s1 := __load64(a + 8) + __load64(b + 8) + c
+    c = s1 >> 26
+    s1 = s1 & 67108863
+    s2 := __load64(a + 16) + __load64(b + 16) + c
+    c = s2 >> 26
+    s2 = s2 & 67108863
+    s3 := __load64(a + 24) + __load64(b + 24) + c
+    c = s3 >> 26
+    s3 = s3 & 67108863
+    s4 := __load64(a + 32) + __load64(b + 32) + c
+    c = s4 >> 26
+    s4 = s4 & 67108863
+    s5 := __load64(a + 40) + __load64(b + 40) + c
+    c = s5 >> 26
+    s5 = s5 & 67108863
+    s6 := __load64(a + 48) + __load64(b + 48) + c
+    c = s6 >> 26
+    s6 = s6 & 67108863
+    s7 := __load64(a + 56) + __load64(b + 56) + c
+    c = s7 >> 26
+    s7 = s7 & 67108863
+    s8 := __load64(a + 64) + __load64(b + 64) + c
+    c = s8 >> 26
+    s8 = s8 & 67108863
+    s9 := __load64(a + 72) + __load64(b + 72) + c
+    c = s9 >> 26
+    s9 = s9 & 67108863
+    s10 := __load64(a + 80) + __load64(b + 80) + c
+    c = s10 >> 26
+    s10 = s10 & 67108863
+    s11 := __load64(a + 88) + __load64(b + 88) + c
+    c = s11 >> 26
+    s11 = s11 & 67108863
+    s12 := __load64(a + 96) + __load64(b + 96) + c
+    c = s12 >> 26
+    s12 = s12 & 67108863
+    s13 := __load64(a + 104) + __load64(b + 104) + c
+    c = s13 >> 26
+    s13 = s13 & 67108863
+    s14 := __load64(a + 112) + __load64(b + 112) + c
+    c = s14 >> 26
+    s14 = s14 & 67108863
+    d0 := s0 - __load64(m + 0) - br
+    br = 0
+    if d0 < 0:
+        d0 = d0 + 67108864
+        br = 1
+    d1 := s1 - __load64(m + 8) - br
+    br = 0
+    if d1 < 0:
+        d1 = d1 + 67108864
+        br = 1
+    d2 := s2 - __load64(m + 16) - br
+    br = 0
+    if d2 < 0:
+        d2 = d2 + 67108864
+        br = 1
+    d3 := s3 - __load64(m + 24) - br
+    br = 0
+    if d3 < 0:
+        d3 = d3 + 67108864
+        br = 1
+    d4 := s4 - __load64(m + 32) - br
+    br = 0
+    if d4 < 0:
+        d4 = d4 + 67108864
+        br = 1
+    d5 := s5 - __load64(m + 40) - br
+    br = 0
+    if d5 < 0:
+        d5 = d5 + 67108864
+        br = 1
+    d6 := s6 - __load64(m + 48) - br
+    br = 0
+    if d6 < 0:
+        d6 = d6 + 67108864
+        br = 1
+    d7 := s7 - __load64(m + 56) - br
+    br = 0
+    if d7 < 0:
+        d7 = d7 + 67108864
+        br = 1
+    d8 := s8 - __load64(m + 64) - br
+    br = 0
+    if d8 < 0:
+        d8 = d8 + 67108864
+        br = 1
+    d9 := s9 - __load64(m + 72) - br
+    br = 0
+    if d9 < 0:
+        d9 = d9 + 67108864
+        br = 1
+    d10 := s10 - __load64(m + 80) - br
+    br = 0
+    if d10 < 0:
+        d10 = d10 + 67108864
+        br = 1
+    d11 := s11 - __load64(m + 88) - br
+    br = 0
+    if d11 < 0:
+        d11 = d11 + 67108864
+        br = 1
+    d12 := s12 - __load64(m + 96) - br
+    br = 0
+    if d12 < 0:
+        d12 = d12 + 67108864
+        br = 1
+    d13 := s13 - __load64(m + 104) - br
+    br = 0
+    if d13 < 0:
+        d13 = d13 + 67108864
+        br = 1
+    d14 := s14 - __load64(m + 112) - br
+    br = 0
+    if d14 < 0:
+        d14 = d14 + 67108864
+        br = 1
+    if c != 0 or br == 0:
+        __store64(o + 0, d0)
+        __store64(o + 8, d1)
+        __store64(o + 16, d2)
+        __store64(o + 24, d3)
+        __store64(o + 32, d4)
+        __store64(o + 40, d5)
+        __store64(o + 48, d6)
+        __store64(o + 56, d7)
+        __store64(o + 64, d8)
+        __store64(o + 72, d9)
+        __store64(o + 80, d10)
+        __store64(o + 88, d11)
+        __store64(o + 96, d12)
+        __store64(o + 104, d13)
+        __store64(o + 112, d14)
+    else:
+        __store64(o + 0, s0)
+        __store64(o + 8, s1)
+        __store64(o + 16, s2)
+        __store64(o + 24, s3)
+        __store64(o + 32, s4)
+        __store64(o + 40, s5)
+        __store64(o + 48, s6)
+        __store64(o + 56, s7)
+        __store64(o + 64, s8)
+        __store64(o + 72, s9)
+        __store64(o + 80, s10)
+        __store64(o + 88, s11)
+        __store64(o + 96, s12)
+        __store64(o + 104, s13)
+        __store64(o + 112, s14)
+
+# o = a - b mod m (15 limbes, a, b < m), déroulé.
+func __mp_sub15(o: int, a: int, b: int, m: int):
+    br := 0
+    c := 0
+    d0 := __load64(a + 0) - __load64(b + 0) - br
+    br = 0
+    if d0 < 0:
+        d0 = d0 + 67108864
+        br = 1
+    d1 := __load64(a + 8) - __load64(b + 8) - br
+    br = 0
+    if d1 < 0:
+        d1 = d1 + 67108864
+        br = 1
+    d2 := __load64(a + 16) - __load64(b + 16) - br
+    br = 0
+    if d2 < 0:
+        d2 = d2 + 67108864
+        br = 1
+    d3 := __load64(a + 24) - __load64(b + 24) - br
+    br = 0
+    if d3 < 0:
+        d3 = d3 + 67108864
+        br = 1
+    d4 := __load64(a + 32) - __load64(b + 32) - br
+    br = 0
+    if d4 < 0:
+        d4 = d4 + 67108864
+        br = 1
+    d5 := __load64(a + 40) - __load64(b + 40) - br
+    br = 0
+    if d5 < 0:
+        d5 = d5 + 67108864
+        br = 1
+    d6 := __load64(a + 48) - __load64(b + 48) - br
+    br = 0
+    if d6 < 0:
+        d6 = d6 + 67108864
+        br = 1
+    d7 := __load64(a + 56) - __load64(b + 56) - br
+    br = 0
+    if d7 < 0:
+        d7 = d7 + 67108864
+        br = 1
+    d8 := __load64(a + 64) - __load64(b + 64) - br
+    br = 0
+    if d8 < 0:
+        d8 = d8 + 67108864
+        br = 1
+    d9 := __load64(a + 72) - __load64(b + 72) - br
+    br = 0
+    if d9 < 0:
+        d9 = d9 + 67108864
+        br = 1
+    d10 := __load64(a + 80) - __load64(b + 80) - br
+    br = 0
+    if d10 < 0:
+        d10 = d10 + 67108864
+        br = 1
+    d11 := __load64(a + 88) - __load64(b + 88) - br
+    br = 0
+    if d11 < 0:
+        d11 = d11 + 67108864
+        br = 1
+    d12 := __load64(a + 96) - __load64(b + 96) - br
+    br = 0
+    if d12 < 0:
+        d12 = d12 + 67108864
+        br = 1
+    d13 := __load64(a + 104) - __load64(b + 104) - br
+    br = 0
+    if d13 < 0:
+        d13 = d13 + 67108864
+        br = 1
+    d14 := __load64(a + 112) - __load64(b + 112) - br
+    br = 0
+    if d14 < 0:
+        d14 = d14 + 67108864
+        br = 1
+    if br != 0:
+        d0 = d0 + __load64(m + 0) + c
+        c = d0 >> 26
+        d0 = d0 & 67108863
+        d1 = d1 + __load64(m + 8) + c
+        c = d1 >> 26
+        d1 = d1 & 67108863
+        d2 = d2 + __load64(m + 16) + c
+        c = d2 >> 26
+        d2 = d2 & 67108863
+        d3 = d3 + __load64(m + 24) + c
+        c = d3 >> 26
+        d3 = d3 & 67108863
+        d4 = d4 + __load64(m + 32) + c
+        c = d4 >> 26
+        d4 = d4 & 67108863
+        d5 = d5 + __load64(m + 40) + c
+        c = d5 >> 26
+        d5 = d5 & 67108863
+        d6 = d6 + __load64(m + 48) + c
+        c = d6 >> 26
+        d6 = d6 & 67108863
+        d7 = d7 + __load64(m + 56) + c
+        c = d7 >> 26
+        d7 = d7 & 67108863
+        d8 = d8 + __load64(m + 64) + c
+        c = d8 >> 26
+        d8 = d8 & 67108863
+        d9 = d9 + __load64(m + 72) + c
+        c = d9 >> 26
+        d9 = d9 & 67108863
+        d10 = d10 + __load64(m + 80) + c
+        c = d10 >> 26
+        d10 = d10 & 67108863
+        d11 = d11 + __load64(m + 88) + c
+        c = d11 >> 26
+        d11 = d11 & 67108863
+        d12 = d12 + __load64(m + 96) + c
+        c = d12 >> 26
+        d12 = d12 & 67108863
+        d13 = d13 + __load64(m + 104) + c
+        c = d13 >> 26
+        d13 = d13 & 67108863
+        d14 = d14 + __load64(m + 112) + c
+        c = d14 >> 26
+        d14 = d14 & 67108863
+    __store64(o + 0, d0)
+    __store64(o + 8, d1)
+    __store64(o + 16, d2)
+    __store64(o + 24, d3)
+    __store64(o + 32, d4)
+    __store64(o + 40, d5)
+    __store64(o + 48, d6)
+    __store64(o + 56, d7)
+    __store64(o + 64, d8)
+    __store64(o + 72, d9)
+    __store64(o + 80, d10)
+    __store64(o + 88, d11)
+    __store64(o + 96, d12)
+    __store64(o + 104, d13)
+    __store64(o + 112, d14)
 
 func __f_add(o: int, a: int, b: int, C: int):
-    __mp_addmod(o, a, b, __load64(C), __load64(C + 8))
+    nl := __load64(C + 8)
+    if nl == 10:
+        __mp_add10(o, a, b, __load64(C))
+    elif nl == 15:
+        __mp_add15(o, a, b, __load64(C))
+    else:
+        __mp_addmod(o, a, b, __load64(C), nl)
 
 func __f_sub(o: int, a: int, b: int, C: int):
-    __mp_submod(o, a, b, __load64(C), __load64(C + 8))
+    nl := __load64(C + 8)
+    if nl == 10:
+        __mp_sub10(o, a, b, __load64(C))
+    elif nl == 15:
+        __mp_sub15(o, a, b, __load64(C))
+    else:
+        __mp_submod(o, a, b, __load64(C), nl)
 
 func __f_cp(o: int, a: int, C: int):
     __copy(o, a, __load64(C + 8) * 8)
@@ -10083,6 +12027,79 @@ func __nat__native_tls__ec_mul(n: int, a0: int, a1: int, a2: int, a3: int) -> in
     __f_mul(acc + nl8, acc + nl8, zi2, C)
     __f_store(res + 8 + plen, plen, acc + nl8, C)
     return __dyn_str(__as_str(res))
+
+# ecdsa_sign(p, n, gx, gy, k, d, e) : signature ECDSA (r || s, octets de la taille de n) avec le nonce k
+# (crypto.ec le tire selon la RFC 6979) ; "" si r ou s est nul (nonce suivant). Courbe a = -3 de module p,
+# générateur (gx, gy) d'ordre n premier, n < p < 2n (P-256, P-384) ; k, d, e < n. Un seul appel au lieu de
+# ec_mul + modpow + mulmod et des conversions de grands entiers en Alex.
+func __nat__native_tls__ecdsa_sign(n: int, a0: int, a1: int, a2: int, a3: int, a4: int, a5: int, a6: int) -> int:
+    __nat_range("ecdsa_sign", n, 7, 7)
+    R := __nat__native_tls__ec_mul(4, a0, a4, a2, a3)
+    rs := __nat_str("ecdsa_sign", R, "R")
+    if __nat_blen(rs) == 0:
+        return __dyn_str("")
+    ns := __nat_str("ecdsa_sign", a1, "l'ordre")
+    ks := __nat_str("ecdsa_sign", a4, "le nonce")
+    ds := __nat_str("ecdsa_sign", a5, "la clé")
+    es := __nat_str("ecdsa_sign", a6, "l'empreinte")
+    __mp_odd_mod("ecdsa_sign", ns)
+    nlen := __nat_blen(ns)
+    plen := __nat_blen(rs) // 2
+    C := __mp_ctx(__nat_bp(ns), nlen)
+    __mp_check_below("ecdsa_sign", ks, C)
+    __mp_check_below("ecdsa_sign", ds, C)
+    __mp_check_below("ecdsa_sign", es, C)
+    nl := __load64(C + 8)
+    nl8 := nl * 8
+    w := __rt_str_new(nl8 * 24 + nlen + 64) + 8
+    x := w
+    rM := w + nl8
+    dM := w + nl8 * 2
+    eM := w + nl8 * 3
+    kM := w + nl8 * 4
+    t := w + nl8 * 5
+    tab := w + nl8 * 6
+    eb := w + nl8 * 22
+    if plen * 8 > nl * 26:
+        __dyn_err("ValueError", "'ecdsa_sign' : module de la courbe plus grand que l'ordre")
+    __mp_from(x, __nat_bp(rs), plen, nl)
+    if __mp_cmp(x, __load64(C), nl) >= 0:
+        __mp_subn(x, x, __load64(C), nl)
+    if __mp_is_zero(x, nl):
+        return __dyn_str("")
+    out := __rt_str_new(nlen * 2)
+    __mp_to(out + 8, nlen, x, nl)
+    __f_mul(rM, x, __load64(C + 32), C)
+    __f_load(dM, __nat_bp(ds), __nat_blen(ds), C)
+    __f_load(eM, __nat_bp(es), __nat_blen(es), C)
+    __f_load(kM, __nat_bp(ks), __nat_blen(ks), C)
+    # k^-1 = k^(n - 2)
+    __copy(eb, __nat_bp(ns), nlen)
+    j := nlen - 1
+    sub := 2
+    while j >= 0 and sub > 0:
+        v := __load8(eb + j) - sub
+        if v < 0:
+            __store8(eb + j, v + 256)
+            sub = 1
+        else:
+            __store8(eb + j, v)
+            sub = 0
+        j -= 1
+    __f_pow(kM, kM, eb, nlen, C, tab)
+    __f_mul(t, rM, dM, C)
+    __f_add(t, t, eM, C)
+    __f_mul(t, t, kM, C)
+    __f_store(out + 8 + nlen, nlen, t, C)
+    zero := true
+    i := 0
+    while i < nlen:
+        if __load8(out + 8 + nlen + i) != 0:
+            zero = false
+        i += 1
+    if zero:
+        return __dyn_str("")
+    return __dyn_str(__as_str(out))
 
 # -- AES (FIPS 197, tables T) et GCM (SP 800-38D, GHASH par tables de 4 bits sur deux mots de 64 bits).
 

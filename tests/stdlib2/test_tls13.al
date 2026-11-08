@@ -14,6 +14,8 @@ use crypto.accel as ax
 use crypto.x509 as x509
 use crypto.hkdf as hkdf
 use crypto.x25519 as x25519
+use crypto.ec as ec
+use crypto.bigint as bn
 use network.tcp as tcp
 use network.tls13 as tls13
 use concurrency.thread as thread
@@ -238,5 +240,21 @@ for cert in [["p256.pem", "p256.key", {}], ["rsa.pem", "rsa.key", {"groups": [23
     t.eq(cr[4], "re bonjour sni=localhost", "server_step " + cert[0] + " : échange")
     t.check(sr[1] == 1 and "busy" in sr[0] and sr[0][len(sr[0]) - 1] == "done", "server_step " + cert[0] + " : calcul sur un fil " + str(sr[0]))
 
-t.check(ax.has("x25519") or os.getenv("ALEX_CRYPTO_ACCEL") == "0", "calcul du runtime disponible")
+# primitives du runtime (crypto.accel) : sans elles, tout se replierait en silence sur le calcul en Alex
+if os.getenv("ALEX_CRYPTO_ACCEL") != "0":
+    for nom in ["x25519", "modpow", "mulmod", "ec_mul", "ecdsa_sign", "aes_gcm", "sha256"]:
+        t.check(ax.has(nom), "calcul du runtime : " + nom)
+    k := s.byte_pack(hx("0900000000000000000000000000000000000000000000000000000000000000"))
+    u := k
+    i := 0
+    while i < 1000:
+        r := ax.native().x25519(k, u)
+        u = k
+        k = r
+        i += 1
+    t.eq(eh(s.byte_unpack(k)), "684cf59ba83309552800ef566f2f4d3c1c3887c49360e3875f2eb94d99532c51", "X25519 : RFC 7748, 1 000 itérations")
+    c256 := ec.curve("P-256")
+    sk := ec.private_key(c256, hx("c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721"))
+    sg := ec.sign_digest(sk, crypto.sha256_bytes(crypto.utf8_encode("sample")), "sha256")
+    t.eq([bn.to_hex(sg[0]), bn.to_hex(sg[1])], ["efd48b2aacb6a8fd1140dd9cd45e81d69d2c877b56aaf991c34d0ea84eaf3716", "f7cb1c942d657c41d436c7a1b6e29f65f3e900dbb9aff4064dc4ab2f843acda8"], "ECDSA P-256 : RFC 6979, A.2.5")
 t.summary("test_tls13")

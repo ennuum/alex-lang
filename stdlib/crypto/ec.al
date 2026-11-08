@@ -53,6 +53,9 @@ class Curve:
         self.g = [self.fp.to_mont(bn.from_hex(d["gx"])), self.fp.to_mont(bn.from_hex(d["gy"])), self.one]
         self._gtab = null
         self.p_raw = _s.byte_pack(bn.to_bytes(self.p, self.size))
+        self.n_raw = _s.byte_pack(bn.to_bytes(self.n, self.size))
+        self.gx_raw = _s.byte_pack(bn.to_bytes(bn.from_hex(d["gx"]), self.size))
+        self.gy_raw = _s.byte_pack(bn.to_bytes(bn.from_hex(d["gy"]), self.size))
 
     # ------------------------------------------------------------ corps (valeurs de Montgomery, < p)
 
@@ -297,6 +300,17 @@ func sign_digest(priv, digest, algo=null):
     a := algo if algo != null else c.hash
     e := bn.mod(_bits2int(c, digest), c.n)
     k := rfc6979_k(c, priv.d, digest, a)
+    if _ax.has("ecdsa_sign"):
+        # r et s d'un seul appel du runtime (crypto.accel)
+        nb := c.size
+        d_raw := _s.byte_pack(bn.to_bytes(priv.d, nb))
+        e_raw := _s.byte_pack(bn.to_bytes(e, nb))
+        while true:
+            out := _ax.native().ecdsa_sign(c.p_raw, c.n_raw, c.gx_raw, c.gy_raw, _s.byte_pack(bn.to_bytes(k, nb)), d_raw, e_raw)
+            if out != "":
+                b := _s.byte_unpack(out)
+                return [bn.from_bytes(b[0:nb]), bn.from_bytes(b[nb:2 * nb])]
+            k = bn.mod(bn.add(k, [1]), c.n)      # cas de probabilité négligeable
     while true:
         r := bn.mod(c.affine(c.mul_base(k))[0], c.n)
         if len(r) > 0:

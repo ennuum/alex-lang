@@ -327,7 +327,17 @@ class ServerContext:
         for c in self.certificates:
             append(self.chain, c.der)
         self.stamp = _stamp(cert_file, key_file)
+        self.cert_msg = null
         self.handshakes = 0
+
+    # Message Certificate (str), construit une fois.
+    func certificate_message():
+        if self.cert_msg == null:
+            entries := []
+            for d in self.chain:
+                entries = entries + _vec24(d) + [0, 0]
+            self.cert_msg = _s.byte_pack(_msg(HS_CERTIFICATE, [0] + _vec24(entries)))
+        return self.cert_msg
 
     # Schéma de signature choisi parmi ceux du client, ou null.
     func signature_scheme(offered):
@@ -537,6 +547,36 @@ func _protect(aead, ct, data):
             break
     return _s.byte_join(out)
 
+# Enregistrement(s) de type ct pour data (str).
+func _protect_str(aead, ct, data):
+    n := _s.byte_len(data)
+    out := []
+    i := 0
+    while true:
+        m := n - i
+        if m > MAX_PLAINTEXT:
+            m = MAX_PLAINTEXT
+        chunk := _s.byte_slice(data, i, i + m)
+        if aead == null:
+            append(out, _s.byte_pack([ct, 3, 3] + _u16(m)))
+            append(out, chunk)
+        else:
+            header := _s.byte_pack([CT_APP, 3, 3] + _u16(m + 17))
+            append(out, header)
+            append(out, aead.seal_str(chunk + _s.byte_pack([ct]), header))
+        i += m
+        if i >= n:
+            break
+    return _s.byte_join(out)
+
+# Empreinte d'un transcript tenu en str.
+func _hash_s(h, data):
+    if h == "sha256" and _ax.has("sha256"):
+        return _s.byte_unpack(_ax.native().digest("sha256", data))
+    return _hash(h, _s.byte_unpack(data))
+
+_CV_PREFIX := [32] * 64 + _c.utf8_encode("TLS 1.3, server CertificateVerify") + [0]
+
 # Calcul lourd de la poignée de main serveur, sans socket : échange de clés, ServerHello, EncryptedExtensions,
 # Certificate, CertificateVerify (signature), Finished, secrets. args (copiables) : [suite, groupe, part du
 # client, schéma de signature, legacy_session_id, transcript jusqu'au dernier ClientHello, ALPN choisi,
@@ -550,53 +590,49 @@ func _flight(ctx, args):
         return ["erreur", e.type, e.message]
 
 func _flight_unsafe(ctx, args):
+    P := _s.byte_pack
     suite_code := args[0]
     group := args[1]
-    client_share := _s.byte_unpack(args[2])
     scheme := args[3]
     session_id := _s.byte_unpack(args[4])
-    transcript := _s.byte_unpack(args[5])
+    transcript := args[5]                      # str : les messages s'y ajoutent sans listes d'octets
     alpn := args[6]
     ccs_sent := args[7]
     suite := SUITES[suite_code]
     h := suite["hash"]
-    kx := _key_exchange(group, client_share)
-    sh := _server_hello(_rnd.random_bytes(32), session_id, suite_code,
-                        _ext(EXT_SUPPORTED_VERSIONS, _u16(772)) + _ext(EXT_KEY_SHARE, _u16(group) + _vec16(kx[0])))
+    kx := _key_exchange(group, _s.byte_unpack(args[2]))
+    sh := P(_server_hello(_rnd.random_bytes(32), session_id, suite_code,
+                          _ext(EXT_SUPPORTED_VERSIONS, _u16(772)) + _ext(EXT_KEY_SHARE, _u16(group) + _vec16(kx[0]))))
     transcript = transcript + sh
-    flight := _protect(null, CT_HANDSHAKE, sh)
+    flight := _protect_str(null, CT_HANDSHAKE, sh)
     if len(session_id) > 0 and not ccs_sent:
         flight = flight + _protect(null, CT_CCS, [1])
-    hl := len(_hash(h, []))
-    zeros := [0] * hl
     empty_hash := _hash(h, [])
+    hl := len(empty_hash)
+    zeros := [0] * hl
     early := _hkdf.extract(h, zeros, zeros)
     hs := _hkdf.extract(h, derive_secret(h, early, "derived", empty_hash), kx[1])
-    th := _hash(h, transcript)
+    th := _hash_s(h, transcript)
     c_hs := derive_secret(h, hs, "c hs traffic", th)
     s_hs := derive_secret(h, hs, "s hs traffic", th)
     exts := []
     if alpn != null:
         exts = _ext(EXT_ALPN, _vec16(_vec8(_c.utf8_encode(alpn))))
-    ee := _msg(HS_ENCRYPTED_EXTENSIONS, _vec16(exts))
-    entries := []
-    for d in ctx.chain:
-        entries = entries + _vec24(d) + [0, 0]
-    cert := _msg(HS_CERTIFICATE, [0] + _vec24(entries))
+    ee := P(_msg(HS_ENCRYPTED_EXTENSIONS, _vec16(exts)))
+    cert := ctx.certificate_message()
     transcript = transcript + ee + cert
-    content := [32] * 64 + _c.utf8_encode("TLS 1.3, server CertificateVerify") + [0] + _hash(h, transcript)
-    cv := _msg(HS_CERTIFICATE_VERIFY, _u16(scheme) + _vec16(ctx.sign(scheme, content)))
+    content := _CV_PREFIX + _hash_s(h, transcript)
+    cv := P(_msg(HS_CERTIFICATE_VERIFY, _u16(scheme) + _vec16(ctx.sign(scheme, content))))
     transcript = transcript + cv
-    fin := _msg(HS_FINISHED, _hmac(h, expand_label(h, s_hs, "finished", [], hl), _hash(h, transcript)))
+    fin := P(_msg(HS_FINISHED, _hmac(h, expand_label(h, s_hs, "finished", [], hl), _hash_s(h, transcript))))
     transcript = transcript + fin
     w := _Aead(suite, s_hs)
-    flight = flight + _protect(w, CT_HANDSHAKE, ee + cert + cv + fin)
-    th2 := _hash(h, transcript)
+    flight = flight + _protect_str(w, CT_HANDSHAKE, ee + cert + cv + fin)
+    th2 := _hash_s(h, transcript)
     master := _hkdf.extract(h, derive_secret(h, hs, "derived", empty_hash), zeros)
     c_ap := derive_secret(h, master, "c ap traffic", th2)
     s_ap := derive_secret(h, master, "s ap traffic", th2)
     expected := _hmac(h, expand_label(h, c_hs, "finished", [], hl), th2)
-    P := _s.byte_pack
     return ["ok", flight, P(s_hs), P(c_hs), P(c_ap), P(s_ap), P(expected), w.seq]
 
 # Point d'entrée de premier niveau pour un fil (thread.offload) : contexte relu (et gardé) dans le fil.

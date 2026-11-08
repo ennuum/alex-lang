@@ -7,7 +7,8 @@
 # ancien) ou se trompe, has() vaut false et l'appelant calcule en Alex (mêmes résultats, beaucoup plus lent).
 #
 #   use crypto.accel as ax
-#   if ax.has("x25519"): ...                  # « x25519 », « modpow », « mulmod », « ec_mul », « aes_gcm », « sha256 »
+#   if ax.has("x25519"): ...                  # « x25519 », « modpow », « mulmod », « ec_mul », « ecdsa_sign »,
+#                                             # « aes_gcm », « sha256 »
 #   ax.hash("sha256", octets) ; ax.hmac("sha256", cle, octets)   # repli sur le module crypto pour les autres
 #   ax.disable()                              # tout en Alex (tests de comparaison) ; aussi ALEX_CRYPTO_ACCEL=0
 #
@@ -38,6 +39,16 @@ func _probe(name):
         gy := _hx("4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5")
         two := _t.ec_mul(p, _hx("02"), gx, gy)
         return _s.byte_slice(two, 0, 32) == _hx("7cf27b188d034f7e8a52380304b51ac3c08969e277f21b35a60b48fc47669978")
+    if name == "ecdsa_sign":
+        # RFC 6979, A.2.5 : P-256, SHA-256, message « sample »
+        p := _hx("ffffffff00000001000000000000000000000000ffffffffffffffffffffffff")
+        n := _hx("ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551")
+        gx := _hx("6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296")
+        gy := _hx("4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5")
+        k := _hx("a6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60")
+        d := _hx("c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721")
+        e := _hx("af2bdbe1aa9b6ec1e2ade1d694f41fc71a831d0268e9891562113d8a62add1bf")
+        return _t.ecdsa_sign(p, n, gx, gy, k, d, e) == _hx("efd48b2aacb6a8fd1140dd9cd45e81d69d2c877b56aaf991c34d0ea84eaf3716f7cb1c942d657c41d436c7a1b6e29f65f3e900dbb9aff4064dc4ab2f843acda8")
     if name == "aes_gcm":
         z := _hx("00000000000000000000000000000000")
         out := _t.aes_gcm(true, z, _s.byte_slice(z, 0, 12), z, "")

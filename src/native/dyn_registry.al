@@ -611,6 +611,7 @@ const MODULES := [
         ["close", false, 0, "close", 0, 0, 0, ""],
         ["digest", false, 0, "digest", 0, 0, 0, ""],
         ["ec_mul", false, 0, "ec_mul", 0, 0, 0, ""],
+        ["ecdsa_sign", false, 0, "ecdsa_sign", 0, 0, 0, ""],
         ["hmac", false, 0, "hmac", 0, 0, 0, ""],
         ["info", false, 0, "info", 0, 0, 0, ""],
         ["live_count", false, 0, "live_count", 0, 0, 0, ""],
