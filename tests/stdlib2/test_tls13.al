@@ -240,6 +240,71 @@ for cert in [["p256.pem", "p256.key", {}], ["rsa.pem", "rsa.key", {"groups": [23
     t.eq(cr[4], "re bonjour sni=localhost", "server_step " + cert[0] + " : échange")
     t.check(sr[1] == 1 and "busy" in sr[0] and sr[0][len(sr[0]) - 1] == "done", "server_step " + cert[0] + " : calcul sur un fil " + str(sr[0]))
 
+# reprise de session (tickets) : le client garde ts.session et le redonne à wrap_client
+func client_r(port, opts):
+    try:
+        c := tcp.connect("127.0.0.1", port, 10.0)
+        ts := tls13.wrap_client(c.socket, "localhost", null, 20.0, true, opts["ca"], opts["session"], opts["corrupt"])
+        conn := tcp.Connection(ts)
+        conn.write("bonjour\n")
+        l := conn.read_line(20.0)
+        conn.close()
+        return [ts.resumed, ts.session, l, ts.peer_subject]
+    catch e:
+        return ["erreur", e.type, e.message]
+
+func serveur_r(lst, ctx):
+    sock := lst.socket.accept(20.0)[0]
+    try:
+        ts := tls13.wrap_server(sock, ctx, 20.0)
+        conn := tcp.Connection(ts)
+        l := conn.read_line(20.0)
+        conn.write("re " + l + "\n")
+        conn.close()
+        return [ts.resumed, ts.signature_scheme]
+    catch e:
+        try:
+            sock.close()
+        catch e2:
+            ignored := e2
+        return ["erreur", e.type, e.message]
+
+func reprise(ctx, ca, sess, corrupt=false):
+    lst := tcp.listen("127.0.0.1", 0)
+    f := thread.spawn(client_r, [lst.port(), {"ca": ca, "session": sess, "corrupt": corrupt}])
+    srv := serveur_r(lst, ctx)
+    cli := f.join(60.0)
+    lst.close()
+    return [cli, srv]
+
+ctx_r := tls13.ServerContext(D + "rsa.pem", D + "rsa.key")
+r1 := reprise(ctx_r, D + "rsa.pem", null)
+t.check(r1[0][0] == false and r1[0][1] != null and r1[1][0] == false, "ticket reçu après une poignée de main complète")
+r2 := reprise(ctx_r, D + "rsa.pem", r1[0][1])
+t.eq([r2[0][0], r2[1][0], r2[1][1], r2[0][2], r2[0][3]], [true, true, null, "re bonjour", "localhost"], "reprise : sans signature, échange normal")
+t.eq(ctx_r.resumptions, 1, "reprise comptée")
+r3 := reprise(ctx_r, D + "rsa.pem", r2[0][1])
+t.check(r3[0][0] == true, "reprise avec le ticket reçu lors d'une reprise")
+ctx_h := tls13.ServerContext(D + "rsa.pem", D + "rsa.key", null, {"groups": [23]})
+r4 := reprise(ctx_h, D + "rsa.pem", r1[0][1])
+t.check(r4[0][0] == true and r4[1][0] == true, "reprise après HelloRetryRequest (binder sur le second ClientHello)")
+r5 := reprise(ctx_r, D + "rsa.pem", r1[0][1], true)
+t.check(r5[0][0] == "erreur" and r5[1][0] == "erreur" and s.contains(r5[1][2], "binder"), "binder falsifié : decrypt_error")
+ctx_p := tls13.ServerContext(D + "p256.pem", D + "p256.key")
+r6 := reprise(ctx_p, D + "p256.pem", r1[0][1])
+t.check(r6[0][0] == false and r6[1][0] == false, "ticket d'un autre serveur : poignée de main complète")
+# ticket d'une seconde : périmé après 2,2 s (indépendant de la durée des poignées de main, longue en Alex pur)
+ctx_e := tls13.ServerContext(D + "p256.pem", D + "p256.key", null, {"ticket_lifetime": 1})
+r7 := reprise(ctx_e, D + "p256.pem", null)
+time.sleep(2.2)
+sess_e := r7[0][1]
+sess_e["received"] = time.time()          # le client le croit neuf et le propose : c'est le serveur qui refuse
+r8 := reprise(ctx_e, D + "p256.pem", sess_e)
+t.check(r7[0][1] != null and r8[0][0] == false and r8[1][0] == false, "ticket expiré côté serveur : poignée de main complète")
+ctx_n := tls13.ServerContext(D + "p256.pem", D + "p256.key", null, {"tickets": false})
+r9 := reprise(ctx_n, D + "p256.pem", null)
+t.check(r9[0][1] == null, "tickets désactivés : aucun ticket")
+
 # primitives du runtime (crypto.accel) : sans elles, tout se replierait en silence sur le calcul en Alex
 if os.getenv("ALEX_CRYPTO_ACCEL") != "0":
     for nom in ["x25519", "modpow", "mulmod", "ec_mul", "ecdsa_sign", "aes_gcm", "sha256"]:

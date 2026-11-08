@@ -132,6 +132,8 @@ class TlsSocket:
         self.cipher = i[1]           # « TLS_AES_256_GCM_SHA384 »
         self.alpn = i[2]             # protocole ALPN négocié, ou null
         self.verify_result = i[3]    # 0 : certificat vérifié (X509_V_OK)
+        self.session = null          # reprise de session : implémentation ALEX seulement (network.tls13)
+        self.resumed = false
         self.peer_subject = i[4]     # sujet du certificat du pair (client : celui du serveur), ou null
         self.peer_issuer = i[5]
 
@@ -250,7 +252,9 @@ func _check_alpn(fn, alpn):
 
 # Poignée de main TLS CLIENT sur un socket déjà connecté. hostname : nom du serveur (SNI et vérification du
 # certificat) ; une adresse IP est comparée à celles du certificat. En cas d'échec le socket n'est pas fermé.
-func wrap_client(sock, hostname=null, verify=true, ca_file=null, alpn=null, timeout=null, cert_file=null, key_file=null, strict_eof=true):
+# session : ts.session d'une connexion précédente au même serveur, pour la reprendre par ticket (implémentation
+# ALEX ; ignorée avec OpenSSL, où ts.session reste null).
+func wrap_client(sock, hostname=null, verify=true, ca_file=null, alpn=null, timeout=null, cert_file=null, key_file=null, strict_eof=true, session=null):
     _require()
     _check_bool("wrap_client", "verify", verify)
     _check_bool("wrap_client", "strict_eof", strict_eof)
@@ -265,7 +269,7 @@ func wrap_client(sock, hostname=null, verify=true, ca_file=null, alpn=null, time
     if backend() == "alex":
         if cert_file != null or key_file != null:
             raise("ArgumentError", "network.tls.wrap_client : certificat client non pris en charge par l'implémentation ALEX (OpenSSL requis)")
-        ts := _tls13.wrap_client(sock, hostname, alpn, timeout, verify, ca_file)
+        ts := _tls13.wrap_client(sock, hostname, alpn, timeout, verify, ca_file, session)
         ts.strict_eof = strict_eof
         return ts
     label := "tls.handshake"
@@ -351,7 +355,7 @@ func _stepwise():
 # Connexion TLS à host:port : TCP (chaque adresse résolue est essayée, voir network.tcp.connect) puis poignée de
 # main, dans le même délai. server_name : nom présenté (SNI) et vérifié si différent de host.
 # Renvoie une network.tcp.Connection ; connexion.socket est le TlsSocket (version, cipher, alpn, peer_subject...).
-func connect(host, port=443, timeout=null, verify=true, ca_file=null, alpn=null, family=0, server_name=null, cert_file=null, key_file=null, strict_eof=true):
+func connect(host, port=443, timeout=null, verify=true, ca_file=null, alpn=null, family=0, server_name=null, cert_file=null, key_file=null, strict_eof=true, session=null):
     _require()
     _check_bool("connect", "verify", verify)
     _check_bool("connect", "strict_eof", strict_eof)
@@ -365,7 +369,7 @@ func connect(host, port=443, timeout=null, verify=true, ca_file=null, alpn=null,
         name = host
     conn := _tcp.connect(host, port, timeout, family)
     try:
-        ts := wrap_client(conn.socket, name, verify, ca_file, alpn, timeout, cert_file, key_file, strict_eof)
+        ts := wrap_client(conn.socket, name, verify, ca_file, alpn, timeout, cert_file, key_file, strict_eof, session)
         return _tcp.Connection(ts)
     catch e:
         conn.close()

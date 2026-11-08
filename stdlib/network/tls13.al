@@ -15,9 +15,13 @@
 #   signatures  ecdsa_secp256r1_sha256, ecdsa_secp384r1_sha384, rsa_pss_rsae_sha256 / 384 / 512
 #   extensions  server_name (lu), ALPN (RFC 7301), supported_versions, key_share, signature_algorithms ;
 #               KeyUpdate dans les deux sens ; enregistrements de compatibilité (change_cipher_spec)
-# Volontairement absent : TLS 1.2 et antérieurs (un tel client reçoit l'alerte protocol_version), reprise de
-# session par PSK et 0-RTT (un client qui les propose fait une poignée de main complète, ses données précoces
-# sont ignorées comme le prévoit la RFC), certificats clients, côté client.
+#   reprise     tickets de session (NewSessionTicket, sans état : chiffrés en AES-256-GCM sous une clé tirée de
+#               la clé privée, donc communs aux ouvriers et aux redémarrages ; ALEX_TLS_TICKET_KEY pour la fixer) ;
+#               reprise en mode psk_dhe_ke (ECDHE conservé : confidentialité persistante), sans signature ni
+#               certificat ; binder vérifié, aussi après HelloRetryRequest ; durée de vie : 1 jour par défaut
+# Volontairement absent : TLS 1.2 et antérieurs (un tel client reçoit l'alerte protocol_version), 0-RTT (données
+# précoces ignorées comme le prévoit la RFC), mode psk_ke sans ECDHE, certificats clients ; côté client, la
+# reprise de session.
 #
 # Sécurité : enregistrements AEAD à nonce par numéro de séquence, Finished vérifié en temps constant, alertes
 # fatales sur toute anomalie. LIMITES : AES par tables et grands entiers à temps variable (crypto.aes, crypto.ec,
@@ -63,6 +67,7 @@ EXT_SUPPORTED_GROUPS := 10
 EXT_SIGNATURE_ALGORITHMS := 13
 EXT_ALPN := 16
 EXT_PRE_SHARED_KEY := 41
+EXT_PSK_MODES := 45
 EXT_EARLY_DATA := 42
 EXT_SUPPORTED_VERSIONS := 43
 EXT_COOKIE := 44
@@ -140,6 +145,9 @@ func _u16(n):
 
 func _u24(n):
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+
+func _u32(n):
+    return [(n >> 24) & 255, (n >> 16) & 255, (n >> 8) & 255, n & 255]
 
 func _vec8(b):
     return [len(b)] + b
@@ -309,6 +317,11 @@ class ServerContext:
         self.alpn = alpn
         self.options = options
         o := options if options != null else {}
+        self.tickets = o["tickets"] if "tickets" in o else true
+        self.ticket_lifetime = o["ticket_lifetime"] if "ticket_lifetime" in o else 86400
+        if self.ticket_lifetime < 1 or self.ticket_lifetime > 604800:
+            raise("ValueError", "tls13 : ticket_lifetime hors de 1..604800 secondes")
+        self.resumptions = 0
         self.suites = o["suites"] if "suites" in o else SUITE_ORDER
         self.groups = o["groups"] if "groups" in o else GROUP_ORDER
         for c in self.suites:
@@ -327,8 +340,53 @@ class ServerContext:
         for c in self.certificates:
             append(self.chain, c.der)
         self.stamp = _stamp(cert_file, key_file)
+        # clé des tickets : tirée de la clé privée (mêmes tickets pour tous les ouvriers et après un
+        # redémarrage, nouvelle clé avec un nouveau certificat), ou de ALEX_TLS_TICKET_KEY
+        fixed := _os.getenv("ALEX_TLS_TICKET_KEY")
+        ikm := _c.utf8_encode(fixed) if fixed != null and fixed != "" else _s.byte_unpack(_io.read_raw(key_file))
+        self.ticket_key = _s.byte_pack(_hkdf.extract("sha256", _c.utf8_encode("alex tls13 tickets"), ikm))
         self.cert_msg = null
         self.handshakes = 0
+
+    # Ticket de session : [1] || nonce (12) || AES-256-GCM(état) ; état : suite, date de création, masque
+    # d'âge, ALPN, SNI, clé pré-partagée.
+    func seal_ticket(suite, created, age_add, alpn, sni, psk):
+        body := _u16(suite) + _u32(created >> 32) + _u32(created & 4294967295) + _u32(age_add)
+        body = body + _vec8(_c.utf8_encode(alpn if alpn != null else "")) + _vec8(_c.utf8_encode(sni if sni != null else "")) + _vec8(psk)
+        nonce := _rnd.random_bytes(12)
+        ct := _ax.native().aes_gcm(true, self.ticket_key, _s.byte_pack(nonce), _s.byte_pack(body), _s.byte_pack([1])) if _ax.has("aes_gcm") else _s.byte_pack(_gcm.AesGcm(_s.byte_unpack(self.ticket_key)).seal(nonce, body, [1]))
+        return [1] + nonce + _s.byte_unpack(ct)
+
+    # État d'un ticket {suite, created, age_add, alpn, sni, psk}, ou null s'il n'est pas de ce serveur.
+    func open_ticket(ticket):
+        if len(ticket) < 1 + 12 + 16 or ticket[0] != 1:
+            return null
+        nonce := ticket[1:13]
+        body := null
+        try:
+            if _ax.has("aes_gcm"):
+                r := _ax.native().aes_gcm(false, self.ticket_key, _s.byte_pack(nonce), _s.byte_pack(ticket[13:len(ticket)]), _s.byte_pack([1]))
+                body = _s.byte_unpack(r) if r != null else null
+            else:
+                body = _gcm.AesGcm(_s.byte_unpack(self.ticket_key)).open(nonce, ticket[13:len(ticket)], [1])
+        catch e:
+            body = null
+        if body == null:
+            return null
+        try:
+            r := _Reader(body)
+            st := {"suite": r.u16()}
+            hi := (r.u16() << 16) | r.u16()
+            lo := (r.u16() << 16) | r.u16()
+            st["created"] = (hi << 32) | lo
+            st["age_add"] = (r.u16() << 16) | r.u16()
+            st["alpn"] = _s.byte_pack(r.vec8())
+            st["sni"] = _s.byte_pack(r.vec8())
+            st["psk"] = r.vec8()
+            r.finish("ticket")
+            return st
+        catch e:
+            return null
 
     # Message Certificate (str), construit une fois.
     func certificate_message():
@@ -389,6 +447,10 @@ class _Hello:
         self.alpn = null
         self.server_name = null
         self.early_data = false
+        self.psk_modes = []
+        self.psk_ids = []                # [identité (octets), âge masqué]
+        self.binders = []
+        self.binders_len = 0             # octets du vecteur des binders (longueur comprise), en fin de message
 
 func _parse_client_hello(body):
     r := _Reader(body)
@@ -472,6 +534,30 @@ func _parse_client_hello(body):
                 raise(e)
             _abort(ALERT_DECODE_ERROR, "server_name invalide")
     hello.early_data = EXT_EARLY_DATA in hello.exts
+    if EXT_PSK_MODES in hello.exts:
+        pm := _Reader(hello.exts[EXT_PSK_MODES])
+        hello.psk_modes = pm.vec8()
+        pm.finish("psk_key_exchange_modes")
+    if EXT_PRE_SHARED_KEY in hello.exts:
+        pr := _Reader(hello.exts[EXT_PRE_SHARED_KEY])
+        ir := _Reader(pr.vec16())
+        bl := pr.vec16()
+        pr.finish("pre_shared_key")
+        while not ir.done():
+            ident := ir.vec16()
+            age := (ir.u16() << 16) | ir.u16()
+            if len(ident) == 0:
+                _abort(ALERT_DECODE_ERROR, "pre_shared_key : identité vide")
+            append(hello.psk_ids, [ident, age])
+        br := _Reader(bl)
+        while not br.done():
+            b := br.vec8()
+            if len(b) < 32:
+                _abort(ALERT_DECODE_ERROR, "pre_shared_key : binder trop court")
+            append(hello.binders, b)
+        if len(hello.psk_ids) == 0 or len(hello.psk_ids) != len(hello.binders):
+            _abort(ALERT_ILLEGAL_PARAMETER, "pre_shared_key : identités et binders incohérents")
+        hello.binders_len = 2 + len(bl)
     return hello
 
 func _choose_suite(hello, order=null):
@@ -598,11 +684,14 @@ func _flight_unsafe(ctx, args):
     transcript := args[5]                      # str : les messages s'y ajoutent sans listes d'octets
     alpn := args[6]
     ccs_sent := args[7]
+    psk := _s.byte_unpack(args[8]) if len(args) > 8 and args[8] != null else null
     suite := SUITES[suite_code]
     h := suite["hash"]
     kx := _key_exchange(group, _s.byte_unpack(args[2]))
-    sh := P(_server_hello(_rnd.random_bytes(32), session_id, suite_code,
-                          _ext(EXT_SUPPORTED_VERSIONS, _u16(772)) + _ext(EXT_KEY_SHARE, _u16(group) + _vec16(kx[0]))))
+    sh_exts := _ext(EXT_SUPPORTED_VERSIONS, _u16(772)) + _ext(EXT_KEY_SHARE, _u16(group) + _vec16(kx[0]))
+    if psk != null:
+        sh_exts = sh_exts + _ext(EXT_PRE_SHARED_KEY, _u16(0))
+    sh := P(_server_hello(_rnd.random_bytes(32), session_id, suite_code, sh_exts))
     transcript = transcript + sh
     flight := _protect_str(null, CT_HANDSHAKE, sh)
     if len(session_id) > 0 and not ccs_sent:
@@ -610,7 +699,7 @@ func _flight_unsafe(ctx, args):
     empty_hash := _hash(h, [])
     hl := len(empty_hash)
     zeros := [0] * hl
-    early := _hkdf.extract(h, zeros, zeros)
+    early := _hkdf.extract(h, zeros, psk if psk != null else zeros)
     hs := _hkdf.extract(h, derive_secret(h, early, "derived", empty_hash), kx[1])
     th := _hash_s(h, transcript)
     c_hs := derive_secret(h, hs, "c hs traffic", th)
@@ -619,11 +708,17 @@ func _flight_unsafe(ctx, args):
     if alpn != null:
         exts = _ext(EXT_ALPN, _vec16(_vec8(_c.utf8_encode(alpn))))
     ee := P(_msg(HS_ENCRYPTED_EXTENSIONS, _vec16(exts)))
-    cert := ctx.certificate_message()
-    transcript = transcript + ee + cert
-    content := _CV_PREFIX + _hash_s(h, transcript)
-    cv := P(_msg(HS_CERTIFICATE_VERIFY, _u16(scheme) + _vec16(ctx.sign(scheme, content))))
-    transcript = transcript + cv
+    cert := ""
+    cv := ""
+    if psk == null:
+        # reprise : ni certificat ni signature (l'authentification vient de la clé pré-partagée)
+        cert = ctx.certificate_message()
+        transcript = transcript + ee + cert
+        content := _CV_PREFIX + _hash_s(h, transcript)
+        cv = P(_msg(HS_CERTIFICATE_VERIFY, _u16(scheme) + _vec16(ctx.sign(scheme, content))))
+        transcript = transcript + cv
+    else:
+        transcript = transcript + ee
     fin := P(_msg(HS_FINISHED, _hmac(h, expand_label(h, s_hs, "finished", [], hl), _hash_s(h, transcript))))
     transcript = transcript + fin
     w := _Aead(suite, s_hs)
@@ -633,7 +728,9 @@ func _flight_unsafe(ctx, args):
     c_ap := derive_secret(h, master, "c ap traffic", th2)
     s_ap := derive_secret(h, master, "s ap traffic", th2)
     expected := _hmac(h, expand_label(h, c_hs, "finished", [], hl), th2)
-    return ["ok", flight, P(s_hs), P(c_hs), P(c_ap), P(s_ap), P(expected), w.seq]
+    # secret de reprise : transcript jusqu'au Finished du client, dont le contenu est déjà connu
+    res_master := derive_secret(h, master, "res master", _hash_s(h, transcript + P(_msg(HS_FINISHED, expected))))
+    return ["ok", flight, P(s_hs), P(c_hs), P(c_ap), P(s_ap), P(expected), w.seq, P(res_master)]
 
 # Point d'entrée de premier niveau pour un fil (thread.offload) : contexte relu (et gardé) dans le fil.
 func server_flight(cert_file, key_file, alpn, options, args):
@@ -683,6 +780,9 @@ class TlsSocket13:
         self.peer_certificates = null      # client : chaîne reçue du serveur (crypto.x509.Certificate)
         self.strict_eof = false            # vrai : une coupure sans close_notify est une erreur (troncature)
         self.hs = null                     # serveur : état de la poignée de main pas à pas (server_step)
+        self.resumed = false               # session reprise par un ticket (sans signature)
+        self.session = null                # client : dernier ticket reçu (wrap_client(session=...))
+        self.res_master = null
 
     # ------------------------------------------------------------ enregistrements
 
@@ -965,7 +1065,9 @@ class TlsSocket13:
         hs["choice"] = choice
         hs["transcript"] = m[2]
         hs["ccs"] = false
+        hs["psk"] = null
         if choice[1] != null:
+            hs["psk"] = self._accept_psk(hello, m[2], suite_code, [])
             hs["state"] = "compute"
             return
         # HelloRetryRequest (RFC 8446, 4.1.4) : le transcript commence par l'empreinte du premier ClientHello
@@ -993,10 +1095,39 @@ class TlsSocket13:
             _abort(ALERT_ILLEGAL_PARAMETER, "second ClientHello : part du groupe demandé attendue")
         if self.ctx.signature_scheme(hello2.sigalgs) != hs["scheme"]:
             _abort(ALERT_ILLEGAL_PARAMETER, "second ClientHello incohérent (signatures)")
+        hs["psk"] = self._accept_psk(hello2, m[2], hs["suite"], hs["transcript"])
         hs["transcript"] = hs["transcript"] + m[2]
         hs["hello"] = hello2
         hs["choice"] = [choice[0], hello2.shares[0][1]]
         hs["state"] = "compute"
+
+    # Clé pré-partagée du premier ticket proposé, si le ticket est de ce serveur, encore valable, pour la même
+    # empreinte et le même nom, en mode psk_dhe_ke ; le binder est vérifié (sinon decrypt_error). null :
+    # poignée de main complète. prefix : transcript avant ce ClientHello (après un HelloRetryRequest).
+    func _accept_psk(hello, ch, suite_code, prefix):
+        ctx := self.ctx
+        if not ctx.tickets or len(hello.psk_ids) == 0 or not (1 in hello.psk_modes):
+            return null
+        st := ctx.open_ticket(hello.psk_ids[0][0])
+        if st == null:
+            return null
+        h := SUITES[suite_code]["hash"]
+        if not (st["suite"] in SUITES) or SUITES[st["suite"]]["hash"] != h:
+            return null
+        age := to_int(_time.time()) - st["created"]
+        if age < 0 or age > ctx.ticket_lifetime:
+            return null
+        if st["sni"] != (hello.server_name if hello.server_name != null else ""):
+            return null
+        psk := st["psk"]
+        empty_hash := _hash(h, [])
+        hl := len(empty_hash)
+        early := _hkdf.extract(h, [0] * hl, psk)
+        fk := expand_label(h, derive_secret(h, early, "res binder", empty_hash), "finished", [], hl)
+        expected := _hmac(h, fk, _hash(h, prefix + ch[0:len(ch) - hello.binders_len]))
+        if not _c.equals(hello.binders[0], expected):
+            _abort(ALERT_DECRYPT_ERROR, "binder de la clé pré-partagée invalide")
+        return psk
 
     # Arguments de server_flight (copiables d'un fil à l'autre : nombres, str, listes).
     func _flight_args():
@@ -1012,7 +1143,7 @@ class TlsSocket13:
                 _abort(ALERT_NO_APPLICATION_PROTOCOL, "aucun protocole ALPN commun (proposés : " + _s.join(", ", hello.alpn) + ")")
         hs["alpn"] = alpn
         return [hs["suite"], hs["choice"][0], _s.byte_pack(hs["choice"][1]), hs["scheme"], _s.byte_pack(hello.session_id),
-                _s.byte_pack(hs["transcript"]), alpn, hs["ccs"]]
+                _s.byte_pack(hs["transcript"]), alpn, hs["ccs"], _s.byte_pack(hs["psk"]) if hs["psk"] != null else null]
 
     # Résultat de server_flight : premier vol à envoyer, clés de la suite de la poignée de main.
     func _on_flight(res):
@@ -1029,6 +1160,7 @@ class TlsSocket13:
         hs["c_ap"] = _s.byte_unpack(res[4])
         hs["s_ap"] = _s.byte_unpack(res[5])
         hs["expected"] = _s.byte_unpack(res[6])
+        hs["res_master"] = _s.byte_unpack(res[8])
         if hs["hello"].early_data:
             self.early_budget = _EARLY_DATA_BUDGET
         self.out = self.out + res[1]
@@ -1049,12 +1181,34 @@ class TlsSocket13:
         self.alpn = hs["alpn"]
         self.server_name = hs["hello"].server_name
         self.group = _GROUP_NAMES[hs["choice"][0]]
-        self.signature_scheme = hs["scheme"]
+        self.resumed = hs["psk"] != null
+        self.signature_scheme = null if self.resumed else hs["scheme"]
+        if self.resumed:
+            self.ctx.resumptions += 1
+        if self.ctx.tickets:
+            self._send_ticket(suite, hs)
         self.hs = null
+
+    # NewSessionTicket (RFC 8446, 4.6.1) : un ticket par connexion, envoyé sans attendre (il part avec la
+    # première réponse si le réseau est plein).
+    func _send_ticket(suite, hs):
+        ctx := self.ctx
+        h := suite["hash"]
+        nonce := [0]
+        psk := expand_label(h, hs["res_master"], "resumption", nonce, len(hs["res_master"]))
+        a := _rnd.random_bytes(4)
+        age_add := (a[0] << 24) | (a[1] << 16) | (a[2] << 8) | a[3]
+        ticket := ctx.seal_ticket(hs["suite"], to_int(_time.time()), age_add, self.alpn, self.server_name, psk)
+        nst := _msg(HS_NEW_SESSION_TICKET, _u32(ctx.ticket_lifetime) + _u32(age_add) + _vec8(nonce) + _vec16(ticket) + _vec16([]))
+        self.out = self.out + self._records(CT_HANDSHAKE, nst)
+        try:
+            self._flush(0)
+        catch e:
+            ignored := e
 
     # ------------------------------------------------------------ poignée de main client
 
-    func _client_hello(random, session_id, shares):
+    func _client_hello(random, session_id, shares, prefix=[]):
         o := self.client_opts
         exts := []
         host := o["server_name"]
@@ -1081,10 +1235,31 @@ class TlsSocket13:
             exts = exts + _ext(EXT_ALPN, _vec16(pl))
         if o["cookie"] != null:
             exts = exts + _ext(EXT_COOKIE, o["cookie"])
+        sess := o["offer"]
+        hl := 0
+        if sess != null:
+            # reprise (RFC 8446, 4.2.11) : psk_dhe_ke, puis pre_shared_key en DERNIÈRE extension ; le binder couvre
+            # le ClientHello jusqu'à la liste des binders
+            hl = len(sess["psk"])
+            age := to_int((_time.time() - sess["received"]) * 1000.0)
+            obf := (age + sess["age_add"]) & 4294967295
+            exts = exts + _ext(EXT_PSK_MODES, _vec8([1]))
+            ids := _vec16(sess["ticket"]) + _u32(obf)
+            exts = exts + _ext(EXT_PRE_SHARED_KEY, _vec16(ids) + _vec16(_vec8([0] * hl)))
         suites := []
         for c in SUITE_ORDER:
             suites = suites + _u16(c)
-        return _msg(HS_CLIENT_HELLO, _u16(771) + random + _vec8(session_id) + _vec16(suites) + [1, 0] + _vec16(exts))
+        ch := _msg(HS_CLIENT_HELLO, _u16(771) + random + _vec8(session_id) + _vec16(suites) + [1, 0] + _vec16(exts))
+        if sess != null:
+            h := SUITES[sess["suite"]]["hash"]
+            early := _hkdf.extract(h, [0] * hl, sess["psk"])
+            fk := expand_label(h, derive_secret(h, early, "res binder", _hash(h, [])), "finished", [], hl)
+            cut := len(ch) - (3 + hl)
+            binder := _hmac(h, fk, _hash(h, prefix + ch[0:cut]))
+            if o["corrupt_binder"]:
+                binder[0] = binder[0] ^ 1          # tests : binder falsifié
+            ch = ch[0:cut] + [0, hl + 1, hl] + binder
+        return ch
 
     # [type, version choisie, suite, extensions {code: octets}, aléa] d'un ServerHello (ou HelloRetryRequest).
     func _parse_server_hello(body, session_id):
@@ -1188,7 +1363,7 @@ class TlsSocket13:
             if EXT_COOKIE in sh[2]:
                 o["cookie"] = sh[2][EXT_COOKIE]
             share = self._new_share(g)
-            ch2 := self._client_hello(random, session_id, [[share[0], share[1]]])
+            ch2 := self._client_hello(random, session_id, [[share[0], share[1]]], transcript)
             self._raw_send(self._records(CT_HANDSHAKE, ch2), _max(deadline - _time.monotonic(), 0.5))
             transcript = transcript + ch2
             hrr_suite := sh[1]
@@ -1215,7 +1390,15 @@ class TlsSocket13:
         hl := len(_hash(h, []))
         zeros := [0] * hl
         empty_hash := _hash(h, [])
-        early := _hkdf.extract(h, zeros, zeros)
+        resumed := false
+        sess := o["offer"]
+        if EXT_PRE_SHARED_KEY in sh[2]:
+            if sess == null or sh[2][EXT_PRE_SHARED_KEY] != [0, 0]:
+                _abort(ALERT_ILLEGAL_PARAMETER, "pre_shared_key du serveur : identité non proposée")
+            if SUITES[sess["suite"]]["hash"] != h:
+                _abort(ALERT_ILLEGAL_PARAMETER, "reprise : suite d'une autre empreinte")
+            resumed = true
+        early := _hkdf.extract(h, zeros, sess["psk"] if resumed else zeros)
         hs := _hkdf.extract(h, derive_secret(h, early, "derived", empty_hash), secret)
         th := _hash(h, transcript)
         c_hs := derive_secret(h, hs, "c hs traffic", th)
@@ -1244,47 +1427,50 @@ class TlsSocket13:
                     _abort(ALERT_ILLEGAL_PARAMETER, "protocole ALPN « " + p + " » non proposé")
                 alpn = p
         transcript = transcript + m[2]
-        # Certificate
-        m = self._read_handshake(deadline)
-        if m[0] != HS_CERTIFICATE:
-            _abort(ALERT_UNEXPECTED_MESSAGE, "Certificate attendu (certificats clients et PSK non pris en charge)")
-        cr := _Reader(m[1])
-        if len(cr.vec8()) != 0:
-            _abort(ALERT_ILLEGAL_PARAMETER, "Certificate : contexte non vide")
-        lr2 := _Reader(cr.vec24())
-        cr.finish("Certificate")
         certs := []
-        while not lr2.done():
-            d := lr2.vec24()
-            lr2.vec16()
-            try:
-                append(certs, _x509.certificate_from_der(d))
-            catch e:
-                _abort(42, "certificat illisible : " + e.message)
-        if len(certs) == 0:
-            _abort(ALERT_DECODE_ERROR, "aucun certificat reçu")
-        if certs[0].public_key == null:
-            _abort(43, "clé du certificat non prise en charge (" + str(certs[0].curve) + ")")
-        self.peer_certificates = certs
-        if o["verify"]:
-            try:
-                _x509.verify_chain(certs, o["anchors"], o["server_name"])
-            catch e:
-                if e.type != "ValueError":
-                    raise(e)
-                _abort(48, "certificat refusé : " + e.message)
-        transcript = transcript + m[2]
-        # CertificateVerify
-        m = self._read_handshake(deadline)
-        if m[0] != HS_CERTIFICATE_VERIFY:
-            _abort(ALERT_UNEXPECTED_MESSAGE, "CertificateVerify attendu")
-        vr := _Reader(m[1])
-        scheme := vr.u16()
-        sig := vr.vec16()
-        vr.finish("CertificateVerify")
-        content := [32] * 64 + _c.utf8_encode("TLS 1.3, server CertificateVerify") + [0] + _hash(h, transcript)
-        self._verify_server_signature(scheme, sig, content)
-        transcript = transcript + m[2]
+        scheme := null
+        if not resumed:
+            # Certificate
+            m = self._read_handshake(deadline)
+            if m[0] != HS_CERTIFICATE:
+                _abort(ALERT_UNEXPECTED_MESSAGE, "Certificate attendu (certificats clients non pris en charge)")
+            cr := _Reader(m[1])
+            if len(cr.vec8()) != 0:
+                _abort(ALERT_ILLEGAL_PARAMETER, "Certificate : contexte non vide")
+            lr2 := _Reader(cr.vec24())
+            cr.finish("Certificate")
+            certs = []
+            while not lr2.done():
+                d := lr2.vec24()
+                lr2.vec16()
+                try:
+                    append(certs, _x509.certificate_from_der(d))
+                catch e:
+                    _abort(42, "certificat illisible : " + e.message)
+            if len(certs) == 0:
+                _abort(ALERT_DECODE_ERROR, "aucun certificat reçu")
+            if certs[0].public_key == null:
+                _abort(43, "clé du certificat non prise en charge (" + str(certs[0].curve) + ")")
+            self.peer_certificates = certs
+            if o["verify"]:
+                try:
+                    _x509.verify_chain(certs, o["anchors"], o["server_name"])
+                catch e:
+                    if e.type != "ValueError":
+                        raise(e)
+                    _abort(48, "certificat refusé : " + e.message)
+            transcript = transcript + m[2]
+            # CertificateVerify
+            m = self._read_handshake(deadline)
+            if m[0] != HS_CERTIFICATE_VERIFY:
+                _abort(ALERT_UNEXPECTED_MESSAGE, "CertificateVerify attendu")
+            vr := _Reader(m[1])
+            scheme = vr.u16()
+            sig := vr.vec16()
+            vr.finish("CertificateVerify")
+            content := [32] * 64 + _c.utf8_encode("TLS 1.3, server CertificateVerify") + [0] + _hash(h, transcript)
+            self._verify_server_signature(scheme, sig, content)
+            transcript = transcript + m[2]
         # Finished du serveur
         m = self._read_handshake(deadline)
         if m[0] != HS_FINISHED:
@@ -1311,9 +1497,16 @@ class TlsSocket13:
         self.server_name = o["server_name"]
         self.group = _GROUP_NAMES[share[0]]
         self.signature_scheme = scheme
-        self.peer_subject = certs[0].subject_cn
-        self.peer_issuer = _x509._find(certs[0].issuer, _x509.OID_CN)
+        self.resumed = resumed
+        if resumed:
+            self.peer_subject = sess["peer_subject"]
+            self.peer_issuer = sess["peer_issuer"]
+        else:
+            self.peer_subject = certs[0].subject_cn
+            self.peer_issuer = _x509._find(certs[0].issuer, _x509.OID_CN)
         self.verify_result = 0 if o["verify"] else null
+        # secret de reprise, pour les tickets que le serveur enverra
+        self.res_master = derive_secret(h, master, "res master", _hash(h, transcript + fin))
 
 
     # ------------------------------------------------------------ données applicatives
@@ -1371,7 +1564,8 @@ class TlsSocket13:
             body := self.hsbuf[4:4 + l]
             self.hsbuf = self.hsbuf[4 + l:len(self.hsbuf)]
             if t == HS_NEW_SESSION_TICKET and self.is_client:
-                continue                 # tickets de reprise : non utilisés
+                self._on_ticket(body)
+                continue
             if t != HS_KEY_UPDATE:
                 _abort(ALERT_UNEXPECTED_MESSAGE, "message de poignée de main inattendu après la connexion (" + str(t) + ")")
             if len(body) != 1 or body[0] > 1:
@@ -1511,6 +1705,28 @@ class TlsSocket13:
             return ""
         return null
 
+    # Client : ticket reçu (RFC 8446, 4.6.1) -> self.session, à donner à wrap_client(session=...) pour reprendre.
+    func _on_ticket(body):
+        r := _Reader(body)
+        lifetime := (r.u16() << 16) | r.u16()
+        age_add := (r.u16() << 16) | r.u16()
+        nonce := r.vec8()
+        ticket := r.vec16()
+        r.vec16()
+        r.finish("NewSessionTicket")
+        if len(ticket) == 0:
+            _abort(ALERT_DECODE_ERROR, "NewSessionTicket : ticket vide")
+        if lifetime == 0 or self.res_master == null:
+            return
+        h := self.suite["hash"]
+        code := 0
+        for c in SUITES:
+            if SUITES[c]["name"] == self.suite["name"]:
+                code = c
+        self.session = {"ticket": ticket, "psk": expand_label(h, self.res_master, "resumption", nonce, len(self.res_master)),
+                        "suite": code, "age_add": age_add, "received": _time.time(), "lifetime": lifetime if lifetime < 604800 else 604800,
+                        "server_name": self.server_name, "peer_subject": self.peer_subject, "peer_issuer": self.peer_issuer}
+
     # Envoie KeyUpdate (RFC 8446, 4.6.3) : nouvelles clés d'envoi ; request : le pair renouvelle aussi les siennes.
     func key_update(request=true):
         self._check_open("key_update")
@@ -1599,10 +1815,16 @@ func trust_anchors(ca_file=null):
 # Poignée de main CLIENT sur un socket connecté. server_name : SNI et nom vérifié ; verify : chaîne contrôlée
 # jusqu'à une autorité de ca_file (ou du système), noms et dates (crypto.x509.verify_chain) ; la signature
 # CertificateVerify du serveur est toujours vérifiée. Rend un TlsSocket13 (peer_certificates : chaîne reçue).
-func wrap_client(sock, server_name=null, alpn=null, timeout=10.0, verify=true, ca_file=null):
+# session : ts.session d'une connexion précédente au même serveur (ticket reçu après lecture de données) pour
+# reprendre sans certificat ni signature ; ts.resumed dit si le serveur l'a acceptée.
+func wrap_client(sock, server_name=null, alpn=null, timeout=10.0, verify=true, ca_file=null, session=null, corrupt_binder=false):
     anchors := trust_anchors(ca_file) if verify else []
     s := TlsSocket13(sock, null)
     s.is_client = true
-    s.client_opts = {"server_name": server_name, "alpn": alpn, "verify": verify, "anchors": anchors, "cookie": null}
+    offer := null
+    if session != null and session["server_name"] == server_name and _time.time() - session["received"] < session["lifetime"]:
+        offer = session
+    s.client_opts = {"server_name": server_name, "alpn": alpn, "verify": verify, "anchors": anchors, "cookie": null,
+                     "offer": offer, "corrupt_binder": corrupt_binder}
     s.handshake(timeout)
     return s
