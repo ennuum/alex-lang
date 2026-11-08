@@ -2,7 +2,7 @@
 #
 # HTTPS côté serveur : configuration TLS (certificat et clé PEM, ALPN « http/1.1 »), poignée de main sur chaque
 # connexion acceptée (avec délai : un client muet ne bloque pas le serveur au-delà), en-tête HSTS, et certificat
-# auto-signé de développement (outil openssl requis).
+# auto-signé de développement (créé en ALEX, sans outil externe).
 #
 #   use web.server.tls_server as ts
 #   tls := ts.TlsServerConfig("/etc/ssl/site.pem", "/etc/ssl/site.key")

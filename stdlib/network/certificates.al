@@ -2,7 +2,8 @@
 #
 # Certificats X.509 (RFC 5280) : lecture PEM / DER, décodage ASN.1 DER, champs utiles (sujet, émetteur, validité,
 # noms alternatifs, clé publique, extensions), empreintes, correspondance d'un nom d'hôte (RFC 6125), certificat
-# présenté par un serveur TLS, et création de certificats auto-signés de développement (outil `openssl`).
+# présenté par un serveur TLS, et création de certificats auto-signés de développement (clé EC : en ALEX pur,
+# crypto.x509.self_signed ; clé RSA : outil `openssl`).
 #
 #   load(chemin) / parse_pem(texte) -> list[Certificate]      parse_der(octets) -> Certificate
 #   cert.subject_cn(), cert.san_dns, cert.not_after, cert.days_remaining(), cert.fingerprint("sha256")
@@ -35,6 +36,7 @@ use network.encoding as _enc
 use network.tls as _tls
 use network.tcp as _tcp
 use network.ipaddress as _ip
+use crypto.x509 as _x509
 
 func _fail(message):
     raise("CertificateError", "certificates : " + message)
@@ -630,9 +632,19 @@ func check(host, port=443, timeout=10.0, ca_file=null, warn_days=30):
 
 # ---------------------------------------------------------------- certificats de développement
 
-# Crée un certificat auto-signé et sa clé (PEM) avec l'outil `openssl` (absent : IoError). names : noms DNS et
-# adresses IP couverts (SAN). key : "ec" (P-256, défaut) ou "rsa" (2048 bits). Rend le Certificate créé.
+# Crée un certificat auto-signé et sa clé (PEM). names : noms DNS et adresses IP couverts (SAN). key : "ec"
+# (P-256, défaut : écrit en ALEX, sans outil externe, aussi dans un exécutable natif) ou "rsa" (2048 bits : outil
+# `openssl`, IoError s'il manque). La clé est écrite en mode 0600. Rend le Certificate créé.
 func generate_self_signed(cert_path, key_path, common_name="localhost", names=null, days=365, key="ec"):
+    if key != "rsa":
+        pem := _x509.self_signed(common_name, names if names != null else [common_name], days)
+        _io.write_file(key_path, pem[1])
+        try:
+            _os.chmod(key_path, 384)
+        catch e:
+            ignored := e
+        _io.write_file(cert_path, pem[0])
+        return load(cert_path)[0]
     sans := names
     if sans == null:
         sans = [common_name]

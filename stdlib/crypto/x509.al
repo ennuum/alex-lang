@@ -1,14 +1,16 @@
 # ALEX STANDARD LIBRARY — crypto.x509
 #
-# Certificats X.509 et clés privées en PEM / DER, en ALEX pur : ce que demande un serveur TLS 1.3 sans OpenSSL
-# (network.tls13). Lecture seulement : rien n'est signé ni vérifié ici (pas de validation de chaîne).
+# Certificats X.509 et clés privées en PEM / DER, en ALEX pur : ce que demande TLS 1.3 sans OpenSSL
+# (network.tls13). Lecture des certificats et des clés, vérification d'une chaîne jusqu'à une ancre de confiance
+# (client), création de certificats auto-signés de développement (sans outil externe).
 #
 #   use crypto.x509 as x509
-#   certs := x509.load_certificates(io.read_text("site.pem"))   # liste de Certificate, feuille d'abord
-#   cle := x509.load_private_key(io.read_text("site.key"))      # PrivateKey : .kind « ec » / « rsa », .curve, .key
+#   certs := x509.load_certificates(io.read_raw("site.pem"))    # liste de Certificate, feuille d'abord
+#   cle := x509.load_private_key(io.read_raw("site.key"))       # PrivateKey : .kind « ec » / « rsa », .curve, .key
 #   x509.key_matches(certs[0], cle)                             # la clé privée est-elle celle du certificat ?
 #   certs[0].subject_cn, certs[0].dns_names, certs[0].not_after, certs[0].public_key
-#   x509.verify_chain(chaine, ancres, "example.org")         # client : chaîne jusqu'à une ancre, nom, dates
+#   x509.verify_chain(chaine, ancres, "example.org")           # client : chaîne jusqu'à une ancre, nom, dates
+#   pem := x509.self_signed("localhost", ["localhost", "127.0.0.1", "::1"], 365)   # [certificat, clé] (PEM)
 #
 # Clés privées : PKCS#8 (« PRIVATE KEY »), SEC1 (« EC PRIVATE KEY ») et PKCS#1 (« RSA PRIVATE KEY ») ; courbes
 # P-256 et P-384, RSA d'au moins 2048 bits. Refusées avec un message clair : clés chiffrées (« ENCRYPTED PRIVATE
@@ -24,6 +26,7 @@ use crypto.bigint as bn
 use crypto.ec as ec
 use crypto.rsa as rsa
 use time as _time
+use security.random_secure as _rnd
 
 OID_EC_PUBLIC_KEY := "1.2.840.10045.2.1"
 OID_RSA := "1.2.840.113549.1.1.1"
@@ -398,6 +401,8 @@ func matches_host(cert, host):
     return false
 
 func _ip_bytes(h):
+    if _s.contains(h, ":"):
+        return _ip6_bytes(h)
     parts := _s.split(h, ".")
     if len(parts) != 4:
         return null
@@ -489,3 +494,158 @@ func load_trust(data):
             catch e:
                 ignored := e
     return out
+
+# Adresse IPv6 en texte (« ::1 », « fe80::1 », forme complète) -> 16 octets, ou null.
+func _ip6_bytes(h):
+    t := h
+    if _s.starts_with(t, "[") and _s.ends_with(t, "]"):
+        t = _s.substring(t, 1, len(t) - 1)
+    halves := _s.split(t, "::")
+    if len(halves) > 2:
+        return null
+    head := _hex_groups(halves[0])
+    tail := []
+    if len(halves) == 2:
+        tail = _hex_groups(halves[1])
+    if head == null or tail == null:
+        return null
+    n := len(head) + len(tail)
+    if (len(halves) == 1 and n != 8) or n > 8 or (len(halves) == 2 and n == 8):
+        return null
+    groups := head + [0] * (8 - n) + tail
+    out := []
+    for g in groups:
+        append(out, g >> 8)
+        append(out, g & 255)
+    return out
+
+func _hex_groups(part):
+    if part == "":
+        return []
+    out := []
+    for g in _s.split(part, ":"):
+        if g == "" or len(g) > 4:
+            return null
+        v := 0
+        for c in g:
+            d := _s.find("0123456789abcdef", _s.lower(str(c)))
+            if d < 0:
+                return null
+            v = v * 16 + d
+        append(out, v)
+    return out
+
+# ---------------------------------------------------------------- création (certificats de développement)
+
+func _oid_der(dotted):
+    p := []
+    for x in _s.split(dotted, "."):
+        append(p, to_int(x))
+    body := []
+    vals := [p[0] * 40 + p[1]] + p[2:len(p)]
+    for v0 in vals:
+        v := v0
+        chunk := [v & 127]
+        v = v >> 7
+        while v > 0:
+            chunk = [(v & 127) | 128] + chunk
+            v = v >> 7
+        body = body + chunk
+    return der.encode(der.OID, body)
+
+# INTEGER positif depuis des octets big-endian.
+func _int_der(b):
+    i := 0
+    while i < len(b) - 1 and b[i] == 0:
+        i += 1
+    v := b[i:len(b)]
+    if len(v) == 0:
+        v = [0]
+    if v[0] >= 128:
+        v = [0] + v
+    return der.encode(der.INTEGER, v)
+
+func _seq(body):
+    return der.encode(der.SEQUENCE, body)
+
+func _bits(b):
+    return der.encode(der.BIT_STRING, [0] + b)
+
+func _octets(b):
+    return der.encode(der.OCTET_STRING, b)
+
+# Date (secondes depuis 1970) : UTCTime avant 2050, GeneralizedTime ensuite (RFC 5280, 4.1.2.5).
+func _time_der(seconds):
+    t := utc_text(seconds)
+    digits := _s.replace(_s.replace(_s.replace(t, "-", ""), ":", ""), "T", "")
+    if to_int(_s.substring(t, 0, 4)) < 2050:
+        return der.encode(der.UTC_TIME, _c.utf8_encode(_s.substring(digits, 2, len(digits))))
+    return der.encode(der.GENERALIZED_TIME, _c.utf8_encode(digits))
+
+func _ext(oid, critical, value):
+    body := _oid_der(oid)
+    if critical:
+        body = body + [der.BOOLEAN, 1, 255]
+    return _seq(body + _octets(value))
+
+# Texte PEM d'un DER (lignes de 64 caractères).
+func pem_encode(der_bytes, label):
+    b := _c.base64_encode(der_bytes)
+    out := "-----BEGIN " + label + "-----\n"
+    i := 0
+    n := _s.byte_len(b)
+    while i < n:
+        j := n
+        if i + 64 < n:
+            j = i + 64
+        out = out + _s.byte_slice(b, i, j) + "\n"
+        i = j
+    return out + "-----END " + label + "-----\n"
+
+# Certificat auto-signé de DÉVELOPPEMENT : clé EC P-256 neuve, signature ECDSA-SHA256, X.509 v3 avec
+# subjectAltName (noms DNS et adresses IPv4 / IPv6 de names ; common_name par défaut), basicConstraints
+# CA:FALSE, keyUsage digitalSignature, extendedKeyUsage serverAuth / clientAuth, subjectKeyIdentifier. Valable
+# days jours à partir d'une minute avant now (secondes depuis 1970). Rend [certificat PEM, clé privée PEM
+# (PKCS#8)].
+func self_signed(common_name="localhost", names=null, days=365, now=null):
+    if days < 1 or days > 36500:
+        _fail("self_signed : days hors de 1..36500")
+    sans := names
+    if sans == null:
+        sans = [common_name]
+    c := ec.curve("P-256")
+    priv := null
+    while priv == null:
+        try:
+            priv = ec.private_key(c, _rnd.random_bytes(32))
+        catch e:
+            priv = null
+    d := bn.to_bytes(priv.d, 32)
+    pub := priv.public_bytes()
+    alg := _seq(_oid_der(OID_EC_PUBLIC_KEY) + _oid_der(OID_P256))
+    spki := _seq(alg + _bits(pub))
+    pkcs8 := _seq(_int_der([0]) + alg + _octets(_seq(_int_der([1]) + _octets(d) + der.encode(der.context(1), _bits(pub)))))
+    name := _seq(der.encode(der.SET, _seq(_oid_der(OID_CN) + der.encode(der.UTF8_STRING, _c.utf8_encode(common_name)))))
+    sig_alg := _seq(_oid_der("1.2.840.10045.4.3.2"))
+    serial := _rnd.random_bytes(16)
+    serial[0] = (serial[0] & 127) | 64
+    t := to_int(_time.time())
+    if now != null:
+        t = to_int(now)
+    validity := _seq(_time_der(t - 60) + _time_der(t + days * 86400))
+    entries := []
+    for n in sans:
+        ip := _ip_bytes(_s.lower(n))
+        if ip != null:
+            entries = entries + der.encode(der.context(7, false), ip)
+        else:
+            entries = entries + der.encode(der.context(2, false), _c.utf8_encode(n))
+    exts := _ext(OID_SAN, false, _seq(entries))
+    exts = exts + _ext(OID_BASIC_CONSTRAINTS, true, _seq([]))
+    exts = exts + _ext("2.5.29.15", true, der.encode(der.BIT_STRING, [7, 128]))
+    exts = exts + _ext("2.5.29.37", false, _seq(_oid_der("1.3.6.1.5.5.7.3.1") + _oid_der("1.3.6.1.5.5.7.3.2")))
+    exts = exts + _ext("2.5.29.14", false, _octets(_c.sha256_bytes(pub)[0:20]))
+    tbs := _seq(der.encode(der.context(0), _int_der([2])) + _int_der(serial) + sig_alg + name + validity + name + spki + der.encode(der.context(3), _seq(exts)))
+    sig := ec.sign_der(priv, tbs, "sha256")
+    cert := _seq(tbs + sig_alg + _bits(sig))
+    return [pem_encode(cert, "CERTIFICATE"), pem_encode(pkcs8, "PRIVATE KEY")]

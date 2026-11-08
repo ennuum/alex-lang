@@ -15,6 +15,7 @@ use crypto.x509 as x509
 use crypto.hkdf as hkdf
 use crypto.x25519 as x25519
 use crypto.ec as ec
+use network.certificates as certificates
 use crypto.bigint as bn
 use network.tcp as tcp
 use network.tls13 as tls13
@@ -304,6 +305,20 @@ t.check(r7[0][1] != null and r8[0][0] == false and r8[1][0] == false, "ticket ex
 ctx_n := tls13.ServerContext(D + "p256.pem", D + "p256.key", null, {"tickets": false})
 r9 := reprise(ctx_n, D + "p256.pem", null)
 t.check(r9[0][1] == null, "tickets désactivés : aucun ticket")
+
+# certificats auto-signés créés en ALEX (crypto.x509.self_signed, network.certificates.generate_self_signed)
+pem_g := x509.self_signed("dev.local", ["dev.local", "127.0.0.1", "::1"], 36500, 1700000000)
+cg := x509.load_certificates(pem_g[0])[0]
+kg := x509.load_private_key(pem_g[1])
+t.eq([cg.version, cg.subject_cn, cg.dns_names, len(cg.ip_addresses), cg.is_ca, cg.signature_algorithm, cg.not_before], [3, "dev.local", ["dev.local"], 2, false, ["ec", "sha256"], "2023-11-14T22:12:20Z"], "self_signed : champs")
+t.check(s.starts_with(cg.not_after, "2123-") and x509.key_matches(cg, kg) and x509.signed_by(cg, cg), "self_signed : GeneralizedTime après 2049, clé, signature")
+t.check(x509.verify_chain([cg], [cg], "::1", "2024-01-01T00:00:00Z") and x509.verify_chain([cg], [cg], "127.0.0.1", "2024-01-01T00:00:00Z"), "self_signed : adresses IPv4 et IPv6")
+t.raises(() => x509.self_signed("x", null, 0), "ValueError", "self_signed : durée invalide")
+os.mkdir_all("build/test_tls13")
+gc := certificates.generate_self_signed("build/test_tls13/dev.pem", "build/test_tls13/dev.key", "localhost", ["localhost", "127.0.0.1"])
+t.check(gc.subject_cn() == "localhost" and gc.matches_hostname("localhost"), "generate_self_signed : sans outil openssl")
+rg := session("../../../../build/test_tls13/dev.pem", "../../../../build/test_tls13/dev.key", {"alpn": ["http/1.1"]}, null, ["http/1.1"])
+t.eq(rg[0][4], "re bonjour sni=localhost", "certificat généré : poignée de main vérifiée")
 
 # primitives du runtime (crypto.accel) : sans elles, tout se replierait en silence sur le calcul en Alex
 if os.getenv("ALEX_CRYPTO_ACCEL") != "0":
