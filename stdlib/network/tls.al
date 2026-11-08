@@ -46,6 +46,10 @@ use network.socket as _sk
 use network.tcp as _tcp
 use network.tls13 as _tls13
 use os as _os
+use io as _io
+use string as _s
+use crypto as _c
+use crypto.hkdf as _hkdf
 
 func supported():
     return _sk.supported() and (_t.supported() or backend() == "alex")
@@ -336,7 +340,27 @@ func start_server(sock, cert_file, key_file, alpn=null):
         return _tls13.TlsSocket13(sock, _tls13.context(cert_file, key_file, alpn))
     if not _stepwise():
         return null
-    return OpenSslAccept(sock, _check("tls.handshake(serveur)", _t.server_start(_n.fd(sock._h("start_server")), cert_file, key_file, alpn)))
+    # contexte OpenSSL partagé (certificat lu une fois, recréé si les fichiers changent) et clés de tickets
+    # communes à tous les processus : la reprise de session fonctionne d'une connexion et d'un ouvrier à l'autre
+    st := _ticket_material(cert_file, key_file)
+    return OpenSslAccept(sock, _check("tls.handshake(serveur)", _t.server_start(_n.fd(sock._h("start_server")), cert_file, key_file, alpn, st[0], st[1])))
+
+_material := {}
+
+# [empreinte des fichiers, 80 octets de clés de tickets OpenSSL] : clés tirées de la clé privée (ou de
+# ALEX_TLS_TICKET_KEY) par HKDF-SHA-256, recalculées quand un fichier change.
+func _ticket_material(cert_file, key_file):
+    stamp := _tls13._stamp(cert_file, key_file)
+    k := cert_file + "\n" + key_file
+    if k in _material and _material[k][0] == stamp:
+        return _material[k]
+    fixed := _os.getenv("ALEX_TLS_TICKET_KEY")
+    ikm := _c.utf8_encode(fixed) if fixed != null and fixed != "" else _s.byte_unpack(_io.read_raw(key_file))
+    prk := _hkdf.extract("sha256", _c.utf8_encode("alex openssl tickets"), ikm)
+    keys := _s.byte_pack(_hkdf.expand("sha256", prk, _c.utf8_encode("ticket keys"), 80))
+    r := [stamp if stamp != "" else "?", keys]
+    _material[k] = r
+    return r
 
 _step_ok := [null]
 

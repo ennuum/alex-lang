@@ -250,6 +250,22 @@ else:
             check_eq(s.split(s.trim(st[0].read_all()), "|")[0], "OK é", "pas à pas : client servi")
             st[0].wait(10.0)
             st[0].close()
+            # contexte partagé : la seconde connexion reprend la session de la première (ticket d'OpenSSL)
+            rcl := py_client("resume")
+            for k in [0, 1]:
+                sk2 := raw.socket.accept(15.0)[0]
+                pend2 := tls.start_server(sk2, cert, key, ["http/1.1"])
+                n2 := 0
+                while n2 < 7500 and pend2.server_step() != "done":
+                    time.sleep(0.002)
+                    n2 += 1
+                c3 := tcp.Connection(pend2.established())
+                c3.read_line(5.0)
+                c3.write_line("ok")
+                c3.close()
+            check_eq(s.trim(rcl.read_all()), "reprise=False|True", "contexte partagé : reprise de session avec OpenSSL")
+            rcl.wait(10.0)
+            rcl.close()
             st = pas_a_pas("plain")
             check_eq(st[4], "TlsError", "pas à pas : client non TLS refusé")
             st[1].close()

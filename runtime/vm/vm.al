@@ -6803,11 +6803,66 @@ func __vm_nat__native_tls__server(n: int, a0: int, a1: int, a2: int, a3: int, a4
         return r
     return __vm_tls_adopt(s)
 
-# server_start(fd, cert, key, alpn) : contexte et session serveur prêts, SANS poignée de main ; handle à faire
-# avancer par accept_step (boucle d'événements : web.server), puis comme celui de server.
-func __vm_nat__native_tls__server_start(n: int, a0: int, a1: int, a2: int, a3: int) -> int:
+# Deux str identiques ?
+func __vm_tls_same(a: str, b: str) -> bool:
+    n := __nat_blen(a)
+    if n != __nat_blen(b):
+        return false
+    pa := __nat_bp(a)
+    pb := __nat_bp(b)
+    i := 0
+    while i < n:
+        if __load8(pa + i) != __load8(pb + i):
+            return false
+        i += 1
+    return true
+
+# Contexte serveur PARTAGÉ pour (certificat, clé, ALPN) : créé une fois, recréé quand stamp change (certificat
+# renouvelé ; l'ancien vit tant que des sessions le référencent : SSL_CTX compte ses références). tkeys :
+# 80 octets de clés de tickets (nom, HMAC, AES), communes à tous les processus, ou "" (clés tirées au hasard
+# par OpenSSL). Entrée : [contexte, cellule ALPN, stamp]. Table : état de la VM, décalage 320.
+func __vm_tls_shared_ctx(fn: str, cert: str, key: str, alpn: str, stamp: str, tkeys: str) -> int:
+    d := __vm_ffi_tab(320)
+    k := cert + "\n" + key + "\n" + alpn
+    idx := __rt_dict_index(d, __str_addr(k), 1)
+    if idx >= 0:
+        e := __load64(__load64(d + 32) + 8 * idx)
+        if __vm_tls_same(__as_str(__load64(e + 16)), stamp):
+            return __load64(e)
+        __vm_c(__vm_tls_fn(4), __load64(e), 0)
+        __rt_dict_remove(d, __str_addr(k), 1)
+    t := __alloc(32)
+    __vm_c(__vm_tls_fn(37), 0, 0)
+    __store64(t, __vm_c(__vm_tls_fn(3), __vm_c(__vm_tls_fn(2), 0, 0), 0))
+    if __load64(t) == 0:
+        __dyn_err("IoError", "'" + fn + "' : création du contexte TLS : " + __vm_tls_drain(0))
+    try:
+        __vm_tls_base(t)
+        __vm_c(__vm_tls_fn(6), __load64(t), 128)
+        __vm_tls_files(t, fn, cert, key)
+        if __nat_blen(alpn) > 0:
+            cell := __alloc(8)
+            __store64(cell, __str_addr(alpn))
+            __store64(t + 8, cell)
+            __vm_c6(__vm_tls_fn(14), __load64(t), __fnaddr("__vm_tls_alpn_select"), cell, 0, 0, 0)
+        if __nat_blen(tkeys) == 80:
+            # SSL_CTRL_SET_TLSEXT_TICKET_KEYS (59)
+            __vm_c6(__vm_tls_fn(5), __load64(t), 59, 80, __nat_bp(tkeys), 0, 0)
+    catch e2:
+        __vm_c(__vm_tls_fn(4), __load64(t), 0)
+        __rt_throw(__addr(e2))
+    __store64(t + 16, __str_addr(stamp))
+    __store64(t + 24, __str_addr(k))
+    __rt_dict_set(d, __str_addr(k), t, 1)
+    return __load64(t)
+
+# server_start(fd, cert, key, alpn[, stamp, tkeys]) : session serveur prête, SANS poignée de main ; handle à
+# faire avancer par accept_step (boucle d'événements : web.server), puis comme celui de server. Avec stamp
+# (empreinte des fichiers, str) : contexte partagé entre les connexions (__vm_tls_shared_ctx : certificat lu
+# une fois, tickets de session valables d'une connexion à l'autre ; tkeys : clés des tickets).
+func __vm_nat__native_tls__server_start(n: int, a0: int, a1: int, a2: int, a3: int, a4: int, a5: int) -> int:
     __vm_tls_off()
-    __nat_exact("server_start", n, 4)
+    __nat_range("server_start", n, 4, 6)
     __vm_tls_require("server_start")
     fd := __nat_int("server_start", a0, "le descripteur")
     cert := __nat_cstr("server_start", a1, "le certificat")
@@ -6815,6 +6870,19 @@ func __vm_nat__native_tls__server_start(n: int, a0: int, a1: int, a2: int, a3: i
     alpn := ""
     if a3 != 0:
         alpn = __vm_tls_alpn_wire("server_start", a3)
+    if n >= 5 and a4 != 0:
+        stamp := __nat_str("server_start", a4, "l'empreinte")
+        tkeys := ""
+        if n >= 6 and a5 != 0:
+            tkeys = __nat_str("server_start", a5, "les clés de tickets")
+        ctx := __vm_tls_shared_ctx("server_start", cert, key, alpn, stamp, tkeys)
+        sh := __alloc(32)
+        __store64(sh + 16, fd)
+        __store64(sh + 8, __vm_c(__vm_tls_fn(15), ctx, 0))
+        if __load64(sh + 8) == 0:
+            return __vm_tls_error(0, "création de la session TLS : ")
+        __vm_c(__vm_tls_fn(17), __load64(sh + 8), fd)
+        return __vm_tls_adopt(sh)
     s := __alloc(32)
     __store64(s + 16, fd)
     __vm_c(__vm_tls_fn(37), 0, 0)

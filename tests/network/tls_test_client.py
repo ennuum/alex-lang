@@ -4,6 +4,7 @@ usage : tls_test_client.py port cafile mode
   line   connexion vérifiée (cafile), ALPN http/1.1, envoie « salut é », imprime « réponse|alpn|version|chiffrement »
   badca  connexion avec les autorités du système (le certificat de test n'y est pas) : imprime « refused » si refusée
   plain  parle en clair à un serveur TLS : envoie une requête HTTP et imprime ce qui revient (rien, ou une alerte)
+  resume deux connexions vérifiées, la seconde avec la session (ticket) de la première : imprime « reprise=True|False »
 """
 import socket, ssl, sys
 
@@ -18,6 +19,18 @@ if mode == "plain":
         data = b""
     print("recu=%d" % len(data))
     c.close()
+    sys.exit(0)
+if mode == "resume":
+    ctx = ssl.create_default_context(cafile=cafile)
+    sess, out = None, []
+    for i in range(2):
+        t = ctx.wrap_socket(socket.create_connection(("127.0.0.1", port), timeout=5), server_hostname="localhost", session=sess)
+        t.sendall(b"salut\n")
+        t.makefile("rb").readline()
+        out.append(str(t.session_reused))
+        sess = t.session
+        t.close()
+    print("reprise=" + "|".join(out))
     sys.exit(0)
 ctx = ssl.create_default_context(cafile=cafile if mode == "line" else None)
 ctx.set_alpn_protocols(["http/1.1"])

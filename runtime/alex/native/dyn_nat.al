@@ -9048,8 +9048,8 @@ func __nat__native_tls__server(n: int, a0: int, a1: int, a2: int, a3: int, a4: i
     __tls_off("server")
     return 0
 
-func __nat__native_tls__server_start(n: int, a0: int, a1: int, a2: int, a3: int) -> int:
-    __nat_range("server_start", n, 4, 4)
+func __nat__native_tls__server_start(n: int, a0: int, a1: int, a2: int, a3: int, a4: int, a5: int) -> int:
+    __nat_range("server_start", n, 4, 6)
     __tls_off("server_start")
     return 0
 
