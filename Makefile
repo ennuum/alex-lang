@@ -294,6 +294,11 @@ test-stdlib2: alex
 test-stdlib2-native: alex
 	sh tests/stdlib2/native_drivers.sh
 
+# Encodeurs d'images et vignettes (stdlib/image/encode.al, natif seulement) : PNG, JPEG, orientation Exif.
+.PHONY: test-image-native
+test-image-native: alex
+	sh tests/native/image/run.sh
+
 # Outillage (docs/SDK.md) : serveur de langage `alex lsp` (session JSON-RPC réelle).
 test-lsp: alex
 	python3 tests/tooling/lsp_test.py ./alex
