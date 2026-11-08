@@ -44,12 +44,10 @@ class TlsServerConfig:
             catch e:
                 _err.config_error("TlsServerConfig", e.message)
 
-    # Poignée de main SANS ATTENTE (implémentation ALEX) : session à faire avancer par server_step(executor)
-    # (network.tls13) ; null avec OpenSSL, dont la poignée de main reste bloquante (wrap).
+    # Poignée de main SANS ATTENTE : session à faire avancer par server_step(executor) puis established()
+    # (network.tls.start_server : TLS ALEX ou OpenSSL) ; null si le runtime ne le permet pas (wrap, bloquant).
     func start(sock):
-        if _tls.server_backend() != "alex":
-            return null
-        return _tls13.TlsSocket13(sock, _tls13.context(self.cert_file, self.key_file, self.alpn))
+        return _tls.start_server(sock, self.cert_file, self.key_file, self.alpn)
 
     # Poignée de main serveur sur un socket accepté ; renvoie le TlsSocket (TlsError en cas d'échec).
     func wrap(sock, timeout=null):

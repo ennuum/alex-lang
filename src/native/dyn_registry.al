@@ -605,6 +605,7 @@ const MODULES := [
         ["worker_return", false, 0, "worker_return", 0, 0, 0, ""],
     ]],
     ["_native_tls", [
+        ["accept_step", false, 0, "accept_step", 0, 0, 0, ""],
         ["aes_gcm", false, 0, "aes_gcm", 0, 0, 0, ""],
         ["client", false, 0, "client", 0, 0, 0, ""],
         ["close", false, 0, "close", 0, 0, 0, ""],
@@ -620,6 +621,7 @@ const MODULES := [
         ["pending", false, 0, "pending", 0, 0, 0, ""],
         ["read", false, 0, "read", 0, 0, 0, ""],
         ["server", false, 0, "server", 0, 0, 0, ""],
+        ["server_start", false, 0, "server_start", 0, 0, 0, ""],
         ["shutdown", false, 0, "shutdown", 0, 0, 0, ""],
         ["supported", false, 0, "supported", 0, 0, 0, ""],
         ["version", false, 0, "version", 0, 0, 0, ""],

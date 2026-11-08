@@ -9048,6 +9048,16 @@ func __nat__native_tls__server(n: int, a0: int, a1: int, a2: int, a3: int, a4: i
     __tls_off("server")
     return 0
 
+func __nat__native_tls__server_start(n: int, a0: int, a1: int, a2: int, a3: int) -> int:
+    __nat_range("server_start", n, 4, 4)
+    __tls_off("server_start")
+    return 0
+
+func __nat__native_tls__accept_step(n: int, a0: int) -> int:
+    __nat_range("accept_step", n, 1, 1)
+    __tls_off("accept_step")
+    return 0
+
 func __nat__native_tls__read(n: int, a0: int, a1: int, a2: int) -> int:
     __nat_range("read", n, 3, 3)
     __tls_off("read")

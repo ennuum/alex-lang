@@ -414,9 +414,10 @@ class Server:
         self.manager.add(conn)
         self._read(conn)
 
-    # Fait avancer les poignées de main TLS en cours (network.tls13.TlsSocket13.server_step) : la boucle ne fait que
-    # lire, écrire et assembler ; échange de clés et signature partent sur un fil (thread.offload) si
-    # tls.offload. Une poignée de main qui échoue ou dépasse timeouts.handshake ferme simplement la connexion.
+    # Fait avancer les poignées de main TLS en cours (server_step : network.tls13.TlsSocket13 ou, avec OpenSSL,
+    # network.tls.OpenSslAccept) : la boucle ne fait que lire, écrire et assembler ; avec le TLS ALEX, échange de
+    # clés et signature partent sur un fil (thread.offload) si tls.offload. Une poignée de main qui échoue ou
+    # dépasse timeouts.handshake ferme simplement la connexion.
     func _advance_tls():
         now := _time.monotonic()
         ex := self.tls_executor if self.config.tls.offload else null
@@ -429,7 +430,7 @@ class Server:
             catch e:
                 r = "failed"
             if r == "done":
-                self._open(ts, p[1], p[2])
+                self._open(ts.established(), p[1], p[2])
                 continue
             if r == "failed" or now > p[3]:
                 self.metrics.tls_handshake_failures += 1

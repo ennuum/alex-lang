@@ -838,6 +838,10 @@ class TlsSocket13:
             self.handshaking = false
         return r
 
+    # Session une fois la poignée de main terminée (interface commune avec network.tls.OpenSslAccept).
+    func established():
+        return self
+
     func _server_done():
         if self.ctx != null:
             self.ctx.handshakes += 1

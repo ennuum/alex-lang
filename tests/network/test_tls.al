@@ -15,6 +15,7 @@ use process as proc
 use network.tls as tls
 use network.tcp as tcp
 use network.http as http
+use time
 
 stats := [0, 0]
 notes := []
@@ -213,6 +214,48 @@ else:
             noise.wait(10.0)
             noise.close()
             srv.close()
+
+            # poignée de main pas à pas (start_server / server_step), comme la boucle de web.server
+            raw := tcp.listen("127.0.0.1", 0)
+            sp = raw.port()
+            func pas_a_pas(mode):
+                cl2 := py_client(mode)
+                sk := raw.socket.accept(15.0)[0]
+                pend := tls.start_server(sk, cert, key, ["http/1.1"])
+                etats := []
+                n := 0
+                err := null
+                while n < 7500:
+                    r := null
+                    try:
+                        r = pend.server_step()
+                    catch e:
+                        err = e.type
+                        break
+                    if len(etats) == 0 or etats[len(etats) - 1] != r:
+                        append(etats, r)
+                    if r == "done":
+                        break
+                    time.sleep(0.002)
+                    n += 1
+                return [cl2, sk, pend, etats, err]
+            st := pas_a_pas("line")
+            check(len(st[3]) >= 2 and st[3][0] == "read" and st[3][len(st[3]) - 1] == "done", "pas à pas : attente puis fin " + str(st[3]))
+            c2 := tcp.Connection(st[2].established())
+            check_eq(c2.read_line(5.0), "salut é", "pas à pas : ligne reçue")
+            c2.write_line("OK é")
+            check_eq(c2.socket.alpn, "http/1.1", "pas à pas : ALPN")
+            check_eq(c2.read_line(5.0), null, "pas à pas : close_notify")
+            c2.close()
+            check_eq(s.split(s.trim(st[0].read_all()), "|")[0], "OK é", "pas à pas : client servi")
+            st[0].wait(10.0)
+            st[0].close()
+            st = pas_a_pas("plain")
+            check_eq(st[4], "TlsError", "pas à pas : client non TLS refusé")
+            st[1].close()
+            st[0].wait(10.0)
+            st[0].close()
+            raw.close()
         else:
             print("test_tls : python3 absent, serveur contre client Python ignoré")
 

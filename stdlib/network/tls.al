@@ -290,6 +290,64 @@ func wrap_server(sock, cert_file, key_file, alpn=null, timeout=null):
     h := _check("tls.handshake(serveur)", _t.server(_n.fd(sock._h("wrap_server")), cert_file, key_file, alpn, timeout))
     return TlsSocket(sock, h)
 
+# Poignée de main serveur OpenSSL SANS ATTENTE : même interface que network.tls13.TlsSocket13 (server_step,
+# established, socket), pour une boucle d'événements (web.server). Chaque server_step fait un essai de SSL_accept
+# et rend « read » / « write » (socket brut à attendre) ou « done » ; TlsError en cas d'échec.
+class OpenSslAccept:
+    func init(sock, handle):
+        self.socket = sock
+        self.handle = handle
+        self.result = null
+
+    func server_step(executor=null):
+        if self.result != null:
+            return "done"
+        r := _t.accept_step(self.handle)
+        if type(r) == "list" or _sk.is_error(r):
+            h := self.handle
+            self.handle = null
+            try:
+                _t.close(h)
+            catch e:
+                ignored := e
+            _check("tls.handshake(serveur)", r)
+        if r == 0:
+            self.result = TlsSocket(self.socket, self.handle)
+            return "done"
+        return "read" if r == 1 else "write"
+
+    # TlsSocket une fois la poignée de main terminée.
+    func established():
+        return self.result
+
+# Poignée de main serveur à mener sans attendre (server_step(executor) jusqu'à « done », puis established()) :
+# network.tls13.TlsSocket13 avec l'implémentation ALEX, OpenSslAccept avec OpenSSL ; null si le runtime ne sait
+# pas faire avancer OpenSSL pas à pas (wrap_server reste possible).
+func start_server(sock, cert_file, key_file, alpn=null):
+    _require_server()
+    if cert_file == null or key_file == null:
+        raise("ArgumentError", "network.tls.start_server : cert_file et key_file sont requis")
+    _check_alpn("start_server", alpn)
+    if server_backend() == "alex":
+        return _tls13.TlsSocket13(sock, _tls13.context(cert_file, key_file, alpn))
+    if not _stepwise():
+        return null
+    return OpenSslAccept(sock, _check("tls.handshake(serveur)", _t.server_start(_n.fd(sock._h("start_server")), cert_file, key_file, alpn)))
+
+_step_ok := [null]
+
+# Le runtime a-t-il server_start / accept_step (runtime plus ancien : non) ?
+func _stepwise():
+    if _step_ok[0] == null:
+        ok := false
+        try:
+            f := _t.accept_step
+            ok = f != null
+        catch e:
+            ok = false
+        _step_ok[0] = ok
+    return _step_ok[0]
+
 # Connexion TLS à host:port : TCP (chaque adresse résolue est essayée, voir network.tcp.connect) puis poignée de
 # main, dans le même délai. server_name : nom présenté (SNI) et vérifié si différent de host.
 # Renvoie une network.tcp.Connection ; connexion.socket est le TlsSocket (version, cipher, alpn, peer_subject...).

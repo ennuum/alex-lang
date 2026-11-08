@@ -6803,6 +6803,73 @@ func __vm_nat__native_tls__server(n: int, a0: int, a1: int, a2: int, a3: int, a4
         return r
     return __vm_tls_adopt(s)
 
+# server_start(fd, cert, key, alpn) : contexte et session serveur prêts, SANS poignée de main ; handle à faire
+# avancer par accept_step (boucle d'événements : web.server), puis comme celui de server.
+func __vm_nat__native_tls__server_start(n: int, a0: int, a1: int, a2: int, a3: int) -> int:
+    __vm_tls_off()
+    __nat_exact("server_start", n, 4)
+    __vm_tls_require("server_start")
+    fd := __nat_int("server_start", a0, "le descripteur")
+    cert := __nat_cstr("server_start", a1, "le certificat")
+    key := __nat_cstr("server_start", a2, "la clé privée")
+    alpn := ""
+    if a3 != 0:
+        alpn = __vm_tls_alpn_wire("server_start", a3)
+    s := __alloc(32)
+    __store64(s + 16, fd)
+    __vm_c(__vm_tls_fn(37), 0, 0)
+    __store64(s, __vm_c(__vm_tls_fn(3), __vm_c(__vm_tls_fn(2), 0, 0), 0))
+    if __load64(s) == 0:
+        return __vm_tls_error(0, "création du contexte TLS : ")
+    try:
+        __vm_tls_base(s)
+        __vm_c(__vm_tls_fn(6), __load64(s), 128)
+        __vm_tls_files(s, "server_start", cert, key)
+        if __nat_blen(alpn) > 0:
+            cell := __alloc(8)
+            __store64(cell, __str_addr(alpn))
+            __store64(s + 24, cell)
+            __vm_c6(__vm_tls_fn(14), __load64(s), __fnaddr("__vm_tls_alpn_select"), cell, 0, 0, 0)
+        __store64(s + 8, __vm_c(__vm_tls_fn(15), __load64(s), 0))
+    catch e:
+        __vm_tls_free(s)
+        __rt_throw(__addr(e))
+    if __load64(s + 8) == 0:
+        r := __vm_tls_error(0, "création de la session TLS : ")
+        __vm_tls_free(s)
+        return r
+    __vm_c(__vm_tls_fn(17), __load64(s + 8), fd)
+    return __vm_tls_adopt(s)
+
+# accept_step(handle) : UN essai de poignée de main serveur, sans attendre : 0 terminée, 1 attend que le socket
+# soit lisible, 2 qu'il soit inscriptible ; échec : [message, 0] ou -errno, comme server (fermer le handle).
+func __vm_nat__native_tls__accept_step(n: int, a0: int) -> int:
+    __vm_tls_off()
+    __nat_exact("accept_step", n, 1)
+    s := __vm_tls_session("accept_step", a0)
+    __vm_c(__vm_tls_fn(37), 0, 0)
+    __vm_tls_clear_errno()
+    r := __vm_c(__vm_tls_fn(19), __load64(s + 8), 0)
+    r = ((r & 4294967295) ^ 2147483648) - 2147483648
+    if r == 1:
+        return __dyn_int(0)
+    err := __vm_c(__vm_tls_fn(23), __load64(s + 8), r) & 4294967295
+    en := __vm_tls_errno()
+    if err == 2:
+        return __dyn_int(1)
+    if err == 3:
+        return __dyn_int(2)
+    if err == 5 and en != 0 and en != 4 and en != 11:
+        return __dyn_int(0 - en)
+    if err == 5 and (en == 4 or en == 11):
+        return __dyn_int(1)
+    if err == 5 or err == 6:
+        l := __dyn_list_new(0)
+        __dyn_list_push(l, __dyn_str("poignée de main TLS : connexion fermée par l'autre extrémité"))
+        __dyn_list_push(l, __dyn_int(0))
+        return l
+    return __vm_tls_error(s, "poignée de main TLS : ")
+
 func __vm_nat__native_tls__read(n: int, a0: int, a1: int, a2: int) -> int:
     __vm_tls_off()
     __nat_exact("read", n, 3)
