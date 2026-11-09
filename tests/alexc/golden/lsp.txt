@@ -2,7 +2,7 @@ Content-Length: N
 
 {"jsonrpc":"2.0","id":1,"result":{"capabilities":{"positionEncoding":"utf-16","textDocumentSync":{"openClose":true,"change":1,"save":{"includeText":false}},"completionProvider":{"triggerCharacters":["."],"resolveProvider":false},"hoverProvider":true,"signatureHelpProvider":{"triggerCharacters":["(",","]},"definitionProvider":true,"referencesProvider":true,"documentHighlightProvider":true,"documentSymbolProvider":true,"workspaceSymbolProvider":true,"documentFormattingProvider":true,"renameProvider":{"prepareProvider":true},"codeActionProvider":{"codeActionKinds":["quickfix","source.organizeImports"]}},"serverInfo":{"name":"alex-lsp","version":"VERSION"}}}Content-Length: N
 
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al","diagnostics":[{"range":{"start":{"line":1,"character":4},"end":{"line":1,"character":8}},"severity":2,"code":"unused-import","source":"alex","message":"import inutilisé : « json »","tags":[1]}]}}Content-Length: N
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file://REPO/tests/tooling/ws/main.al","diagnostics":[{"range":{"start":{"line":1,"character":4},"end":{"line":1,"character":8}},"severity":2,"code":"unused-import","source":"alex","message":"import inutilisé : « json »","tags":[1]}]}}Content-Length: N
 
 {"jsonrpc":"2.0","id":2,"result":{"isIncomplete":false,"items":[{"label":"Point","kind":7,"detail":"class Point","documentation":{"kind":"markdown","value":"Un point du plan."},"insertTextFormat":1},{"label":"Cercle","kind":7,"detail":"class Cercle extends Point","insertTextFormat":1},{"label":"point","kind":3,"detail":"func point(x, y)","documentation":{"kind":"markdown","value":"Crée un point."},"insertText":"point(${1:x}, ${2:y})","insertTextFormat":2}]}}Content-Length: N
 
@@ -16,7 +16,7 @@ Content-Length: N
 
 {"jsonrpc":"2.0","id":7,"result":{"isIncomplete":false,"items":[{"label":"collections","kind":9,"detail":"collections","insertTextFormat":1}]}}Content-Length: N
 
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al","diagnostics":[{"range":{"start":{"line":1,"character":4},"end":{"line":1,"character":8}},"severity":2,"code":"unused-import","source":"alex","message":"import inutilisé : « json »","tags":[1]}]}}Content-Length: N
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file://REPO/tests/tooling/ws/main.al","diagnostics":[{"range":{"start":{"line":1,"character":4},"end":{"line":1,"character":8}},"severity":2,"code":"unused-import","source":"alex","message":"import inutilisé : « json »","tags":[1]}]}}Content-Length: N
 
 {"jsonrpc":"2.0","id":8,"result":{"contents":{"kind":"markdown","value":"```alex\n(classe) class Cercle extends Point\n```\n\n*geo/forme.al:14*"},"range":{"start":{"line":12,"character":15},"end":{"line":12,"character":21}}}}Content-Length: N
 
@@ -24,19 +24,19 @@ Content-Length: N
 
 {"jsonrpc":"2.0","id":10,"result":{"signatures":[{"label":"Cercle(x, y, r)","parameters":[{"label":"x"},{"label":"y"},{"label":"r"}]}],"activeSignature":0,"activeParameter":2}}Content-Length: N
 
-{"jsonrpc":"2.0","id":11,"result":[{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/geo/forme.al","range":{"start":{"line":18,"character":9},"end":{"line":18,"character":13}}}]}Content-Length: N
+{"jsonrpc":"2.0","id":11,"result":[{"uri":"file://REPO/tests/tooling/ws/geo/forme.al","range":{"start":{"line":18,"character":9},"end":{"line":18,"character":13}}}]}Content-Length: N
 
-{"jsonrpc":"2.0","id":12,"result":[{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al","range":{"start":{"line":3,"character":5},"end":{"line":3,"character":19}}}]}Content-Length: N
+{"jsonrpc":"2.0","id":12,"result":[{"uri":"file://REPO/tests/tooling/ws/main.al","range":{"start":{"line":3,"character":5},"end":{"line":3,"character":19}}}]}Content-Length: N
 
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/geo/forme.al","diagnostics":[]}}Content-Length: N
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file://REPO/tests/tooling/ws/geo/forme.al","diagnostics":[]}}Content-Length: N
 
-{"jsonrpc":"2.0","id":13,"result":[{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/geo/forme.al","range":{"start":{"line":18,"character":9},"end":{"line":18,"character":13}}},{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al","range":{"start":{"line":6,"character":26},"end":{"line":6,"character":30}}},{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al","range":{"start":{"line":13,"character":12},"end":{"line":13,"character":16}}}]}Content-Length: N
+{"jsonrpc":"2.0","id":13,"result":[{"uri":"file://REPO/tests/tooling/ws/geo/forme.al","range":{"start":{"line":18,"character":9},"end":{"line":18,"character":13}}},{"uri":"file://REPO/tests/tooling/ws/main.al","range":{"start":{"line":6,"character":26},"end":{"line":6,"character":30}}},{"uri":"file://REPO/tests/tooling/ws/main.al","range":{"start":{"line":13,"character":12},"end":{"line":13,"character":16}}}]}Content-Length: N
 
 {"jsonrpc":"2.0","id":14,"result":[{"range":{"start":{"line":16,"character":13},"end":{"line":16,"character":18}},"kind":1},{"range":{"start":{"line":19,"character":30},"end":{"line":19,"character":35}},"kind":1},{"range":{"start":{"line":19,"character":43},"end":{"line":19,"character":48}},"kind":1}]}Content-Length: N
 
 {"jsonrpc":"2.0","id":15,"result":{"range":{"start":{"line":19,"character":30},"end":{"line":19,"character":35}},"placeholder":"rayon"}}Content-Length: N
 
-{"jsonrpc":"2.0","id":16,"result":{"changes":{"file:///home/claude/src/alex_lang/tests/tooling/ws/geo/forme.al":[{"range":{"start":{"line":18,"character":9},"end":{"line":18,"character":13}},"newText":"surface"}],"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al":[{"range":{"start":{"line":6,"character":26},"end":{"line":6,"character":30}},"newText":"surface"},{"range":{"start":{"line":13,"character":12},"end":{"line":13,"character":16}},"newText":"surface"}]}}}Content-Length: N
+{"jsonrpc":"2.0","id":16,"result":{"changes":{"file://REPO/tests/tooling/ws/geo/forme.al":[{"range":{"start":{"line":18,"character":9},"end":{"line":18,"character":13}},"newText":"surface"}],"file://REPO/tests/tooling/ws/main.al":[{"range":{"start":{"line":6,"character":26},"end":{"line":6,"character":30}},"newText":"surface"},{"range":{"start":{"line":13,"character":12},"end":{"line":13,"character":16}},"newText":"surface"}]}}}Content-Length: N
 
 {"jsonrpc":"2.0","id":17,"error":{"code":-32603,"message":"« while » n'est pas un identifiant valide"}}Content-Length: N
 
@@ -44,31 +44,31 @@ Content-Length: N
 
 {"jsonrpc":"2.0","id":19,"result":[{"name":"Point","detail":"class Point","kind":5,"range":{"start":{"line":4,"character":0},"end":{"line":11,"character":59}},"selectionRange":{"start":{"line":4,"character":6},"end":{"line":4,"character":11}},"children":[{"name":"init","detail":"func init(x, y)","kind":6,"range":{"start":{"line":5,"character":0},"end":{"line":7,"character":18}},"selectionRange":{"start":{"line":5,"character":9},"end":{"line":5,"character":13}}},{"name":"x","detail":"self.x","kind":8,"range":{"start":{"line":6,"character":0},"end":{"line":6,"character":18}},"selectionRange":{"start":{"line":6,"character":13},"end":{"line":6,"character":14}}},{"name":"y","detail":"self.y","kind":8,"range":{"start":{"line":7,"character":0},"end":{"line":7,"character":18}},"selectionRange":{"start":{"line":7,"character":13},"end":{"line":7,"character":14}}},{"name":"norme","detail":"func norme()","kind":6,"range":{"start":{"line":10,"character":0},"end":{"line":11,"character":59}},"selectionRange":{"start":{"line":10,"character":9},"end":{"line":10,"character":14}}}]},{"name":"Cercle","detail":"class Cercle extends Point","kind":5,"range":{"start":{"line":13,"character":0},"end":{"line":19,"character":48}},"selectionRange":{"start":{"line":13,"character":6},"end":{"line":13,"character":12}},"children":[{"name":"init","detail":"func init(x, y, r)","kind":6,"range":{"start":{"line":14,"character":0},"end":{"line":16,"character":22}},"selectionRange":{"start":{"line":14,"character":9},"end":{"line":14,"character":13}}},{"name":"rayon","detail":"self.rayon","kind":8,"range":{"start":{"line":16,"character":0},"end":{"line":16,"character":22}},"selectionRange":{"start":{"line":16,"character":13},"end":{"line":16,"character":18}}},{"name":"aire","detail":"func aire()","kind":6,"range":{"start":{"line":18,"character":0},"end":{"line":19,"character":48}},"selectionRange":{"start":{"line":18,"character":9},"end":{"line":18,"character":13}}}]},{"name":"point","detail":"func point(x, y)","kind":12,"range":{"start":{"line":22,"character":0},"end":{"line":23,"character":22}},"selectionRange":{"start":{"line":22,"character":5},"end":{"line":22,"character":10}}}]}Content-Length: N
 
-{"jsonrpc":"2.0","id":20,"result":[{"name":"Cercle","kind":5,"location":{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/geo/forme.al","range":{"start":{"line":13,"character":6},"end":{"line":13,"character":12}}}}]}Content-Length: N
+{"jsonrpc":"2.0","id":20,"result":[{"name":"Cercle","kind":5,"location":{"uri":"file://REPO/tests/tooling/ws/geo/forme.al","range":{"start":{"line":13,"character":6},"end":{"line":13,"character":12}}}}]}Content-Length: N
 
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al","diagnostics":[{"range":{"start":{"line":6,"character":24},"end":{"line":6,"character":31}},"severity":1,"code":"NameError","source":"alex","message":"'inconnu' n'est pas défini (§5.3)"},{"range":{"start":{"line":1,"character":4},"end":{"line":1,"character":8}},"severity":2,"code":"unused-import","source":"alex","message":"import inutilisé : « json »","tags":[1]},{"range":{"start":{"line":5,"character":8},"end":{"line":5,"character":9}},"severity":4,"code":"unused-variable","source":"alex","message":"variable « c » jamais lue","tags":[1]}]}}Content-Length: N
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file://REPO/tests/tooling/ws/main.al","diagnostics":[{"range":{"start":{"line":6,"character":24},"end":{"line":6,"character":31}},"severity":1,"code":"NameError","source":"alex","message":"'inconnu' n'est pas défini (§5.3)"},{"range":{"start":{"line":1,"character":4},"end":{"line":1,"character":8}},"severity":2,"code":"unused-import","source":"alex","message":"import inutilisé : « json »","tags":[1]},{"range":{"start":{"line":5,"character":8},"end":{"line":5,"character":9}},"severity":4,"code":"unused-variable","source":"alex","message":"variable « c » jamais lue","tags":[1]}]}}Content-Length: N
 
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al","diagnostics":[{"range":{"start":{"line":9,"character":9},"end":{"line":9,"character":10}},"severity":1,"code":"SyntaxError","source":"alex","message":"délimiteur ouvert ici jamais refermé (parenthèse, crochet ou accolade)"}]}}Content-Length: N
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file://REPO/tests/tooling/ws/main.al","diagnostics":[{"range":{"start":{"line":9,"character":9},"end":{"line":9,"character":10}},"severity":1,"code":"SyntaxError","source":"alex","message":"délimiteur ouvert ici jamais refermé (parenthèse, crochet ou accolade)"}]}}Content-Length: N
 
 {"jsonrpc":"2.0","id":21,"result":{"isIncomplete":false,"items":[{"label":"x","kind":5,"detail":"self.x","insertTextFormat":1},{"label":"y","kind":5,"detail":"self.y","insertTextFormat":1},{"label":"norme","kind":2,"detail":"func norme()","documentation":{"kind":"markdown","value":"Distance à l'origine."},"insertText":"norme()","insertTextFormat":1}]}}Content-Length: N
 
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al","diagnostics":[{"range":{"start":{"line":5,"character":9},"end":{"line":5,"character":18}},"severity":1,"code":"NameError","source":"alex","message":"'factorial' n'est pas défini (§5.3)"},{"range":{"start":{"line":1,"character":4},"end":{"line":1,"character":8}},"severity":2,"code":"unused-import","source":"alex","message":"import inutilisé : « json »","tags":[1]}]}}Content-Length: N
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file://REPO/tests/tooling/ws/main.al","diagnostics":[{"range":{"start":{"line":5,"character":9},"end":{"line":5,"character":18}},"severity":1,"code":"NameError","source":"alex","message":"'factorial' n'est pas défini (§5.3)"},{"range":{"start":{"line":1,"character":4},"end":{"line":1,"character":8}},"severity":2,"code":"unused-import","source":"alex","message":"import inutilisé : « json »","tags":[1]}]}}Content-Length: N
 
-{"jsonrpc":"2.0","id":22,"result":[{"title":"Importer « factorial » de math","kind":"quickfix","isPreferred":true,"edit":{"changes":{"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al":[{"range":{"start":{"line":2,"character":0},"end":{"line":2,"character":0}},"newText":"from math use factorial\n"}]}}}]}Content-Length: N
+{"jsonrpc":"2.0","id":22,"result":[{"title":"Importer « factorial » de math","kind":"quickfix","isPreferred":true,"edit":{"changes":{"file://REPO/tests/tooling/ws/main.al":[{"range":{"start":{"line":2,"character":0},"end":{"line":2,"character":0}},"newText":"from math use factorial\n"}]}}}]}Content-Length: N
 
-{"jsonrpc":"2.0","id":23,"result":[{"title":"Supprimer l'import inutilisé « json »","kind":"quickfix","edit":{"changes":{"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al":[{"range":{"start":{"line":1,"character":0},"end":{"line":2,"character":0}},"newText":""}]}}}]}Content-Length: N
+{"jsonrpc":"2.0","id":23,"result":[{"title":"Supprimer l'import inutilisé « json »","kind":"quickfix","edit":{"changes":{"file://REPO/tests/tooling/ws/main.al":[{"range":{"start":{"line":1,"character":0},"end":{"line":2,"character":0}},"newText":""}]}}}]}Content-Length: N
 
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al","diagnostics":[{"range":{"start":{"line":1,"character":0},"end":{"line":1,"character":10}},"severity":1,"code":"IndentationError","source":"alex","message":"tabulation interdite dans l'indentation structurante ; utilisez uniquement des espaces (§3)"}]}}Content-Length: N
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file://REPO/tests/tooling/ws/main.al","diagnostics":[{"range":{"start":{"line":1,"character":0},"end":{"line":1,"character":10}},"severity":1,"code":"IndentationError","source":"alex","message":"tabulation interdite dans l'indentation structurante ; utilisez uniquement des espaces (§3)"}]}}Content-Length: N
 
 {"jsonrpc":"2.0","id":24,"result":[{"range":{"start":{"line":0,"character":0},"end":{"line":5,"character":9}},"newText":"func f():\n    x := 1\n\n\n    return x\n"}]}Content-Length: N
 
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al","diagnostics":[]}}Content-Length: N
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file://REPO/tests/tooling/ws/main.al","diagnostics":[]}}Content-Length: N
 
-{"jsonrpc":"2.0","id":25,"result":[{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al","range":{"start":{"line":1,"character":4},"end":{"line":1,"character":6}}}]}Content-Length: N
+{"jsonrpc":"2.0","id":25,"result":[{"uri":"file://REPO/tests/tooling/ws/main.al","range":{"start":{"line":1,"character":4},"end":{"line":1,"character":6}}}]}Content-Length: N
 
 {"jsonrpc":"2.0","id":26,"result":[{"range":{"start":{"line":1,"character":4},"end":{"line":1,"character":6}},"kind":1},{"range":{"start":{"line":2,"character":17},"end":{"line":2,"character":19}},"kind":1}]}Content-Length: N
 
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file:///home/claude/src/alex_lang/tests/tooling/ws/main.al","diagnostics":[{"range":{"start":{"line":1,"character":4},"end":{"line":1,"character":7}},"severity":1,"code":"SyntaxError","source":"alex","message":"caractère inattendu '�'"}]}}Content-Length: N
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file://REPO/tests/tooling/ws/main.al","diagnostics":[{"range":{"start":{"line":1,"character":4},"end":{"line":1,"character":7}},"severity":1,"code":"SyntaxError","source":"alex","message":"caractère inattendu '�'"}]}}Content-Length: N
 
 {"jsonrpc":"2.0","id":27,"error":{"code":-32601,"message":"méthode inconnue : alex/inexistant"}}Content-Length: N
 

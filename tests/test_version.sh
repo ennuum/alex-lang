@@ -47,13 +47,17 @@ use os
 b := os.alex_build()
 print(b["version"] + " " + b["channel"] + " " + b["base"] + " " + str(b["major"]) + str(b["minor"]) + str(b["patch"]))
 print(b["full"] == b["version"] + "+" + b["source_id"])
-print(os.alex_satisfies(">=3.4.5"), os.alex_satisfies(">=3.4.0"), os.alex_satisfies(">=3.4.5-beta.1"), os.alex_satisfies("^3.0"), os.alex_satisfies(">=3.5"))
+# print(a, b, ...) affiche une valeur par ligne : on assemble la ligne attendue nous-mêmes.
+r := [os.alex_satisfies(">=3.4.5"), os.alex_satisfies(">=3.4.0"), os.alex_satisfies(">=3.4.5-beta.1"), os.alex_satisfies("^3.0"), os.alex_satisfies(">=3.5")]
+print(str(r[0]) + " " + str(r[1]) + " " + str(r[2]) + " " + str(r[3]) + " " + str(r[4]))
 try:
     os.alex_satisfies("n'importe quoi")
     print("accepté")
 catch e:
     print("refusé")
 EOF2
+# Comparaison SemVer complète (docs/VERSIONS.md) : une préversion se place dans l'ordre total, sans l'exclusion
+# des préversions à la npm ; 3.4.5-beta.1 est dans ^3.0 (= >=3.0.0 <4.0.0) comme dans >=3.4.0, pas dans >=3.4.5.
 for ch in beta stable; do
     printf '3.4.5\n' > "$T/VERSION"
     ALEX_VERSION_FILE="$T/VERSION" ALEX_BUILD_STATE="$T/st2" sh tools/version.sh gen "$T/u-$ch.txt" $ch 2>/dev/null
@@ -64,7 +68,7 @@ true
 true true true true false
 refusé"; else want="3.4.5-beta.1 beta 3.4.5 345
 true
-false true true false false
+false true true true false
 refusé"; fi
         if [ "$out" = "$want" ]; then ok "identité $ch"; else ko "identité $ch"; echo "$out"; fi
     else

@@ -85,8 +85,8 @@ table{border-collapse:collapse;margin:8px 0;font-size:13.5px;display:block;overf
 </style></head><body><header><div class="logo">A</div><div><h1>ALEX — Référence</h1><div class="sub">os — Documentation du projet</div></div></header><div class="wrap"><nav><input id="q" placeholder="Filtrer les modules…" oninput="for(const a of document.querySelectorAll('nav a'))a.style.display=a.textContent.toLowerCase().includes(this.value.toLowerCase())?'':'none'"><a href="index.html">Tous les modules</a><a href="json.html">json</a><a href="os.html" class="cur">os</a></nav><main><h2>os</h2><p>Architecture</p><pre class="code">os.al          API publique ALEX + logique de haut niveau (chemins,
                copie / déplacement / suppression récursifs, normalisation,
                conversions de modes, system_info, terminal...).
-_native_os     primitives qui dépendent RÉELLEMENT de l'OS (runtime C++ :
-               runtime/native/os/). Backends POSIX et Windows séparés.
+_native_os     primitives qui dépendent RÉELLEMENT de l'OS (runtime natif ALEX :
+               runtime/alex/native/dyn_nat.al). Backends POSIX et Windows séparés.
 </pre><p>Permissions : ce sont celles du système d'exploitation. Aucune sandbox<br>artificielle n'est ajoutée par le langage : une opération refusée par l'OS<br>lève IoError, une opération permise par l'OS réussit.</p><p>Erreurs</p><pre class="code">IoError        l'OS refuse ou ne peut pas faire l'opération.
 TypeError      argument d'un mauvais type.
 ArgumentError  argument de bon type mais invalide (pid &lt;= 0, mode hors limites...).

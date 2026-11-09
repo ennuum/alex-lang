@@ -10,6 +10,7 @@ algorithm.search          Recherche linéaire dans une séquence (liste, tuple, 
 algorithm.set_operations  Opérations ensemblistes sur des listes TRIÉES (fusion linéaire, O(n + m), multiensembles respectés comme std::set_union : un élément présent 2 fois d'un côté et 3 de…
 algorithm.sort            Tris EN PLACE sur une liste, tous paramétrables par key (clé), cmp (comparateur -> int) et reverse
 algorithm.transform       Transformations de séquences.
+animation                 Animation 3D : modèles glTF 2.0 complets (hiérarchie de nœuds, maillages, squelettes / skins, cibles de morphing, clips d'animation, matériaux), échantillonnage des clips…
 argparse                  Analyse d'arguments de ligne de commande : options courtes/longues, positionnels, sous-commandes imbriquées avec alias, groupes d'options, groupes mutuellement exclusifs, nargs…
 argparse.completion       Génère des scripts de complétion à partir d'un ArgumentParser (et de ses sous-commandes imbriquées) :  parser.completion("bash" | "zsh" | "powershell").
 argparse.help             Génération de l'usage et de l'aide.
@@ -17,6 +18,7 @@ argparse.manpage          Génère des pages de manuel (roff, macros man(7)) dep
 argparse.parser           Moteur d'analyse : Parser (exposé comme argparse.ArgumentParser), groupes, groupes mutuellement exclusifs, sous-commandes imbriquées.
 argparse.text             Utilitaires de texte internes à argparse (pas de tranches ni de regex en ALEX : tout passe par substring/ord).
 array
+assets                    Gestionnaire de ressources de jeu : cache par chemin (une ressource chargée une seule fois, compteur de références), chargement SYNCHRONE ou EN ARRIÈRE-PLAN (fils…
 async                     Programmation asynchrone (tâches coopératives sur un fil, docs/ASYNC.md) — boîte à outils complète
 async.async_errors        Erreurs de la programmation asynchrone
 async.async_stream        Flux ASYNCHRONES : une suite de valeurs qui arrivent au fil du temps (messages d'un canal, lignes, mesures périodiques...), transformée par des opérateurs paresseux, puis…
@@ -44,6 +46,8 @@ audio.audio_format        Formats audio PCM et conversions
 audio.audio_mixer         Table de mixage : des pistes (tampons ou sources) avec volume, panoramique, sourdine, solo, départ décalé et boucle ; le mixeur produit le mélange stéréo (ou mono) bloc…
 audio.audio_output        Sortie audio de haut niveau au-dessus d'un flux (audio_stream : PlayerStream vers le haut-parleur, WavWriter, MemorySink...) : FILE de tampons à jouer, volume (linéaire ou dB)…
 audio.audio_stream        Tampons et flux audio
+audio.realtime            Son de jeu en TEMPS RÉEL : sortie directe vers la carte son (waveOut / winmm sous Windows, ALSA sous Linux, par ffi, sans programme externe), mixage continu de voix en code…
+audio.vorbis              Décodage Ogg Vorbis (.ogg) vers du PCM 16 bits entrelacé, pour audio.realtime (musiques, bruitages compressés).
 builtins                  Fonctions et méthodes « de base » à la Python, disponibles SANS import dans tout module utilisateur (le compilateur ajoute implicitement `from builtins use ...` pour les…
 calculus
 camera                    Caméras pour les applications
@@ -72,40 +76,11 @@ collections.tree_map      TreeMap : table associative TRIÉE par clé, sur arbre
 collections.tree_set      TreeSet : ensemble TRIÉ sans doublon, sur collections.tree_map (AVL).
 collections.vector        Vector : tableau dynamique à CAPACITÉ explicite, dans l'esprit de std::vector (C++) : la mémoire réservée (capacity) est distincte de la taille (size) ; reserve()…
 compiler.ast              Arbre syntaxique abstrait d'ALEX.
-compiler.bc_analyzer      Analyse sémantique de la chaîne de compilation écrite en ALEX : portage fidèle de src/Analyzer.cpp.
-compiler.bc_ast           Arbre syntaxique de la chaîne de compilation vers bytecode : même forme que l'AST du compilateur de référence (include/alex/ast/Ast.hpp), APRÈS ses désucrages…
-compiler.bc_compiler      Compilateur AST -> bytecode .albc écrit en ALEX : portage fidèle de src/Compiler.cpp (et de src/TypeIndex.cpp).
-compiler.bc_format        Format de bytecode .albc de la machine virtuelle ALEX, écrit en ALEX : jeu d'opcodes (même numérotation que include/alex/bc/Opcode.hpp), constantes, instructions à largeur…
-compiler.bc_lexer         Analyseur lexical de la chaîne de compilation vers bytecode : portage fidèle de src/Lexer.cpp.
-compiler.bc_modules       Graphe de modules de la chaîne de compilation écrite en ALEX : portage de src/ModuleGraph.cpp, src/ModuleResolver.cpp, include/alex/module/Builtins.hpp et du prélude de `alex…
-compiler.bc_parser        Analyseur syntaxique de la chaîne de compilation vers bytecode : portage fidèle de src/Parser.cpp.
-compiler.bc_types         Vérification statique graduelle des annotations de type, écrite en ALEX : portage fidèle de src/TypeChecker.cpp (docs/TYPES.md).
-compiler.cli_common       Outils partagés par les commandes de `alexc`, la chaîne d'outils ALEX écrite en ALEX (tools/selfhost/alexc.al) : chemins de l'exécutable, de la machine virtuelle et de la…
-compiler.cmd_debug        `alexc debug fichier.al|fichier.albc` (protocole 1) et `alexc debug --protocol 2 [--break-on-exception] fichier [arguments...]` (protocole 2, ALEX Studio et adaptateur DAP) :…
-compiler.cmd_doc          `alexc doc <module|fichier.al>...
-compiler.cmd_fmt          `alexc fmt [--check] [fichiers|dossiers...]` (défaut : dossier courant) : mise en forme comme LanguageService::format du C++ — tabulations de tête remplacées par des…
-compiler.cmd_lsp          `alexc lsp [--jsonl] [dossier]` : serveur de langage (LSP 3.17 sur stdin / stdout, en-têtes Content-Length ; avec --jsonl, un message JSON par ligne, le mode d'ALEX Studio),…
-compiler.cmd_new          `alexc new [modèle] <nom> [--dir dossier] [--ci github|gitlab|aucune]`, `alexc new --list [--json]` : projets créés depuis les modèles de templates/ (à côté de stdlib/),…
-compiler.cmd_pkg          `alexc pkg init <nom> | add <nom> [contrainte|path:dossier] | remove <nom> | install [--locked] | update [nom...] | list | publish | verify [--registry <dossier>] [--dir…
-compiler.cmd_repl         `alexc repl` : boucle interactive, comme celle de l'alex de référence (cmdRepl) — une instruction par ligne, chaque ligne compilée seule (sans graphe de modules) puis…
-compiler.cmd_test         `alexc test [chemins...] [--filter texte | -k texte] [--json] [--list] [-j N]` : exécuteur de tests, comme alex::tooling (TestRunner.cpp).
 compiler.codegen          Génération de code et chaîne de compilation complète.
 compiler.diagnostics      Diagnostics du compilateur : erreurs, avertissements et notes, avec position (fichier, ligne, colonne, étendue), code (« E0101 », « W0201 »...), notes complémentaires, et…
 compiler.ir               Représentation intermédiaire (IR) à pile, abaissement (lowering) depuis compiler.ast, et interpréteur de référence.
-compiler.lang_service     Service de langage (IntelliSense) écrit en ALEX, port de alex::tooling::LanguageService (LanguageService.cpp) : index des symboles d'un fichier à partir du vrai lexer / parser…
 compiler.lexer            Analyseur lexical d'ALEX écrit en ALEX : le texte source devient une liste de jetons, avec exactement les règles du compilateur natif (src/Lexer.cpp) — indentation…
 compiler.linker           Édition des liens de modules IR (compiler.ir) : table des symboles exportés, résolution des imports (use m / from m use a, b), détection des modules absents, des symboles…
-compiler.nt_a64           Assembleur AArch64 (A64) du compilateur natif écrit en ALEX : encode directement les instructions utilisées par le générateur ARM64 (compiler.nt_codegen_a64).
-compiler.nt_codegen       Génération de code x86-64 du compilateur natif écrit en ALEX (étape C) : portage fidèle de src/NativeCodegen.cpp pour la cible Linux (exécutable ELF statique, appels…
-compiler.nt_codegen_a64   IR -> code machine AArch64 (Linux, Windows ARM64) + runtime minimal en assembleur (appels système, sans libc), docs/NATIVE.md « ARM64 ».
-compiler.nt_dyn           Mode dynamique du compilateur natif écrit en ALEX (étape C) : portage fidèle de src/NativeDyn.cpp.
-compiler.nt_dyn_registry  Registre des modules natifs de la VM (VM::registerNativeModule, registerStubModules), vu par le mode dynamique du compilateur natif écrit en ALEX : données d'ABI du runtime,…
-compiler.nt_inline        Intégration (inlining) des petites fonctions feuilles du runtime dans leurs appelants, sur l'IR du compilateur natif écrit en ALEX : portage fidèle de src/NativeInline.cpp.
-compiler.nt_ir            Représentation intermédiaire du compilateur natif écrit en ALEX (étape C) : portage de include/alex/native/Ir.hpp.
-compiler.nt_lower         Abaissement AST -> IR du compilateur natif écrit en ALEX (étape C) : portage fidèle de src/NativeLower.cpp.
-compiler.nt_native        Chaîne du compilateur natif écrit en ALEX (étape C) : chargement des modules comme `alexc build --native` (portage du ModuleLoader de src/NativeCodegen.cpp), abaissement vers…
-compiler.nt_vm            Construction de la machine virtuelle écrite en ALEX (étape D, docs/SELFHOST.md) : runtime natif + runtime du mode dynamique + interpréteur runtime/vm/vm.al + table des…
-compiler.nt_x64           Assembleur x86-64 du compilateur natif écrit en ALEX (étape C) : portage fidèle de src/NativeX64.cpp et de l'écriture ELF64 de src/NativeElf.cpp.
 compiler.optimizer        Optimisations sur l'arbre (compiler.ast) et sur l'IR (compiler.ir), sans changer le sens du programme
 compiler.parser           Analyseur syntaxique d'ALEX écrit en ALEX (descente récursive) : jetons de compiler.lexer -> arbre de compiler.ast.
 compiler.source_map       Positions dans les sources et correspondances source ↔ code généré.
@@ -126,8 +101,20 @@ coroutine.coroutine_state États d'une coroutine et transitions permises
 coroutine.generator       Générateurs : produire une suite de valeurs à la demande.
 coroutine.yield           Le côté CORPS d'une coroutine : suspendre l'exécution en rendant une valeur à celui qui l'a reprise, et recevoir ce qu'il renvoie à la reprise suivante.
 crypto                    Primitives cryptographiques en ALEX pur (aucune primitive C++ dédiée).
+crypto.accel              Calculs cryptographiques du runtime (module natif _native_tls, écrits dans le dialecte typé du runtime : entiers machine) pour les modules écrits en Alex : X25519,…
+crypto.aes                AES (FIPS 197) en ALEX pur, chiffrement seulement (ce que demandent les modes CTR et GCM) : clés de 128, 192 ou 256 bits, tables « T » précalculées (quatre consultations…
+crypto.bigint             Entiers naturels de taille arbitraire pour la cryptographie (RSA, courbes elliptiques) : listes de limbes de 26 bits, poids faible en tête, sans limbe nul en tête (zéro : []).
+crypto.der                Lecture DER (X.690) stricte, pour les clés et les certificats (crypto.x509) : chaque élément est décrit par un nœud [étiquette, début du contenu, fin du contenu] dans la…
+crypto.ec                 Courbes elliptiques NIST P-256 et P-384 (FIPS 186-4) : ECDH et ECDSA, nonce déterministe de la RFC 6979.
+crypto.gcm                AES-GCM (NIST SP 800-38D) : chiffrement authentifié avec données associées, nonce de 96 bits, étiquette de 16 octets.
+crypto.hkdf               HKDF (RFC 5869) sur HMAC-SHA-256 / SHA-384 / SHA-512 (module crypto), en listes d'octets.
+crypto.poly1305           Poly1305 (RFC 8439, 2.5) et le chiffrement authentifié ChaCha20-Poly1305 (RFC 8439, 2.8).
+crypto.rsa                RSA (RFC 8017) : signatures RSASSA-PKCS1-v1_5 et RSASSA-PSS (MGF1), avec SHA-256 / SHA-384 / SHA-512.
+crypto.x25519             X25519 (RFC 7748) : échange de clés Diffie-Hellman sur Curve25519, échelle de Montgomery en temps constant (permutations conditionnelles par masques, aucun branchement ni…
+crypto.x509               Certificats X.509 et clés privées en PEM / DER, en ALEX pur : ce que demande TLS 1.3 sans OpenSSL (network.tls13).
 csv                       Lecture / écriture CSV (RFC 4180) en ALEX pur (io pour load/save).
 database                  Point d'entrée du paquet database : ouvrir une base, connaître les moteurs disponibles, et raccourcis.
+database.async_database   Base de données attendue avec await, sans bloquer la boucle async (serveur web, tâches) : la connexion vit dans un fil dédié (thread.thread_pool, une réserve d'un fil par…
 database.connection       Connexion à une base de données.
 database.database_errors  Types d'erreur du paquet database (inspirés de la DB-API Python) et classement des erreurs SQLite.
 database.database_pool    Réserve (pool) de connexions réutilisables vers une même base : évite de rouvrir une connexion à chaque requête et borne leur nombre.
@@ -171,7 +158,7 @@ event.event_queue         Files d'événements
 event.event_subscription  Abonnements : un objet Subscription pour chaque écouteur inscrit sur un EventEmitter, un Dispatcher ou un EventTarget (ou toute source qui rend une fonction de désinscription)…
 event.timer               Minuteries sur la boucle async : déclencher une fonction après un délai (Timer), périodiquement (Interval), et deux outils pour les événements en rafale : debounce (n'agir…
 event.watcher             Surveiller des fichiers et des dossiers : création, modification, suppression, renommage.
-ffi                       Appeler des fonctions C de bibliothèques partagées (.so / .dylib).
+ffi                       Appeler des fonctions C de bibliothèques partagées (.so / .dylib / .dll).
 file                      Contenu des fichiers, texte et binaire, en ALEX pur au-dessus des primitives de `io` (lecture / écriture à une POSITION, création exclusive) et de `os`.
 filesystem                Parcours et gestion de l'arborescence de fichiers, en ALEX pur : aucune primitive C++ dédiée.
 filesystem.directory      Directory : un dossier comme OBJET — contenu, recherche, taille, copie, synchronisation (miroir), et comparaison de deux arborescences.
@@ -204,6 +191,10 @@ gc.gc_errors              Erreurs du pilotage du ramasse-miettes
 gc.gc_heap                Le tas géré par le ramasse-miettes, vu de l'intérieur : objets vivants, pic, objets créés et libérés, seuil et marge avant la prochaine collecte ; collecte avec compte…
 gc.gc_roots               Racines explicites : garder des objets VIVANTS indépendamment des variables du programme (comme les handles « épinglés » des runtimes managés).
 gc.gc_stats               Statistiques du ramasse-miettes dans le temps : mesure d'un bloc de code (objets créés, libérés, collectes déclenchées), échantillonnage périodique et rapport.
+gl                        OpenGL 3.3 (profil core) pour les jeux 2D et 3D, rendu par la CARTE GRAPHIQUE.
+gl.render                 Moteur de rendu GPU pour les jeux 2D et 3D, au-dessus de gl (OpenGL 3.3 core) : maillages sur la carte (depuis mesh.Mesh), textures (depuis multimedia.image, un fichier PNG /…
+gl.textures               Textures pour la carte graphique depuis les fichiers DDS et KTX2, envoyées telles quelles (glCompressedTexImage*) avec toutes leurs mipmaps : moins de mémoire vidéo et…
+gl.window                 Fenêtre native avec un contexte OpenGL 3.3 core accéléré par la carte graphique : Win32 + WGL sous Windows, X11 + GLX sous Linux.
 gpu                       Cartes graphiques et calcul parallèle pour les applications
 gpu.gpu_compute           Calcul data-parallèle « façon GPU » : un NOYAU (kernel) est appliqué à une grille d'indices découpée en groupes de travail ; le ComputeDevice exécute les groupes en…
 gpu.gpu_device            Un périphérique graphique / de calcul pour l'application : la carte (gpu.gpu_info) quand il y en a une, et le moyen d'y calculer (gpu.gpu_compute.ComputeDevice) et d'y placer…
@@ -240,7 +231,7 @@ gui.surface               Surface de rendu de ui.view dans une fenêtre : une fe
 hardware                  Point d'entrée du matériel vu depuis une APPLICATION (système hôte, Linux surtout)
 hardware.audio            Son : cartes et périphériques audio (Linux : ALSA, /proc/asound), fichiers WAV (lecture, écriture), génération de sons (tone, silence, mix) et lecture par le lecteur du…
 hardware.bus              Bus de périphériques du système hôte (Linux, /sys/bus)
-hardware.camera           Caméras (Linux : Video4Linux, /sys/class/video4linux et /dev/videoN) et capture d'une image ou d'une courte vidéo par l'outil du système (ffmpeg, ou fswebcam pour une image).
+hardware.camera           Caméras (Linux : Video4Linux, /sys/class/video4linux et /dev/videoN ; Windows : DirectShow, « video=...
 hardware.device           Un périphérique tel que le noyau Linux le publie dans /sys : chemin, sous-système (pci, usb, block, net, input, sound, drm...), pilote, nœud /dev, attributs, identifiants,…
 hardware.device_info      Description lisible d'un périphérique (hardware.device.Device) : catégorie (stockage, réseau, affichage, entrée, son, USB, pont...), noms du fabricant et du modèle (tables…
 hardware.device_manager   Inventaire des périphériques et suivi des branchements : liste par sous-système ou catégorie, recherche, regroupement par pilote, et détection des ajouts / retraits…
@@ -250,7 +241,7 @@ hardware.hardware_errors  Erreurs d'accès au matériel depuis une application, 
 hardware.hardware_info    Ce que la machine EST : processeur(s) (fabricant, modèle, cœurs, fils, fréquence, caches, jeux d'instructions), mémoire (totale, disponible, échange), micrologiciel et…
 hardware.keyboard         Claviers branchés (Linux : /proc/bus/input/devices) et lecture de leurs touches au niveau du matériel (/dev/input/eventN) : appuis ET relâchements, toutes les touches (Maj,…
 hardware.memory_map       Cartes de la mémoire
-hardware.microphone       Microphones et entrées audio (Linux : ALSA, /proc/asound) et enregistrement dans un fichier WAV par l'outil du système (arecord, pw-record, parecord, ffmpeg, ou sox « rec »).
+hardware.microphone       Microphones et entrées audio (Linux : ALSA, /proc/asound ; Windows : DirectShow par ffmpeg) et enregistrement dans un fichier WAV par l'outil du système (arecord, pw-record,…
 hardware.mouse            Souris et pavés tactiles branchés (Linux : /proc/bus/input/devices) et lecture de leurs mouvements, boutons et molette au niveau du matériel (/dev/input/eventN).
 hardware.permissions      Qui a le droit de toucher à quel matériel ? Sous Linux, l'accès aux périphériques passe par les nœuds de /dev (propriétaire, groupe, bits rwx), par les groupes de…
 hardware.screen           Écrans physiques : sorties vidéo de la carte graphique (Linux : /sys/class/drm), avec état (branché, allumé), modes (résolutions), et, d'après l'EDID de l'écran,…
@@ -258,6 +249,12 @@ hardware.usb              Périphériques USB branchés (Linux : /sys/bus/usb/de
 hw                        Dans un noyau compilé avec `alexc build --native --freestanding`, `use hw` donne l'accès direct au matériel (ports d'entrée-sortie, mémoire physique, interruptions,…
 hw.sim_apic               APIC local (0xFEE00000) et IO-APIC (0xFEC00000) simulés pour la machine de `hw`, afin d'exécuter dans la VM les pilotes de interrupt.interrupt_controller (LocalApic, IoApic)
 hw.sim_pci                Bus PCI simulé pour la machine de `hw` : un contrôleur hôte qui répond au mécanisme n° 1 (ports 0xCF8 / 0xCFC..0xCFF) et, si on le demande, à l'ECAM PCI Express (fenêtre…
+image                     alex: intrinsics NOVA (édition bureau) — décodeurs d'images : PNG (toutes profondeurs, palette, transparence, entrelacé), JPEG (de base et progressif,…
+image.encode              alex: intrinsics NOVA (édition bureau) — encodeurs d'images et transformations pour les vignettes, sur les Raster de image.raster (ARGB 32 bits)
+image.inflate             alex: intrinsics NOVA (édition bureau) — décompression DEFLATE (RFC 1951), zlib (RFC 1950) et gzip (RFC 1952).
+image.raster              alex: intrinsics NOVA (édition bureau) — image décodée en mémoire : pixels ARGB 32 bits (0xAARRGGBB), non prémultipliés.
+image.vp8tab              NOVA (édition bureau) — tables constantes de WebP, extraites automatiquement des spécifications : RFC 6386 (VP8 : quantification, probabilités des coefficients et des modes…
+image.webp                alex: intrinsics NOVA (édition bureau) — décodeur WebP : conteneur RIFF (VP8, VP8L, VP8X), images avec perte (VP8 image clé, RFC 6386 : arbres de modes, coefficients,…
 input                     Point d'entrée du paquet input : la couche d'entrées unifiée au-dessus des fenêtres (window) et des périphériques du noyau (hardware, evdev).
 input.gamepad             Manettes de jeu : état complet (boutons, sticks normalisés en [-1, 1] avec zone morte, gâchettes en [0, 1], croix directionnelle) construit à partir des événements evdev…
 input.gesture             Reconnaissance de gestes TACTILES à partir des trames de contacts (input.touch / input.multitouch) — ou du pointeur d'une fenêtre vu comme un doigt : tap, double tap, appui…
@@ -347,7 +344,7 @@ modules.abi               ABI binaire : tailles, alignements et DISPOSITION des 
 modules.dependency        Dépendances et graphes de dépendances : ordre de construction (tri topologique), détection de cycles, dépendances transitives, et RÉSOLUTION de versions (choisir, pour…
 modules.module            Description STATIQUE d'un module ALEX à partir de son source (sans l'exécuter) : imports (`use`, `from … use …`), noms exportés (func, class, struct, interface, enum,…
 modules.module_loader     Résolution et chargement STATIQUE des modules, avec les mêmes racines que le compilateur (src/ModuleResolver.cpp) : stdlib, projet, dossier du fichier d'entrée et ses…
-modules.package           Le manifeste d'un paquet ALEX (alex.toml) et son verrou (alex.lock), lus et écrits en ALEX — même format que `alexc pkg` (src/Manifest.cpp) : sous-ensemble de TOML (sections,…
+modules.package           Le manifeste d'un paquet ALEX (alex.toml) et son verrou (alex.lock), lus et écrits en ALEX — même format que `alexc pkg` (src/Manifest.cpp) : sous-ensemble de TOML…
 modules.package_manager   Gestion des paquets d'un projet depuis un programme ALEX
 modules.plugin            Système de greffons (plugins) : des composants qui s'enregistrent auprès d'une application, déclarent leurs dépendances entre eux, sont activés dans le bon ordre, et…
 modules.version           Versions sémantiques (SemVer 2.0.0) et contraintes — mêmes règles que le gestionnaire de paquets (`alexc pkg`, src/Semver.cpp), plus les intervalles composés.
@@ -358,12 +355,104 @@ mouse.mouse_errors        Erreurs de la souris et diagnostic de l'accès à la s
 mouse.mouse_event         MouseEvent : mouvement, appui, relâchement, molette, sortie de la fenêtre, clic, double clic, glisser — d'une fenêtre (window / ui) ou de la souris brute du noyau (evdev,…
 mouse.pointer             Pointer : suit le pointeur à partir des événements bruts (mouse_event.MouseEvent) et en déduit des gestes de haut niveau — clic, double clic, glisser (début /…
 mouse.pointer_position    Position du pointeur et espaces de coordonnées
+multimedia                Bibliothèque multimédia d'ALEX : API publique au-dessus des paquets audio, microphone et camera existants.
+multimedia.audio          Espace audio de la bibliothèque multimédia.
+multimedia.audio.meter    Mesures de niveau
+multimedia.audio.resampler Rééchantillonnage de qualité, en continu (par blocs, sans discontinuité aux frontières)
+multimedia.audio.spatial  Placement du son dans l'espace
+multimedia.backends.audio.system Dorsal audio du système : sorties et entrées par les outils de la machine (paquet audio : aplay, pw-play, paplay, ffplay / arecord, pw-record, parecord, ffmpeg).
+multimedia.backends.codecs.ffmpeg Adaptateur SYSTÈME vers ffmpeg / ffprobe (outils installés sur la machine), pour les codecs et conteneurs que la bibliothèque ne décode pas en ALEX : MP3, AAC, Opus, Vorbis,…
+multimedia.backends.gpu   Accélération : état des cartes graphiques (paquet gpu : sysfs, nvidia-smi) et des accélérations vidéo exposées par ffmpeg (hwaccels : vaapi, cuda, qsv, videotoolbox,…
+multimedia.backends.video.system Dorsal vidéo du système : caméras (paquet camera, ffmpeg / Video4Linux), décodage et encodage vidéo et capture d'écran (adaptateur ffmpeg).
+multimedia.codec.audio.flac Décodeur FLAC (Free Lossless Audio Codec, RFC 9639) écrit en ALEX pur, pour des données NON FIABLES
+multimedia.codec.audio.flac_encoder Encodeur FLAC (RFC 9639) écrit en ALEX pur, sans perte, relu au bit près par multimedia.codec.audio.flac et par ffmpeg / libFLAC
+multimedia.codec.capabilities Tableau des capacités de décodage / encodage déclarées par le registre, par genre, avec l'origine et les notes (licence, raison de l'absence).
+multimedia.codec.registry Registre des codecs : chaque codec DÉCLARE ce qu'il sait faire (décoder, encoder), son genre et son origine
+multimedia.container.demux Démultiplexage : ouvre un conteneur, décrit ses pistes et en lit les paquets dans l'ordre, avec recherche temporelle.
+multimedia.container.flac_demux Démultiplexeur FLAC natif (fichiers .flac) : même interface que WavDemuxer (info, format, frames, read_frame, read_packet, read_all, seek, tell, close).
+multimedia.container.metadata Étiquettes des conteneurs, lues sans décoder le contenu
+multimedia.container.mux  Multiplexage : écriture PROGRESSIVE d'un conteneur.
+multimedia.container.ogg  Conteneur Ogg (RFC 3533), pour des fichiers NON FIABLES
+multimedia.container.ogg_mux Écriture Ogg (RFC 3533) en ALEX pur
+multimedia.container.probe Sondage d'un fichier multimédia : reconnaissance du conteneur par sa SIGNATURE (jamais par l'extension seule), pistes, durée, étiquettes, et indication honnête de ce qui est…
+multimedia.core.buffer    Unités de données qui circulent dans les pipelines
+multimedia.core.cancellation Annulation coopérative des traitements multimédias, au-dessus de async.cancellation (mêmes jetons, utilisables aussi dans du code asynchrone).
+multimedia.core.errors    Types d'erreurs communs à toute la bibliothèque multimédia.
+multimedia.core.format    Description des formats bruts
+multimedia.core.result    Résultat explicite (succès ou erreur) pour les opérations où l'échec est attendu et doit être traité sans exception : sondage d'un lot de fichiers, décodage tolérant,…
+multimedia.core.stream    Description des fichiers et de leurs pistes (résultat du sondage, état d'un démultiplexeur)
+multimedia.core.timestamp Horodatages EXACTS : un instant est un entier `pts` dans une base de temps rationnelle (num / den secondes), comme dans les conteneurs (1/44100 pour l'audio, 1/90000 pour MPEG,…
+multimedia.diagnostics.capabilities Ce que la bibliothèque multimédia peut RÉELLEMENT faire sur cette machine, détecté à l'exécution : lecture et capture audio (outils du système), caméra, conteneurs lus…
+multimedia.diagnostics.logging Journal des traitements multimédias : niveaux (debug, info, warning, error), catégorie (« demux », « player »...), champs structurés, mémoire bornée des derniers…
+multimedia.diagnostics.metrics Mesures de performance des traitements : compteurs (images décodées, paquets perdus), jauges (remplissage d'un tampon), chronométrages (durée de décodage par bloc : nombre,…
+multimedia.effects.audio_effect Effets audio EN CONTINU (état conservé d'un bloc à l'autre : aucun clic aux frontières), contrairement aux fonctions sur tampon entier de audio.audio_effects
+multimedia.effects.timeline Montage : pistes audio et vidéo, clips placés sur une ligne de temps.
+multimedia.effects.transitions Transitions entre deux plans, pour une progression t de 0 (tout A) à 1 (tout B)
+multimedia.effects.video_effect Effets sur images (et VideoFrame)
+multimedia.image          Image en mémoire, écrite en ALEX pur : largeur, hauteur, mode (« gray » 1 canal, « rgb » 3, « rgba » 4) et points 8 bits ligne par ligne (list[int]).
+multimedia.image.convert  Conversions d'images
+multimedia.image.decode   Décodeurs d'images écrits en ALEX pur, pour des fichiers NON FIABLES (lecture bornée, limites vérifiées avant toute allocation)
+multimedia.image.encode   Encodeurs d'images en ALEX pur
+multimedia.image.jpeg     Décodeur JPEG (JFIF / Exif / Adobe)
+multimedia.image.metadata Métadonnées d'images SANS décoder les points : format, dimensions, profondeur, type de couleur, entrelacement, textes PNG (tEXt), résolution BMP.
+multimedia.image.resize   Redimensionnement d'images (tous modes)
+multimedia.metadata.chapters Chapitres d'un média : début, fin (déduite du chapitre suivant ou de la durée), titre.
+multimedia.metadata.subtitles Sous-titres texte : lecture et écriture SubRip (.srt) et WebVTT (.vtt), décalage, changement d'échelle (conversion de cadence 25 <-> 23,976), contrôle (durées négatives,…
+multimedia.metadata.tags  Étiquettes normalisées d'un média : title, artist, album, album_artist, date, genre, track, disc, comment, composer, copyright, encoder, language.
+multimedia.pipeline.backpressure Files BORNÉES entre les nœuds d'un pipeline.
+multimedia.pipeline.clock Horloges
+multimedia.pipeline.graph Graphe de traitement : nœuds nommés reliés par des files bornées (multimedia.pipeline.backpressure).
+multimedia.pipeline.node  Nœuds d'un graphe de traitement.
+multimedia.pipeline.recovery Que faire quand un nœud échoue sur un élément
+multimedia.pipeline.scheduler Exécution COOPÉRATIVE d'un graphe (un seul fil, déterministe) : à chaque pas, les nœuds avancent dans l'ordre topologique tant que leurs sorties acceptent des éléments…
+multimedia.pipeline.sync  Synchronisation audio / vidéo.
+multimedia.platform       Plateforme d'exécution et ce que la bibliothèque y sait faire RÉELLEMENT.
+multimedia.platform.alex_os ALEX OS (noyau du dépôt, examples/noyau) : pas d'outils système (ffmpeg, lecteurs) ; le code multimédia en ALEX pur fonctionne s'il est compilé dans l'image ; l'affichage…
+multimedia.platform.android Android : le code multimédia en ALEX pur (WAV, FLAC, Ogg, images, pipelines, sous-titres...) est portable ; aucun dorsal matériel (AAudio, Camera2, MediaCodec) n'est encore…
+multimedia.platform.linux Dorsaux multimédias sous Linux, détectés à l'exécution : son (PipeWire, PulseAudio, ALSA par aplay / pw-play / paplay / ffplay et arecord / pw-record / parecord / ffmpeg),…
+multimedia.platform.windows Dorsaux multimédias sous Windows : son par ffplay (sortie par défaut), micro et caméra par ffmpeg DirectShow (hardware._windows), écran par gdigrab, codecs par ffmpeg.
+multimedia.playback.controls Commandes de lecture
+multimedia.playback.player Lecteur audio : ouverture d'un fichier (WAV par multimedia.container.demux), lecture par blocs vers une SORTIE (par défaut le lecteur du système,…
+multimedia.playback.playlist Listes de lecture : entrées (chemin ou URL, titre, durée), entrée courante, suivant / précédent, modes de répétition (« none », « one », « all »), lecture…
+multimedia.playback.seek  Calcul des positions de recherche temporelle, indépendant du lecteur
+multimedia.playback.subtitles Affichage synchronisé des sous-titres pendant la lecture : à chaque position, SubtitleDisplay indique le texte à montrer et ce qui a changé (apparitions, disparitions), avec…
+multimedia.recording.export Export vers des fichiers
+multimedia.recording.microphone Le microphone comme source d'enregistrement (au-dessus du paquet microphone) : disponibilité réelle, ouverture d'une entrée par blocs, enregistrement direct vers un fichier.
+multimedia.recording.recorder Enregistreur audio : lit une SOURCE (tout objet avec read(trames) -> échantillons flottants, [] à la fin : microphone.audio_input.AudioInput, audio.audio_stream.CaptureStream,…
+multimedia.recording.screen_capture Capture d'écran par l'adaptateur système ffmpeg : x11grab (Linux, X11), gdigrab (Windows), avfoundation (macOS).
+multimedia.security.limits Limites de ressources appliquées à TOUT fichier multimédia externe (entrée non fiable) : taille du fichier, durée, dimensions, nombre de points, de pistes, de canaux,…
+multimedia.security.sandbox Analyse d'un fichier NON FIABLE dans un PROCESSUS ISOLÉ (security.sandbox : limites du noyau sur le temps processeur, la mémoire, la taille des fichiers, délai réel,…
+multimedia.security.validation Lecture BORNÉE des données binaires non fiables : chaque accès vérifie qu'il reste dans les octets disponibles et lève CorruptDataError (avec la position) au lieu de lire…
+multimedia.streaming.buffering Tampon de gigue (jitter buffer) pour les flux en direct : les paquets arrivent en désordre, en double ou jamais ; le tampon les remet dans l'ordre des numéros de séquence,…
+multimedia.streaming.live Session en direct robuste : connexion par une fonction fournie, RECONNEXION automatique avec attente exponentielle bornée et gigue déterministe, nombre d'essais limité, état…
+multimedia.streaming.network_stream Format de paquet du flux réseau ALEX (« AMS1 ») et son codage, commun à UDP et TCP
+multimedia.streaming.rtp  Flux audio RTP standard (RFC 3550), en ALEX pur, interopérable avec ffmpeg, VLC, GStreamer et la téléphonie
+multimedia.streaming.sink Émission d'un flux audio en direct au format AMS1 (multimedia.streaming.network_stream)
+multimedia.streaming.source Réception d'un flux audio AMS1 : paquets -> tampon de gigue -> échantillons dans l'ordre, pertes comblées.
+multimedia.testing.assertions Vérifications pour les tests multimédias, au format des suites du dépôt (« <nom> : N OK, M échecs ») : conditions, égalité approchée, échantillons, octets, images,…
+multimedia.testing.fake_device Faux périphériques pour tester sans matériel, de façon reproductible
+multimedia.testing.fixtures Données de test générées (aucun fichier à versionner)
+multimedia.video.capture  Capture d'images vidéo, toujours sous forme de VideoFrame (Image rgb + pts)
+multimedia.video.color    Couleur des images vidéo
+multimedia.video.compositor Composition d'images vidéo en couches : fond, calques (image, position, opacité, ordre, visibilité), incrustation d'image (picture-in-picture), mélange alpha « over »,…
+multimedia.video.device   Caméras de la machine (au-dessus du paquet camera) : liste, caméra par défaut, diagnostic.
+multimedia.video.frame    Image vidéo horodatée : une multimedia.image.Image (gray / rgb / rgba) + pts (secondes), durée, numéro, image clé.
+multimedia.video.frame_rate Cadence des images
+multimedia.video.playback Lecteur vidéo synchronisé : images décodées (adaptateur ffmpeg), son vers une sortie audio, horloge MAÎTRE audio (trames réellement écrites) ou horloge système sans son…
+multimedia.video.scaler   Mise à l'échelle des images vidéo vers une taille de sortie fixe, avec gestion des proportions
+multimedia.video.video_format Formats vidéo : VideoFormat (dimensions, format de points, cadence rationnelle) et tailles d'images, définis dans multimedia.core.format ; ce module les regroupe avec les…
 mutex                     Verrous d'exclusion mutuelle entre FILS d'exécution réels (thread, concurrency.thread) : un seul fil à la fois exécute la section protégée.
 mutex.lock_guard          Gardes de verrou (RAII, comme std::lock_guard / unique_lock / scoped_lock / shared_lock) : le verrou est pris à la construction et rendu par release() — ou automatiquement…
 mutex.read_write_lock     Verrou LECTEURS / ÉCRIVAIN entre fils : plusieurs fils lisent en même temps, un seul écrit (et personne ne lit pendant ce temps).
 mutex.recursive_mutex     Verrou RÉENTRANT entre fils : le fil qui le détient peut le reprendre (appels imbriqués, récursion) ; il est libéré quand chaque lock() a été suivi de son unlock().
 mutex.spinlock            Verrou TOURNANT entre fils : en attente, le fil réessaie en boucle (instruction atomique) au lieu de dormir, puis cède le processeur toutes les 64 tentatives.
 mutex.try_lock            Prise de verrous SANS blocage indéfini, sur tous les verrous du paquet (Mutex, RecursiveMutex, SpinLock, ReadWriteLock en écriture)
+netgame                   Réseau pour les jeux multijoueurs, au-dessus d'UDP
+netgame.codec             Sérialisation binaire compacte pour le réseau de jeu : entiers à longueur variable (LEB128, zigzag pour les signés), réels quantifiés (fixed), réels 64 bits exacts,…
+netgame.prediction        PRÉDICTION CÔTÉ CLIENT et RÉCONCILIATION (serveur autoritaire)
+netgame.rollback          Simulation à RETOUR ARRIÈRE (rollback, style GGPO) pour les jeux où chaque joueur simule tout le monde (combat, course, action à peu de joueurs)
+netgame.snapshot          Synchronisation par INSTANTANÉS (serveur autoritaire)
+network.acme              Client ACME (RFC 8555) : obtenir et renouveler des certificats auprès d'une autorité automatique (Let's Encrypt, ou tout serveur ACME : Pebble pour les tests), par le défi…
 network.async_client      Réseau asynchrone (async / await, voir docs/ASYNC.md) : connexions TCP / TLS dont les lectures et écritures cèdent la main pendant l'attente, serveur TCP qui sert plusieurs…
 network.certificates      Certificats X.509 (RFC 5280) : lecture PEM / DER, décodage ASN.1 DER, champs utiles (sujet, émetteur, validité, noms alternatifs, clé publique, extensions), empreintes,…
 network.compression       Codages de contenu HTTP (Content-Encoding / Accept-Encoding, RFC 9110 §8.4) et compression des échanges : gzip, deflate (zlib, avec repli sur le DEFLATE brut que certains…
@@ -408,6 +497,7 @@ network.socket            Sockets BSD (TCP et UDP, IPv4 et IPv6) : la couche bas
 network.tcp               Connexions TCP avec tampon de lecture (lignes, délimiteurs, tailles exactes), serveurs en écoute.
 network.timeout           Délais des opérations réseau.
 network.tls               TLS 1.2 / 1.3 (client et serveur) au-dessus de network.socket : la même interface que Socket, donc une network.tcp.Connection fonctionne à l'identique (lignes, tailles…
+network.tls13             Serveur TLS 1.3 (RFC 8446) écrit en ALEX pur, sans OpenSSL : HTTPS dans les exécutables natifs, qui ne chargent pas de bibliothèque C.
 network.udp               Datagrammes UDP (IPv4 et IPv6) : envoi, réception, diffusion (broadcast).
 network.uri               URI génériques (RFC 3986) : découpage en composants SANS décodage (scheme, userinfo, host, port, path, query, fragment), validation stricte de la grammaire, résolution…
 network.url               URL web (http, https, ws, wss, ftp...
@@ -430,6 +520,9 @@ network_driver.network_offload Délestage (offload) : ce que la carte peut faire
 network_driver.network_packet Paquets au-dessus d'Ethernet, construits et analysés directement dans un PacketBuffer (sans copie)
 network_driver.network_ring Anneaux de descripteurs génériques pour cartes réseau (émission et réception)
 network_driver.network_stats Compteurs d'une interface réseau : paquets et octets reçus / émis, erreurs, pertes (file pleine, tampon manquant), trames trop courtes / longues, diffusion, multidiffusion ;…
+nmedia                    alex: intrinsics NOVA (édition bureau) — décodage audio et vidéo par les décodeurs du système, version Linux : même interface que nmedia_windows.al.
+noyau                     alex: intrinsics noyau — interface du noyau d'Alex OS pour les programmes ALEX (cible --alexos) : appel système brut, mémoire (mmap, munmap, mprotect, memfd), informations…
+nsys                      NOVA (édition bureau) — appels système, version Linux : enveloppe du module posix, plus le lancement de processus avec tube (spawn) et les services propres à la plateforme.
 numeric
 office.archive            Archives ZIP (PKWARE APPNOTE) en lecture, écriture et modification : c'est le conteneur de DOCX, XLSX, PPTX, ODT, ODS, ODP, EPUB, JAR...
 office.compression        Compression sans perte : DEFLATE brut (RFC 1951), enveloppes zlib (RFC 1950) et gzip (RFC 1952), sommes CRC-32 et Adler-32.
@@ -485,6 +578,7 @@ office.xlsx_styles        Styles de cellules SpreadsheetML (xl/styles.xml) : pol
 office.xlsx_writer        Écriture des classeurs Excel (.xlsx) : workbook.xml, feuilles, chaînes partagées, styles, dessins (images et graphiques), noms définis, propriétés.
 office.xml                XML pour les formats bureautiques (OOXML, ODF, SVG, rels...).
 os                        Architecture
+particles                 Systèmes de particules 2D : émetteurs continus ou en rafales, formes d'émission (point, cercle, anneau, rectangle, segment), durée de vie, vitesse et angle aléatoires,…
 path                      Manipulation LEXICALE de chemins, en ALEX pur (ne touche jamais au disque ; pour l'accès au système de fichiers voir os).
 pci                       Bus PCI / PCI Express : énumérer les périphériques, lire leurs identifiants, classes, registres de base (BAR), capacités, et (avec les droits, ou dans un noyau) régler…
 pci.pci_bar               Registres de base (BAR) d'une fonction PCI : décodage d'une valeur brute (genre ports / mémoire 32 / 64 bits, préchargeable, adresse), ACCÈS aux registres d'un…
@@ -563,6 +657,7 @@ smart_pointer.shared_ptr  SharedPtr : propriété PARTAGÉE à comptage de réf�
 smart_pointer.smart_pointer_errors Erreurs des pointeurs intelligents
 smart_pointer.unique_ptr  UniquePtr : propriété EXCLUSIVE d'une valeur (std::unique_ptr / Box de Rust).
 smart_pointer.weak_ptr    WeakPtr : référence FAIBLE vers une valeur détenue par des SharedPtr (std::weak_ptr).
+sprite                    Sprites 2D : atlas (grille régulière, TexturePacker / Aseprite JSON), animations image par image (boucle, une fois, aller-retour, durées par image, événements), lecteur…
 stats
 storage_driver            Pilotes de stockage d'un noyau Alex (--freestanding)
 storage_driver.ahci       Pilote AHCI (SATA) : contrôleur PCI de classe 01:06 / interface 01, registres en MMIO (BAR5, « ABAR »).
@@ -601,6 +696,7 @@ testing.test_runner       TestRunner : exécute une TestSuite (ou une instance d
 testing.test_suite        TestSuite : un ensemble NOMMÉ de tests — fonctions (nom, fn), instances de TestCase, et sous-suites — avec étiquettes et filtres, à confier à un TestRunner.
 testing.testing_errors    Erreurs du cadre de test
 thread                    Fils d'exécution PARALLÈLES (un fil système par fil, plusieurs cœurs), isolés : chacun a sa propre VM, les valeurs qui passent d'un fil à l'autre sont copiées…
+thread.offload            Calcul lourd (ou E/S bloquante) hors de la boucle async : la fonction s'exécute sur un fil d'une réserve (thread.thread_pool, vrais cœurs), le gestionnaire l'attend avec…
 thread.thread_errors      Erreurs des fils d'exécution
 thread.thread_id          ThreadId : identité d'un fil d'exécution — numéro ALEX (0 : programme principal), identifiant système (tid Linux, visible dans /proc/self/task, top -H, gdb) et jeton natif…
 thread.thread_info        Informations sur les fils : le fil courant (identifiant Alex, identité système, nom), le nombre de cœurs et de fils actifs, et la liste des fils SYSTÈME du processus (Linux…
@@ -608,6 +704,7 @@ thread.thread_local       Valeurs PROPRES À CHAQUE FIL.
 thread.thread_pool        Réserve de fils (ThreadPool) : des fils lancés une fois, qui exécutent ensuite des tâches les unes après les autres, en PARALLÈLE sur plusieurs cœurs.
 thread.thread_priority    Priorité d'ordonnancement d'un FIL (Linux : chaque fil a sa propre valeur nice, -20 la plus haute, 19 la plus basse).
 thread.thread_state       États d'un fil : NEW (créé, pas démarré), RUNNING, FINISHED (fonction rendue), FAILED (erreur), et, pour les fils système observés dans /proc, SLEEPING / BLOCKED /…
+tilemap                   Cartes à tuiles 2D et import des cartes de l'éditeur Tiled (.tmj / .json et .tmx, jeux de tuiles externes .tsj / .tsx) : couches de tuiles (CSV, base64, zlib, gzip, cartes…
 time                      Horloges, calendrier grégorien proleptique, formats (strftime / strptime / ISO 8601), durées et chronomètres.
 tui                       Interfaces plein écran dans le terminal.
 tui.emulator              Petit émulateur de terminal : rejoue les séquences produites par tui.screen.render_diff (et les séquences courantes : déplacement du curseur, effacement, styles, caractères…
@@ -740,6 +837,210 @@ usb_driver.usb_hid        HID générique (au-delà du protocole d'amorçage de 
 usb_driver.usb_host_controller Contrôleurs hôtes USB d'un noyau Alex
 usb_driver.usb_mass_storage Stockage de masse USB : tout ce qu'il faut autour du transport « Bulk-Only » (usb_class.MassStorage) pour les clés et disques réels
 usb_driver.usb_serial     Ports série USB
+web.browser               Navigateur SIMULÉ, entièrement en ALEX : onglets chargeant des pages (par le réseau simulé, un serveur ALEX en processus, ou du HTML fourni), DOM complet (web.dom), boucle…
+web.browser.abort_controller AbortController / AbortSignal : annulation coopérative d'opérations (fetch, écouteurs d'événements, lectures de fichiers, attentes).
+web.browser.animation_frame requestAnimationFrame : les rappels enregistrés avant une image sont appelés ensemble avec l'horodatage de l'image (millisecondes) ; ceux enregistrés pendant l'image…
+web.browser.blob          Blob : données binaires immuables avec type MIME — construites depuis des textes (encodés en UTF-8), des listes d'octets ou d'autres Blob ; taille, découpage (slice avec…
+web.browser.browser_capabilities Profils de navigateurs et d'appareils pour la simulation : User-Agent, fonctionnalités Web prises en charge (détection de fonctionnalités), propriétés CSS non gérées…
+web.browser.browser_errors Erreurs du navigateur simulé.
+web.browser.clipboard     Presse-papiers (navigator.clipboard) : write_text / read_text / write / read, en promesses, soumis aux permissions clipboard-write / clipboard-read (et au focus du document)…
+web.browser.console       Console du navigateur simulé : log, info, warn, error, debug, trace, assert_, table, group / group_end, count / count_reset, time / time_log / time_end, avec substitutions «…
+web.browser.fetch         fetch() du navigateur simulé, ASYNCHRONE (promesses de web.browser.timers) : URL data: et blob:, réponses SIMULÉES (mock d'URL ou de chemin), serveurs ALEX EN PROCESSUS (un…
+web.browser.file          File : un Blob nommé, avec date de dernière modification — créé depuis des données ou lu depuis un fichier local (comme un choix dans <input type="file">) ; FileList pour…
+web.browser.file_reader   FileReader : lecture ASYNCHRONE d'un Blob / File en texte, URL data:, octets ou chaîne binaire, avec les événements loadstart, progress, load, loadend (ou abort / error)…
+web.browser.form_data     FormData : paires nom -> valeur (texte, Blob ou File) d'un formulaire — construites à la main ou depuis un <form> web.dom (contrôles « réussis », bouton d'envoi compris,…
+web.browser.fullscreen    Plein écran : request_fullscreen(élément) / exit_fullscreen() en promesses, document.fullscreen_element, pseudo-classe :fullscreen (état de l'élément), événements…
+web.browser.history       Historique de session d'un onglet (window.history) : entrées (URL, état, titre, document), push_state / replace_state (même origine uniquement), back / forward / go…
+web.browser.local_storage Stockage Web (window.local_storage) : paires texte -> texte par origine, avec quota (5 Mio par défaut, comptés comme en UTF-16), QuotaExceededError, persistance facultative…
+web.browser.location      window.location : URL du document courant en composantes (href, protocol, host, hostname, port, pathname, search, hash, origin) ; affecter le fragment fait une navigation dans…
+web.browser.navigator     window.navigator : identité du navigateur (user_agent, vendor, platform, languages), état en ligne (événements online / offline), capacités (hardware_concurrency,…
+web.browser.notifications Notifications système (API Notification) : permission par origine (request_permission en promesse, réponse simulée de l'utilisateur), création d'une notification (titre,…
+web.browser.object_url    URL d'objets (« blob: ») : URL.createObjectURL / revokeObjectURL.
+web.browser.permissions   Permissions du navigateur simulé : état par origine et par nom (granted, denied, prompt), réponse de l'« utilisateur » aux demandes (prompt_answer : valeur fixe ou…
+web.browser.request       Request de l'API Fetch : URL, méthode, en-têtes (Headers à la JavaScript), corps (texte, octets, Blob, FormData, URLSearchParams, ou valeur JSON via l'option non standard «…
+web.browser.response      Response de l'API Fetch : statut, texte du statut, ok, en-têtes, type (basic, cors, error, opaque, opaqueredirect), URL finale, redirected, corps lu une fois (text, json, blob,…
+web.browser.session_storage Stockage de session (window.session_storage) : comme local_storage mais propre à un onglet et à une origine, jamais persisté, copié quand un onglet en ouvre un autre…
+web.browser.timers        Boucle d'événements du navigateur simulé : minuteries (set_timeout, set_interval, avec bridage des minuteries imbriquées à 4 ms), tâches, MICRO-TÂCHES (queue_microtask,…
+web.browser.url_api       URL (API WHATWG des navigateurs) sur le moteur web.url : analyse avec base, composantes lisibles ET modifiables (protocol, username, password, host, hostname, port, pathname,…
+web.browser.url_search_params URLSearchParams (API WHATWG) : paramètres de requête ordonnés et multi-valeurs — construction depuis un texte (« ?a=1&b=2 »), un dict ou une liste de paires ; append,…
+web.browser.visibility    Visibilité et cycle de vie de la page : document.visibility_state / hidden, « visibilitychange » sur le document, pagehide / pageshow (persisted), freeze / resume, focus /…
+web.client                Point d'entrée du client HTTP : fonctions directes (un client partagé, créé au premier appel) et création de clients configurés.
+web.client.client_config  ClientConfig : tous les réglages d'un client HTTP en un objet — délais, TLS, mandataire, reprises, redirections, User-Agent, en-têtes par défaut, URL de base, réserve de…
+web.client.client_errors  Erreurs du client HTTP (web.client) et leur classification pour les reprises
+web.client.client_request ClientRequest : une requête à envoyer — méthode, URL (web.url.Url), en-têtes, corps — et ses aides pour les corps courants (JSON, formulaire, multipart avec fichiers),…
+web.client.client_response ClientResponse : la réponse reçue par le client.
+web.client.connection     Connection : une connexion du client vers un serveur HTTP — TCP, TLS (https), directe ou à travers un mandataire (cible absolue pour http, tunnel CONNECT pour https).
+web.client.connection_pool ConnectionPool : réserve de connexions persistantes (keep-alive) du client, par destination (schéma, hôte, port, mandataire).
+web.client.http_client    HttpClient : le client HTTP/1.1 complet — réserve de connexions persistantes, HTTPS vérifié, mandataires, redirections sûres, reprises avec attente exponentielle, délais…
+web.client.proxy          Mandataires HTTP (proxies) du client : un mandataire « http://hôte:port » relaie les requêtes http (cible en forme absolue) et ouvre un tunnel CONNECT pour les requêtes…
+web.client.redirect       Redirections HTTP (RFC 9110 §15.4) suivies par le client, avec les règles de sécurité des navigateurs
+web.client.request_builder RequestBuilder : construction pas à pas d'une requête, puis envoi (send) par le client auquel le constructeur est attaché.
+web.client.response_reader Lecture d'une réponse HTTP sur une connexion du client : octets reçus au fil de l'eau, analysés par web.http.protocol_parser.ResponseParser (réponses 1xx ignorées, corps à…
+web.client.retry_policy   Politique de reprise du client : quelles requêtes rejouer, après quelles erreurs ou quels statuts, et après combien de temps (attente exponentielle plafonnée, Retry-After…
+web.client.timeout        Délais du client HTTP.
+web.client.tls_config     Configuration TLS des connexions HTTPS du client.
+web.client.user_agent     En-tête User-Agent (RFC 9110 §10.1.5) : « produit/version (commentaire) … ».
+web.css                   Point d'entrée du paquet web.css : analyser, construire, calculer, valider et produire du CSS, en ALEX pur.
+web.css.animations        Animations CSS : construction et analyse de la propriété animation, et SIMULATION d'une animation dans le temps (délai, durée, nombre d'itérations, direction, remplissage,…
+web.css.at_rule           At-rules CSS : @media, @supports, @container, @layer, @scope, @starting-style (blocs de règles), @font-face, @page, @property, @counter-style, @font-palette-values (blocs de…
+web.css.backgrounds       Arrière-plans : déclarations background-* (dicts prêts pour StyleRule), couches multiples, image de couverture avec voile, motifs en CSS pur (rayures, damier, points, grille)…
+web.css.borders           Bordures, coins arrondis et contours : déclarations (dicts prêts pour StyleRule), analyse du raccourci border, anneau de focus accessible, séparateurs.
+web.css.color             Couleurs CSS (CSS Color Level 4) : lecture de toutes les écritures courantes — #rgb, #rgba, #rrggbb, #rrggbbaa, rgb() / rgba() (virgules ou espaces, pourcentages, « / alpha…
+web.css.container_query   Requêtes de conteneur (@container) : analyse « [nom] <condition> », évaluation contre un conteneur simulé (taille, type de confinement, propriétés personnalisées pour…
+web.css.css_errors        Erreurs du paquet web.css, et Issue : un problème non bloquant relevé par l'analyseur (récupération d'erreur, comme un navigateur) ou par le validateur (web.css.css_validate).
+web.css.css_minifier      Minification de CSS : commentaires et espaces retirés, couleurs raccourcies (#ffffff -> #fff, rgb() -> hex, nom plus court quand il existe), unités des zéros supprimées (0px…
+web.css.css_parser        Analyse d'une feuille de style complète (CSS Syntax 3) vers un web.css.stylesheet.Stylesheet : règles, at-rules (blocs de règles, blocs de déclarations, instructions),…
+web.css.css_rule          StyleRule : une règle « sélecteurs { déclarations } », avec règles imbriquées (CSS Nesting : « & »), et Format, les options de sérialisation partagées par les…
+web.css.css_validate      Validation de CSS : erreurs de syntaxe (web.css.css_parser), propriétés inconnues, valeurs non conformes à la nature de la propriété, sélecteurs invalides, requêtes…
+web.css.css_writer        Écriture de CSS : feuilles, règles et listes de règles vers du texte (lisible, indenté ou compact), avec options (tri des propriétés, résolution de l'imbrication pour les…
+web.css.declaration       Déclarations CSS « propriété: valeur [!important] » et blocs de déclarations (le contenu d'une règle ou d'un attribut style).
+web.css.flexbox           Flexbox : déclarations de conteneur et d'éléments (dicts prêts pour StyleRule) et calcul d'une ligne flexible (répartition de l'espace libre par flex-grow / flex-shrink,…
+web.css.functions         Fonctions CSS : construction (calc, min, max, clamp, url, attr, env, dégradés linéaires / radiaux / coniques) et évaluation des fonctions mathématiques (calc, min, max,…
+web.css.grid              CSS Grid : déclarations de grille et de placement (dicts prêts pour StyleRule), fonctions de pistes (repeat, minmax, fit-content, auto-fill / auto-fit), zones nommées…
+web.css.keyframes         @keyframes : construction, sérialisation, lecture et interpolation des images clés (nombres, dimensions de même unité, couleurs, fonctions de même nom ; le reste change…
+web.css.media_query       Requêtes média (Media Queries 4/5) : analyse (listes, not / only, type de média, and / or / not, syntaxe d'intervalle « 400px <= width < 800px », préfixes min- / max-),…
+web.css.positioning       Positionnement : déclarations position / inset / z-index (dicts prêts pour StyleRule), motifs courants (centrage absolu, recouvrement, en-tête collant, masquage accessible)…
+web.css.property          Propriétés CSS : table des propriétés connues (héritage, valeur initiale, nature de la valeur), noms canoniques (font_size -> font-size), préfixes vendeurs, propriétés…
+web.css.responsive        Conception adaptative : points de rupture nommés (requêtes up / down / between / only), règles par point de rupture depuis un dict, valeurs fluides, attribut sizes des…
+web.css.selector          Sélecteurs CSS : objet Selector (analyse, spécificité, comparaison), construction, et CORRESPONDANCE avec des éléments — ceux de web.html (Element) comme ceux de web.dom…
+web.css.selector_parser   Analyse des sélecteurs CSS (Selectors Level 4) en structures, et calcul de leur spécificité.
+web.css.shadows           Ombres : objet Shadow (box-shadow / text-shadow / drop-shadow()), analyse d'une liste d'ombres, échelle d'élévation, ombres douces en couches, halo.
+web.css.stylesheet        Feuille de style (règles, at-rules, @keyframes) et CASCADE : calcul du style d'un élément (web.html ou web.dom) selon les règles applicables dans un environnement…
+web.css.supports_query    Conditions @supports : « (propriété: valeur) », « selector(…) », « font-tech(…) », « font-format(…) », combinées par not / and / or.
+web.css.theme             Thèmes et jetons de conception (design tokens) : arbre de jetons -> propriétés personnalisées, variantes (sombre, contraste élevé…) appliquées par préférence système…
+web.css.transforms        Transformations : construction chaînée (translate, scale, rotate, skew, perspective, matrix), analyse d'une valeur transform, et calcul de la matrice affine 2D résultante…
+web.css.transitions       Transitions et fonctions d'accélération : construction et analyse de la propriété transition, ÉVALUATION des fonctions de temps (cubic-bezier() résolue numériquement,…
+web.css.typography        Typographie : déclarations de police (dicts prêts pour StyleRule), piles de polices système, échelles modulaires, tailles fluides (clamp() calculé entre deux largeurs…
+web.css.units             Unités CSS (CSS Values and Units Level 4) : longueurs absolues (px, cm, mm, Q, in, pt, pc) et relatives (em, rem, ex, ch, lh, vw, vh, vmin, vmax, dvh, svw, cqw…), angles,…
+web.css.value             Valeurs CSS au niveau syntaxique (CSS Syntax Level 3) : découpage en jetons (identifiants, nombres, dimensions, pourcentages, chaînes, url(), #hash, fonctions, délimiteurs,…
+web.css.variables         Propriétés personnalisées (« variables CSS », CSS Custom Properties Level 1) : définition, portée, et résolution des références var(--nom, repli) — y compris…
+web.dom                   Point d'entrée du paquet web.dom : un DOM conforme au standard (nœuds, éléments, attributs, événements, observateurs, fenêtre), en ALEX pur et avec une API en snake_case,…
+web.dom.attributes        Attributs DOM : Attr (nom, valeur, élément propriétaire) et NamedNodeMap (element.attributes : accès par nom ou par indice, ordre d'insertion conservé, ajout / retrait de…
+web.dom.class_list        DOMTokenList : liste de jetons d'un attribut (element.class_list pour « class », rel_list pour « rel »…) — ajout, retrait, bascule (avec forçage), remplacement, test,…
+web.dom.custom_event      CustomEvent : événement applicatif portant une donnée quelconque (detail).
+web.dom.document          Document (et DOMImplementation) : racine de l'arbre — éléments racine, head, body, titre, fabriques (create_element, create_text_node, create_document_fragment,…
+web.dom.dom_errors        Exceptions DOM (DOMException) : chaque erreur porte comme type le NOM standard de l'exception (HierarchyRequestError, NotFoundError…), son code historique et un message en…
+web.dom.element           Element : attributs (get_attribute, set_attribute, toggle_attribute… et NamedNodeMap), id, classes (class_list), données (dataset), style en ligne (style :…
+web.dom.event             Événements DOM : Event (phases capture / cible / bouillonnement, annulation, arrêt de propagation, chemin composé, horodatage), UIEvent (vue, détail) et FocusEvent (focus,…
+web.dom.event_target      EventTarget et l'algorithme de DISTRIBUTION du DOM : écouteurs par type, phase de capture puis cible puis bouillonnement, options capture / once / passive / signal (annulation…
+web.dom.events            Aides aux événements : abonnement avec désabonnement renvoyé, délégation par sélecteur, émission d'événements applicatifs, et SIMULATION d'interactions utilisateur…
+web.dom.input_event       InputEvent (beforeinput, input) : données saisies, type de saisie (insertText, deleteContentBackward…), composition ; CompositionEvent (méthodes de saisie) ; et application…
+web.dom.intersection_observer IntersectionObserver : visibilité d'éléments par rapport à la fenêtre (ou à un élément racine), avec marge de racine (« 10px 20% ») et seuils.
+web.dom.keyboard_event    KeyboardEvent : touche (key), code physique (code), modificateurs, emplacement, répétition, composition ; table des codes usuels et construction depuis un raccourci («…
+web.dom.mouse_event       MouseEvent (et WheelEvent) : coordonnées client / page / écran / relatives à la cible (offset), bouton et boutons enfoncés, modificateurs, élément associé…
+web.dom.mutation_observer MutationObserver : observation des changements d'un arbre DOM (enfants ajoutés / retirés, attributs, texte), avec sous-arbre, filtre d'attributs et anciennes valeurs.
+web.dom.node              Node : la base de l'arbre DOM — type, nom, document propriétaire, parent, enfants (liste vivante), frères, insertion / retrait / remplacement avec les contrôles de…
+web.dom.node_list         Collections de nœuds : NodeList (statique, comme query_selector_all, ou VIVANTE, comme child_nodes) et HTMLCollection (toujours vivante, éléments seulement, accès par id /…
+web.dom.pointer_event     PointerEvent : pointeur unifié (souris, stylet, toucher) — identifiant, type, pointeur principal, pression, taille de contact, inclinaison, rotation — et suite…
+web.dom.query_selector    Recherche d'éléments dans un sous-arbre DOM, comme les méthodes du navigateur : query_selector(_all) par sélecteur CSS, et les accès historiques par id, nom de balise,…
+web.dom.resize_observer   ResizeObserver : notification des changements de taille d'éléments (boîte content-box, border-box ou device-pixel-content-box), à partir de la géométrie simulée…
+web.dom.selectors         Sélecteurs CSS appliqués aux nœuds web.dom, avec le moteur de web.css.selector (adaptateur DomAdapter) : correspondance, ancêtre le plus proche, recherche dans un sous-arbre…
+web.dom.text              Nœuds de données : CharacterData (data, longueur, ajout, insertion, suppression, remplacement, extraction, avec notification characterData), Text (split_text, whole_text),…
+web.dom.tree_operations   Parcours et manipulations d'arbre : NodeFilter (masques what_to_show, résultats ACCEPT / REJECT / SKIP), TreeWalker et NodeIterator du standard, et fonctions utilitaires…
+web.dom.window            Window : la fenêtre d'un document — dimensions, densité de pixels, défilement, préférences (thème, réduction des animations, pointeur), match_media (MediaQueryList…
+web.html                  Point d'entrée du paquet web.html : construire, analyser, transformer, valider et produire du HTML5, en ALEX pur.
+web.html.attribute_value  Valeurs d'attributs HTML : conversion des valeurs ALEX vers le texte de l'attribut, et règles par attribut.
+web.html.attributes       Attributes : les attributs d'un élément HTML, dans leur ordre d'ajout, noms comparés sans tenir compte de la casse.
+web.html.body             Le corps <body> d'un document : le construire, y ajouter du contenu, et assembler une page complète avec la structure accessible recommandée (lien d'évitement, <header>,…
+web.html.comment_node     CommentNode : commentaire HTML « <!-- … --> ».
+web.html.document         Document : un document HTML complet — déclaration <!DOCTYPE html>, élément racine <html> avec <head> et <body>.
+web.html.document_type    DocumentType : la déclaration « <!DOCTYPE html> » (WHATWG HTML §13.1.1).
+web.html.element          Element : un élément HTML (balise, attributs, enfants, parent) et l'API d'arbre qui va avec : ajout et retrait d'enfants, navigation, recherche par sélecteur CSS, texte,…
+web.html.element_factory  Fabrique d'éléments : la façon courte de construire un arbre HTML depuis du code ALEX.
+web.html.forms            Formulaires accessibles : <form>, champs typés, étiquettes reliées (for / id), aide et message d'erreur reliés par aria-describedby, cases à cocher et boutons radio…
+web.html.head             L'en-tête <head> d'un document : le construire (head(...)) ou le modifier dans un Document existant (titre, méta-données, feuilles de style, scripts, préchargements).
+web.html.html_errors      Erreurs du paquet web.html, et Issue : un problème non bloquant relevé par l'analyseur (mode tolérant) ou par le validateur (web.html.html_validate).
+web.html.html_escape      Échappement et références de caractères HTML (WHATWG HTML §13.1.4, §13.5)
+web.html.html_parser      Analyseur HTML tolérant, sur le modèle de l'algorithme du WHATWG (§13.2) : il lit le HTML « du monde réel » comme un navigateur et produit un Document (web.html.document)…
+web.html.html_serializer  Sérialisation d'un arbre HTML (Document, Element, TextNode, CommentNode, RawHtml, DocumentType) en texte, selon l'algorithme du WHATWG (§13.3) : éléments vides sans balise…
+web.html.html_validate    Validation d'un document ou d'un arbre HTML : conformité (structure, identifiants, attributs), accessibilité (textes alternatifs, étiquettes de formulaire, titres, langue) et…
+web.html.html_writer      HtmlWriter : écriture de HTML au fil de l'eau, sans construire d'arbre — pour de très gros documents ou pour envoyer une page morceau par morceau (sink : fonction appelée…
+web.html.iframe           Contenus embarqués : <iframe> sûrs par défaut (title obligatoire pour l'accessibilité, chargement différé, bac à sable « sandbox » strict, permissions « allow »…
+web.html.images           Images : <img> accessibles et performantes par défaut (alt obligatoire, chargement différé, décodage asynchrone, dimensions pour éviter les sauts de mise en page), images…
+web.html.links            Liens : <a> (internes, externes, courriel, téléphone, téléchargement, ancres), menus de navigation accessibles, éléments <link> (preload, preconnect, alternate…), et…
+web.html.lists            Listes : non ordonnées (<ul>), ordonnées (<ol> : début, ordre inverse, type de numérotation), de définitions (<dl>), imbriquées depuis des structures ALEX, et lecture…
+web.html.metadata         Méta-données d'une page (éléments de <head>) : encodage, fenêtre d'affichage, description, robots, couleurs, politique de référent, Content-Security-Policy, URL…
+web.html.raw_html         RawHtml : balisage DE CONFIANCE inséré tel quel, sans échappement (un fragment produit par un autre moteur, un SVG en ligne, un widget).
+web.html.scripts          Scripts : <script src> (defer, async, module, intégrité SRI, nonce CSP), scripts en ligne au contenu neutralisé (« </script » ne peut pas fermer l'élément), données JSON…
+web.html.semantic_elements Éléments de structure et de texte (WHATWG HTML §4.3 à §4.5) : sections, titres, paragraphes, texte enrichi, citations, figures, détails dépliables, dialogues.
+web.html.stylesheets      Feuilles de style : liens <link rel="stylesheet">, blocs <style> (contenu neutralisé : impossible de fermer l'élément depuis le CSS), et petit générateur de CSS depuis des…
+web.html.tables           Tableaux de données accessibles : <table> avec <caption>, <thead> / <tbody> / <tfoot>, en-têtes <th scope>, construits depuis des listes de lignes ou des enregistrements…
+web.html.text_node        TextNode : texte d'un document HTML.
+web.http                  Point d'entrée du paquet web.http : le protocole HTTP/1.1 (RFC 9110 sémantique, RFC 9112 syntaxe) sans réseau.
+web.http.content_length   En-tête Content-Length (RFC 9110 §8.6, RFC 9112 §6.3) : longueur du corps en OCTETS.
+web.http.content_type     Types de médias (en-tête Content-Type, RFC 9110 §8.3) : « type/sous-type; paramètres ».
+web.http.date_header      Dates HTTP (RFC 9110 §5.6.7) des en-têtes Date, Last-Modified, Expires, If-Modified-Since, Retry-After...
+web.http.header_name      Noms d'en-têtes HTTP (RFC 9110 §5.1) : un « token », insensible à la casse.
+web.http.header_value     Valeurs d'en-têtes HTTP (RFC 9110 §5.5, §5.6) : validation (aucun CR, LF ni NUL : c'est ce qui empêche l'injection d'en-têtes), suppression des espaces optionnels, et…
+web.http.headers          Headers : collection ordonnée d'en-têtes HTTP, insensible à la casse des noms, à valeurs multiples.
+web.http.http_errors      Erreurs du paquet web.http.
+web.http.message_body     Corps des messages HTTP/1.1 (RFC 9112 §6, §7) : cadrage (longueur connue, « chunked », jusqu'à la fermeture), codage et décodage « chunked » (aussi incrémental, pour…
+web.http.method           Méthodes HTTP (RFC 9110 §9) : constantes, validation (un « token », sensible à la casse), et propriétés sémantiques utilisées par les clients, les serveurs et les caches.
+web.http.protocol_parser  Analyse du protocole HTTP/1.x (RFC 9112) indépendante du réseau : on lui donne des octets au fur et à mesure (feed), il rend les messages complets.
+web.http.protocol_writer  Écriture du protocole HTTP/1.x (RFC 9112) : lignes de départ, en-têtes, cadrage du corps.
+web.http.request          Request : une requête HTTP (méthode, cible, version, en-têtes, corps) avec ses vues pratiques : chemin et paramètres de requête décodés, corps en texte / JSON /…
+web.http.request_target   Cible d'une requête HTTP/1.1 (RFC 9112 §3.2), le deuxième mot de la ligne de requête.
+web.http.response         Response : une réponse HTTP (statut, raison, version, en-têtes, corps) et ses constructeurs usuels.
+web.http.status_code      Codes de statut HTTP (RFC 9110 §15 et registre IANA) : constantes, phrases de raison, classes, et propriétés utiles aux clients (reprise, redirection) et aux serveurs (corps…
+web.http.version          Versions du protocole HTTP (RFC 9110 §2.5, RFC 9112 §2.3) : « HTTP/1.0 », « HTTP/1.1 » (texte), « HTTP/2 » et « HTTP/3 » (binaires, cités pour information).
+web.js                    Point d'entrée du paquet web.js : produire, analyser, valider, mettre en forme, minifier, regrouper et exécuter du JavaScript depuis ALEX, et relier une page web à des…
+web.js.js_array           Tableaux JavaScript : expressions (littéraux, Array.from, tableaux typés, enchaînements map / filter / reduce) et sémantique des méthodes Array de JavaScript appliquée aux…
+web.js.js_bridge          Pont de DONNÉES entre ALEX et le JavaScript d'une page : sérialisation sûre dans <script> (pas d'évasion par « </script> », U+2028 / U+2029 échappés), données JSON…
+web.js.js_errors          Erreurs du paquet web.js, et Issue : un problème relevé par le validateur (web.js.js_validator) avec sa position (ligne, colonne).
+web.js.js_export          Exportations ECMAScript : construction (« export {a, b as c} », réexportations « from », « export * as ns », « export default », déclarations exportées) et ANALYSE…
+web.js.js_expression      Expressions JavaScript sous forme d'arbre (AST) et leur génération en texte avec les parenthèses EXACTEMENT nécessaires (table de priorité ECMAScript, associativité, cas…
+web.js.js_formatter       Mise en forme de JavaScript par jetons : indentation par blocs, une instruction par ligne, espaces autour des opérateurs binaires et après les virgules, mots-clés suivis d'un…
+web.js.js_function        Fonctions et classes JavaScript (AST) : paramètres (valeur par défaut, reste, motifs), fonctions nommées ou anonymes, async, générateurs, méthodes, accesseurs, classes…
+web.js.js_generator       Génération de code JavaScript : CodeWriter (écriture indentée qui suit la ligne et la colonne courantes et enregistre des associations pour une carte de sources),…
+web.js.js_import          Importations ECMAScript : construction (« import x, {a as b} from "m" », espace de noms, effet de bord, attributs « with { type: "json" } », import() dynamique) et ANALYSE…
+web.js.js_interop         Interopérabilité navigateur <-> serveur ALEX par appels de procédure distants JSON-RPC 2.0 : registre de fonctions ALEX exposées (paramètres par position ou par nom,…
+web.js.js_minifier        Minification de JavaScript par jetons (web.js.js_validator.tokenize) : commentaires retirés (sauf « /*! » de licence), espaces réduits au strict nécessaire (jamais « a+ +b…
+web.js.js_module          Modules ECMAScript : module construit (importations, corps, exportations) ou analysé depuis un source, graphe de dépendances, et REGROUPEMENT (bundle) de plusieurs modules en…
+web.js.js_object          Objets JavaScript : construction de littéraux (avec méthodes, accesseurs, clés calculées, décomposition), expressions Object.* courantes, et sémantique des objets JS…
+web.js.js_runtime_bridge  Exécution de JavaScript dans un moteur EXTERNE installé (Node.js, Bun ou Deno) via web.process : détection et version du moteur, exécution d'un script ou d'un module,…
+web.js.js_source_map      Cartes de sources (Source Map v3) : encodage / décodage VLQ base64, construction d'une carte (associations position générée -> position d'origine, noms), sérialisation…
+web.js.js_statement       Instructions JavaScript (AST) : déclarations let / const / var, if / else, boucles (for, for…of, for…in, while, do…while), switch, try / catch / finally, return, throw,…
+web.js.js_types           Types et lexique de JavaScript : mots réservés, identifiants valides, chaînes littérales (guillemets, échappements, ASCII seul), nombres (NaN, Infinity, entiers sûrs),…
+web.js.js_validator       Analyse lexicale complète de JavaScript (ES2024 : gabarits imbriqués, expressions régulières distinguées de la division, nombres avec « _ », BigInt, champs privés #x,…
+web.js.js_value           Valeurs ALEX <-> littéraux JavaScript.
+web.server                Point d'entrée du serveur HTTP/1.1 : Server relie l'écoute (listener), les connexions (connection, connection_manager), l'analyse incrémentale (web.http + request_parser),…
+web.server.concurrency    Modèle d'exécution du serveur : UN fil, une boucle d'événements.
+web.server.connection     ServerConnection : une connexion acceptée par le serveur.
+web.server.connection_manager ConnectionManager : l'ensemble des connexions ouvertes du serveur — admission (limite max_connections), correspondance socket -> connexion pour la boucle d'événements,…
+web.server.directory_listing Liste HTML du contenu d'un dossier servi par web.server.static_files (quand aucun fichier d'index n'existe et que la liste est autorisée).
+web.server.graceful_shutdown Arrêt propre du serveur : sur demande (stop(), signal INT / TERM), le serveur cesse d'accepter des connexions, ferme les connexions inactives, termine les requêtes en cours en…
+web.server.http2          HTTP/2 (RFC 9113) côté serveur, piloté par la boucle de web.server (aucun fil, aucune lecture bloquante)
+web.server.keep_alive     Connexions persistantes (RFC 9112 §9.3) : après une réponse, la connexion reste-t-elle ouverte pour la requête suivante ? Oui en HTTP/1.1 par défaut, en HTTP/1.0 seulement…
+web.server.listener       Listener : la socket d'écoute du serveur (TCP, IPv4 ou IPv6), avec acceptation NON BLOQUANTE pour la boucle d'événements, et l'adresse réellement liée (port 0 : choisi par…
+web.server.request_dispatch Router : aiguillage des requêtes vers les gestionnaires — routes avec paramètres typés, montage de sous-routeurs et de dossiers statiques, intergiciels (middleware),…
+web.server.request_parser Côté serveur, ce qui entoure l'analyse d'une requête (l'analyse elle-même est web.http.protocol_parser, alimentée par web.server.connection)
+web.server.response_writer Écriture d'une réponse sur une connexion du serveur : en-têtes complétés selon le protocole (Date, Server, Content-Length ou Transfer-Encoding: chunked, Connection,…
+web.server.server_config  ServerConfig : tous les réglages du serveur — adresse et port, limites (web.server.server_limits), délais (web.server.timeout), persistance des connexions…
+web.server.server_errors  Erreurs du serveur HTTP (web.server), et abort() : la façon, pour un gestionnaire, d'interrompre le traitement avec une réponse d'erreur HTTP précise.
+web.server.server_limits  Limites du serveur : ce qu'un client peut consommer.
+web.server.server_metrics Mesures du serveur : connexions (ouvertes, actives, refusées, expirées), requêtes par méthode et par classe de statut, octets reçus / envoyés, durées de traitement (min,…
+web.server.static_files   Fichiers statiques : servir un dossier en toute sécurité, comme un serveur web de production.
+web.server.streaming      Réponses en flux sans bloquer le serveur : un producteur async écrit des morceaux quand il veut (journal en direct, export long, progression), et les Server-Sent Events…
+web.server.timeout        Délais du serveur, en secondes : ils libèrent les connexions des clients lents ou absents (attaque « slowloris ») et bornent le temps d'arrêt.
+web.server.tls_server     HTTPS côté serveur : configuration TLS (certificat et clé PEM, ALPN « http/1.1 »), poignée de main sur chaque connexion acceptée (avec délai : un client muet ne bloque…
+web.server.websocket      WebSocket (RFC 6455) dans web.server, sans bloquer la boucle : après la poignée de main, la connexion quitte le HTTP et passe à une session async ; les lectures cèdent la…
+web.server.workers        Plusieurs processus sur le même port, pour utiliser plusieurs cœurs : le programme est lancé une fois (le MAÎTRE), qui relance N copies de lui-même (les OUVRIERS).
+web.url                   Point d'entrée du paquet web.url : URL web (http, https, ws, wss, ftp, file et tout schéma hiérarchique ou opaque) analysées comme dans un navigateur, manipulées sans les…
+web.url.form_url_encoding Format application/x-www-form-urlencoded (WHATWG URL §5) : celui des formulaires HTML et des chaînes de requête.
+web.url.fragment          Fragment d'URL (RFC 3986 §3.5) : la partie après « # ».
+web.url.host              Hôtes d'URL (RFC 3986 §3.2.2, WHATWG URL §3) : nom de domaine, adresse IPv4, adresse IPv6 (entre crochets dans l'URL), hôte « opaque » des schémas non spéciaux, hôte…
+web.url.path              Chemins d'URL (RFC 3986 §3.3, §5.2.3-5.2.4) : découpage en segments, suppression des segments « .
+web.url.path_segment      Segments de chemin d'URL (RFC 3986 §3.3) : ce qui se trouve entre deux « / ».
+web.url.percent_encoding  Encodage « pour cent » des URL (RFC 3986 §2.1, WHATWG URL §1.3) : chaque octet UTF-8 hors de l'ensemble permis devient « %XX » (hexadécimal majuscule).
+web.url.port              Ports d'URL (RFC 3986 §3.2.3) : un entier décimal de 0 à 65535, sans signe ni espace.
+web.url.query             Chaîne de requête d'une URL (RFC 3986 §3.4) : la partie après « ? » et avant « # », gardée sous forme ENCODÉE.
+web.url.query_params      QueryParams : paramètres de requête ordonnés et à valeurs multiples (équivalent de URLSearchParams).
+web.url.relative_url      Références relatives (RFC 3986 §4.2, §5) : résolution d'une référence (« ../img/a.png », « //cdn/x », « ?page=2 », « #haut ») contre une URL de base, et l'inverse…
+web.url.scheme            Schémas d'URL (RFC 3986 §3.1) : validation, forme canonique (minuscules), ports par défaut et schémas « spéciaux » au sens du WHATWG (http, https, ws, wss, ftp, file) :…
+web.url.url_builder       UrlBuilder : construction d'une URL pas à pas, à partir de VALEURS DÉCODÉES (segments, paramètres, identifiants) encodées au moment de build().
+web.url.url_errors        Erreurs du paquet web.url.
+web.url.url_normalization Normalisation d'URL (RFC 3986 §6) : ramener des écritures différentes d'une même ressource à une seule forme, pour comparer, dédupliquer ou servir de clé de cache.
+web.url.url_parser        Analyseur d'URL : découpe une URL absolue ou une référence relative en composants (RFC 3986 §3, §4.1) en appliquant les règles de tolérance des navigateurs (WHATWG URL)
 window                    Fenêtres d'application : création, titre, taille, POSITION, ÉTAT (normale, réduite, agrandie, plein écran), style (redimensionnable, décorée, toujours devant, opacité,…
 window.display            Les écrans physiques branchés (moniteurs) : nom de sortie, fabricant et modèle (EDID), résolution et modes, taille physique, densité ; et l'écran logique du système de…
 window.screen             L'écran vu par le système de fenêtres : taille, zone de travail (hors barres et docks), densité (DPI) et facteur d'échelle ; placement d'une fenêtre (centrer, coin,…
@@ -846,8 +1147,8 @@ Architecture
 os.al          API publique ALEX + logique de haut niveau (chemins,
                copie / déplacement / suppression récursifs, normalisation,
                conversions de modes, system_info, terminal...).
-_native_os     primitives qui dépendent RÉELLEMENT de l'OS (runtime C++ :
-               runtime/native/os/). Backends POSIX et Windows séparés.
+_native_os     primitives qui dépendent RÉELLEMENT de l'OS (runtime natif ALEX :
+               runtime/alex/native/dyn_nat.al). Backends POSIX et Windows séparés.
 
 ```
 Permissions : ce sont celles du système d'exploitation. Aucune sandbox
@@ -1462,7 +1763,7 @@ func set_env(name_, value)
 func is_dir(path)
 ```
 
-{"module":"os","file":"stdlib/os/os.al","summary":"Architecture","header":"Architecture\n  os.al          API publique ALEX + logique de haut niveau (chemins,\n                 copie / déplacement / suppression récursifs, normalisation,\n                 conversions de modes, system_info, terminal...).\n  _native_os     primitives qui dépendent RÉELLEMENT de l'OS (runtime C++ :\n                 runtime/native/os/). Backends POSIX et Windows séparés.\n\nPermissions : ce sont celles du système d'exploitation. Aucune sandbox\nartificielle n'est ajoutée par le langage : une opération refusée par l'OS\nlève IoError, une opération permise par l'OS réussit.\n\nErreurs\n  IoError        l'OS refuse ou ne peut pas faire l'opération.\n  TypeError      argument d'un mauvais type.\n  ArgumentError  argument de bon type mais invalide (pid <= 0, mode hors limites...).\n\nConventions\n  - Les temps (time, mtime, atime, ctime) sont des float : secondes depuis\n    l'epoch Unix. monotonic_time() est en secondes depuis une origine\n    arbitraire.\n  - Les noms commençant par `_` sont des détails d'implémentation (le\n    langage n'a pas de visibilité privée) : ne pas en dépendre.\n  - Les paramètres optionnels valent `null` par défaut (le langage ne\n    supporte pas d'autres valeurs par défaut).","entries":[{"kind":"fonction","name":"name","signature":"func name()","doc":"Nom de l'OS tel que le rapporte le système : \"Linux\", \"Darwin\", \"Windows\".","line":258},{"kind":"fonction","name":"platform","signature":"func platform()","doc":"Identifiant normalisé : \"linux\", \"macos\", \"windows\" ou \"unknown\".","line":262},{"kind":"fonction","name":"arch","signature":"func arch()","doc":"Architecture normalisée : \"x86_64\", \"arm64\", \"x86\", \"arm\" (sinon la valeur\ndu système en minuscules : \"riscv64\", \"ppc64le\"...).","line":267},{"kind":"fonction","name":"alex_version","signature":"func alex_version()","doc":"Version du compilateur / runtime ALEX qui exécute ce programme (SemVer) : \"1.2.0\" (stable) ou\n\"1.2.0-beta.7\" (bêta). Voir docs/VERSIONS.md.","line":281},{"kind":"fonction","name":"alex_build","signature":"func alex_build()","doc":"Détails du build : {\"version\", \"full\", \"base\", \"major\", \"minor\", \"patch\", \"channel\" (\"beta\" | \"stable\"),\n\"build\", \"date\", \"source_id\", \"commit\"}.","line":286},{"kind":"fonction","name":"alex_satisfies","signature":"func alex_satisfies(constraint)","doc":"Vrai si le runtime satisfait la contrainte (\">=1.2.0\", \"^1.0\", \"~1.4.2\", \"=1.2.0\", \"*\") ; comparaison SemVer\ncomplète (une bêta 1.3.0-beta.2 satisfait \">=1.2\" mais pas \">=1.3.0\"). ArgumentError si mal formée.","line":291},{"kind":"fonction","name":"version","signature":"func version()","doc":"Version / release de l'OS (\"6.8.0-45-generic\", \"23.5.0\" (Darwin), \"10.0.22631\").","line":295},{"kind":"fonction","name":"hostname","signature":"func hostname()","doc":"","line":298},{"kind":"fonction","name":"username","signature":"func username()","doc":"Nom de l'utilisateur effectif, ou null s'il est indéterminable.","line":302},{"kind":"fonction","name":"user_id","signature":"func user_id()","doc":"uid / gid effectifs. null sous Windows (pas de notion équivalente).","line":306},{"kind":"fonction","name":"group_id","signature":"func group_id()","doc":"","line":309},{"kind":"fonction","name":"home","signature":"func home()","doc":"Dossier personnel de l'utilisateur, ou null s'il est indéterminable.","line":313},{"kind":"fonction","name":"tmp_dir","signature":"func tmp_dir()","doc":"","line":316},{"kind":"fonction","name":"cwd","signature":"func cwd()","doc":"","line":319},{"kind":"fonction","name":"chdir","signature":"func chdir(path)","doc":"Change le répertoire de travail du processus (et de ses futurs fils).","line":323},{"kind":"fonction","name":"cpu_count","signature":"func cpu_count()","doc":"Nombre de processeurs logiques utilisables par ce processus (>= 1).","line":328},{"kind":"fonction","name":"pid","signature":"func pid()","doc":"","line":331},{"kind":"fonction","name":"parent_pid","signature":"func parent_pid()","doc":"","line":334},{"kind":"fonction","name":"system_info","signature":"func system_info()","doc":"Dictionnaire récapitulatif. Une information indisponible vaut null.","line":338},{"kind":"fonction","name":"argv","signature":"func argv()","doc":"","line":368},{"kind":"fonction","name":"argc","signature":"func argc()","doc":"","line":371},{"kind":"fonction","name":"exit","signature":"func exit(code=0)","doc":"exit(code=0) : termine le programme immédiatement avec ce code de sortie (0..255).\nLes blocs `finally` en cours ne sont pas exécutés ; les sorties sont vidées.","line":376},{"kind":"fonction","name":"args","signature":"func args()","doc":"","line":379},{"kind":"fonction","name":"getenv","signature":"func getenv(name_, fallback=null)","doc":"Valeur de la variable, ou `fallback` (null par défaut) si elle est absente.","line":395},{"kind":"fonction","name":"setenv","signature":"func setenv(name_, value)","doc":"","line":398},{"kind":"fonction","name":"unsetenv","signature":"func unsetenv(name_)","doc":"Supprimer une variable absente n'est pas une erreur.","line":403},{"kind":"fonction","name":"hasenv","signature":"func hasenv(name_)","doc":"Vrai même si la variable est définie à la chaîne vide.","line":408},{"kind":"fonction","name":"env","signature":"func env()","doc":"Copie de tout l'environnement : dict nom -> valeur.","line":412},{"kind":"fonction","name":"join","signature":"func join(first, second=null, third=null, fourth=null, fifth=null, sixth=null, seventh=null, eighth=null)","doc":"Concatène des segments avec le séparateur de la plateforme :\njoin(\"a\", \"b\", \"c\")  ou  join([\"a\", \"b\", \"c\"])   (jusqu'à 8 segments positionnels)\nUn segment vide est ignoré ; un segment absolu remplace tout ce qui précède.\nAucune normalisation : join(\"a\", \"../b\") == \"a/../b\" (voir normalize).","line":427},{"kind":"fonction","name":"basename","signature":"func basename(path)","doc":"Dernier composant. Les séparateurs finaux sont ignorés : basename(\"a/b/\") == \"b\".","line":440},{"kind":"fonction","name":"dirname","signature":"func dirname(path)","doc":"Tout sauf le dernier composant ; \"\" pour un chemin relatif sans séparateur\n(comme os.path.dirname de Python), la racine pour \"/x\".","line":446},{"kind":"fonction","name":"extension","signature":"func extension(path)","doc":"Dernière extension avec son point : extension(\"a/b.tar.gz\") == \".gz\".\n\"\" s'il n'y en a pas (\".bashrc\" n'a pas d'extension).","line":452},{"kind":"fonction","name":"stem","signature":"func stem(path)","doc":"Nom de fichier sans sa dernière extension : stem(\"a/b.tar.gz\") == \"b.tar\".","line":461},{"kind":"fonction","name":"normalize","signature":"func normalize(path)","doc":"Normalise LEXICALEMENT : retire \".\" et les séparateurs en double, résout\n\"..\". Ne touche pas au disque (peut différer de realpath en présence de\nliens symboliques). Retourne \".\" pour un chemin vide ou qui s'annule.","line":472},{"kind":"fonction","name":"absolute","signature":"func absolute(path)","doc":"Chemin absolu et normalisé, relatif au répertoire de travail courant.\nNe résout pas les liens symboliques et n'exige pas que le chemin existe.","line":478},{"kind":"fonction","name":"realpath","signature":"func realpath(path)","doc":"Chemin canonique : résout les liens symboliques de la partie existante.\nLe chemin n'a pas besoin d'exister en entier.","line":484},{"kind":"fonction","name":"is_absolute","signature":"func is_absolute(path)","doc":"Absolu = commence par \"/\" (POSIX) ; \"C:\\...\" ou \"\\\\serveur\\partage\\...\" ou\n\"\\...\" (Windows). \"C:x\" (relatif au lecteur) n'est pas absolu.","line":490},{"kind":"fonction","name":"exists","signature":"func exists(path)","doc":"","line":501},{"kind":"fonction","name":"isfile","signature":"func isfile(path)","doc":"","line":504},{"kind":"fonction","name":"isdir","signature":"func isdir(path)","doc":"","line":507},{"kind":"fonction","name":"islink","signature":"func islink(path)","doc":"","line":510},{"kind":"fonction","name":"size","signature":"func size(path)","doc":"Taille en octets d'un fichier régulier (IoError pour un dossier).","line":514},{"kind":"fonction","name":"mtime","signature":"func mtime(path)","doc":"Dernière modification du contenu (secondes epoch, float).","line":518},{"kind":"fonction","name":"atime","signature":"func atime(path)","doc":"Dernier accès (peut être désactivé par l'OS : noatime, relatime...).","line":522},{"kind":"fonction","name":"ctime","signature":"func ctime(path)","doc":"POSIX : dernier changement de métadonnées (inode). Windows : création.","line":526},{"kind":"fonction","name":"list_dir","signature":"func list_dir(path)","doc":"Noms (pas les chemins) des entrées d'un dossier, TRIÉS, sans \".\" ni \"..\".","line":530},{"kind":"fonction","name":"set_times","signature":"func set_times(path, atime=null, mtime=null)","doc":"Fixe les dates d'accès et de modification (secondes epoch, int ou float ; suit les liens symboliques).\nset_times(path)                  les deux à « maintenant » (comme `touch`)\nset_times(path, atime, mtime)    chacune est fixée si elle est donnée ; null = inchangée\nLe fichier doit exister (IoError sinon). Selon le système de fichiers, la précision peut être inférieure à la\nnanoseconde, et atime peut être ignorée (noatime).","line":542},{"kind":"fonction","name":"remove","signature":"func remove(path)","doc":"Supprime un fichier ou un lien symbolique (le lien, jamais sa cible).\nRefuse les dossiers : voir rmdir.","line":553},{"kind":"fonction","name":"mkdir","signature":"func mkdir(path)","doc":"Crée UN dossier ; son parent doit exister, lui-même ne doit pas exister.","line":558},{"kind":"fonction","name":"mkdir_all","signature":"func mkdir_all(path)","doc":"Crée un dossier et tous ses parents manquants (mkdir -p). Ne fait rien si le\ndossier existe déjà ; IoError si le chemin existe et n'est pas un dossier.","line":564},{"kind":"fonction","name":"rmdir","signature":"func rmdir(path, recursive=null)","doc":"Supprime un dossier. Par défaut il doit être VIDE ; rmdir(path, true) supprime\naussi tout son contenu.\nATTENTION : la suppression récursive est irréversible.","line":596},{"kind":"fonction","name":"copy","signature":"func copy(src, dst)","doc":"Copie un fichier ou un dossier (récursivement). Si `dst` est un dossier\nexistant, la copie est faite DANS ce dossier (comme `cp`). Écrase un fichier\nexistant. Retourne le chemin réellement écrit.","line":642},{"kind":"fonction","name":"move","signature":"func move(src, dst)","doc":"Déplace / renomme. Si `dst` est un dossier existant, la source est déplacée\nDANS ce dossier (comme `mv`). Sur volumes différents, bascule\nautomatiquement sur copie puis suppression. Retourne le chemin final.","line":658},{"kind":"fonction","name":"permissions","signature":"func permissions(path)","doc":"Bits de permission sous forme d'entier : 0o644 s'écrit 420, 0o755 s'écrit\n493 (ALEX n'a pas de littéral octal ; chmod accepte aussi \"644\" / \"0o755\").\nWindows : valeur approximée (lecture seule ou non ; exécutable selon l'extension).","line":687},{"kind":"fonction","name":"chmod","signature":"func chmod(path, mode)","doc":"mode : entier (0..4095) ou chaîne octale (\"755\", \"0644\", \"0o755\").\nWindows : seul le bit d'écriture du propriétaire (0o200) a un effet\n(attribut \"lecture seule\").","line":693},{"kind":"fonction","name":"access","signature":"func access(path, mode=null)","doc":"L'utilisateur courant peut-il accéder au chemin comme demandé ?\nmode : null (existence), \"r\", \"w\", \"x\" ou une combinaison (\"rw\", \"rwx\"),\nou un entier 0..7 (4 = lecture, 2 = écriture, 1 = exécution).","line":703},{"kind":"fonction","name":"spawn","signature":"func spawn(program, args=null)","doc":"Lance `program` SANS shell (recherche dans le PATH) et rend la main\nimmédiatement. Les flux standard sont hérités. Retourne le pid.\nAppeler wait(pid) pour récupérer le code de sortie et libérer le processus\n(un fils terminé mais non attendu reste un zombie sous POSIX).","line":744},{"kind":"fonction","name":"run","signature":"func run(program, args=null, input=null)","doc":"Lance `program` SANS shell, attend sa fin et CAPTURE sa sortie. Retourne\n{\"code\": int, \"stdout\": str, \"stderr\": str}\n`input` (str, optionnel) est envoyé sur l'entrée standard du fils.\nUn programme introuvable lève IoError ; un code de sortie non nul n'est\npas une erreur. code < 0 (POSIX) : tué par le signal -code.","line":752},{"kind":"fonction","name":"execute","signature":"func execute(command)","doc":"Exécute une ligne de commande par le SHELL du système (/bin/sh -c ;\ncmd.exe /c), flux hérités, attend la fin. Retourne le code de sortie.\nAttention : la commande est interprétée par le shell (pas d'échappement\nautomatique) — pour passer des arguments sûrs, préférer run / spawn.","line":759},{"kind":"fonction","name":"executable","signature":"func executable()","doc":"Chemin de l'exécutable alex qui exécute le programme (null s'il est inconnu).","line":763},{"kind":"fonction","name":"wait","signature":"func wait(pid, timeout=null)","doc":"Attend la fin du processus `pid` (lancé par spawn) et retourne son code de\nsortie. Avec `timeout` (secondes) : null si le délai expire d'abord.","line":768},{"kind":"fonction","name":"kill","signature":"func kill(pid, signal=null)","doc":"Envoie un signal. `signal` : nom (\"TERM\" par défaut, \"KILL\", \"INT\", \"HUP\",\n\"SIGKILL\"...) ou numéro. Windows : tout signal termine le processus de\nforce, sauf 0 qui teste seulement l'existence.","line":774},{"kind":"fonction","name":"process_exists","signature":"func process_exists(pid)","doc":"Vrai si le processus existe (un zombie non attendu compte comme existant).","line":782},{"kind":"fonction","name":"time","signature":"func time()","doc":"Heure murale : secondes depuis l'epoch Unix (float, précision sub-seconde).\nPeut sauter (NTP, changement d'heure manuel) : pour mesurer une durée,\nutiliser monotonic_time().","line":792},{"kind":"fonction","name":"system_time","signature":"func system_time()","doc":"Heure locale actuelle décomposée :\nyear, month (1-12), day, hour, minute, second, microsecond,\nweekday (0 = lundi ... 6 = dimanche), yearday (1-366),\nutc_offset (secondes à l'est de UTC), is_dst, timezone, timestamp.","line":799},{"kind":"fonction","name":"monotonic_time","signature":"func monotonic_time()","doc":"Horloge monotone : ne recule jamais, origine arbitraire (secondes, float).","line":803},{"kind":"fonction","name":"sleep","signature":"func sleep(seconds)","doc":"Suspend le processus `seconds` secondes (int ou float >= 0).","line":807},{"kind":"fonction","name":"terminal","signature":"func terminal()","doc":"{\"stdin\": bool, \"stdout\": bool, \"stderr\": bool   (flux reliés à un terminal)\n\"columns\": int|null, \"rows\": int|null           (taille, si connue)\n\"term\": str|null                                (variable TERM)\n\"color\": bool}                                  (couleurs raisonnables : sortie\nsur terminal, TERM != \"dumb\",\nNO_COLOR absent ou vide)","line":821},{"kind":"fonction","name":"get_env","signature":"func get_env(name_, fallback=null)","doc":"","line":833},{"kind":"fonction","name":"set_env","signature":"func set_env(name_, value)","doc":"","line":836},{"kind":"fonction","name":"is_dir","signature":"func is_dir(path)","doc":"","line":839}]}
+{"module":"os","file":"stdlib/os/os.al","summary":"Architecture","header":"Architecture\n  os.al          API publique ALEX + logique de haut niveau (chemins,\n                 copie / déplacement / suppression récursifs, normalisation,\n                 conversions de modes, system_info, terminal...).\n  _native_os     primitives qui dépendent RÉELLEMENT de l'OS (runtime natif ALEX :\n                 runtime/alex/native/dyn_nat.al). Backends POSIX et Windows séparés.\n\nPermissions : ce sont celles du système d'exploitation. Aucune sandbox\nartificielle n'est ajoutée par le langage : une opération refusée par l'OS\nlève IoError, une opération permise par l'OS réussit.\n\nErreurs\n  IoError        l'OS refuse ou ne peut pas faire l'opération.\n  TypeError      argument d'un mauvais type.\n  ArgumentError  argument de bon type mais invalide (pid <= 0, mode hors limites...).\n\nConventions\n  - Les temps (time, mtime, atime, ctime) sont des float : secondes depuis\n    l'epoch Unix. monotonic_time() est en secondes depuis une origine\n    arbitraire.\n  - Les noms commençant par `_` sont des détails d'implémentation (le\n    langage n'a pas de visibilité privée) : ne pas en dépendre.\n  - Les paramètres optionnels valent `null` par défaut (le langage ne\n    supporte pas d'autres valeurs par défaut).","entries":[{"kind":"fonction","name":"name","signature":"func name()","doc":"Nom de l'OS tel que le rapporte le système : \"Linux\", \"Darwin\", \"Windows\".","line":258},{"kind":"fonction","name":"platform","signature":"func platform()","doc":"Identifiant normalisé : \"linux\", \"macos\", \"windows\" ou \"unknown\".","line":262},{"kind":"fonction","name":"arch","signature":"func arch()","doc":"Architecture normalisée : \"x86_64\", \"arm64\", \"x86\", \"arm\" (sinon la valeur\ndu système en minuscules : \"riscv64\", \"ppc64le\"...).","line":267},{"kind":"fonction","name":"alex_version","signature":"func alex_version()","doc":"Version du compilateur / runtime ALEX qui exécute ce programme (SemVer) : \"1.2.0\" (stable) ou\n\"1.2.0-beta.7\" (bêta). Voir docs/VERSIONS.md.","line":281},{"kind":"fonction","name":"alex_build","signature":"func alex_build()","doc":"Détails du build : {\"version\", \"full\", \"base\", \"major\", \"minor\", \"patch\", \"channel\" (\"beta\" | \"stable\"),\n\"build\", \"date\", \"source_id\", \"commit\"}.","line":286},{"kind":"fonction","name":"alex_satisfies","signature":"func alex_satisfies(constraint)","doc":"Vrai si le runtime satisfait la contrainte (\">=1.2.0\", \"^1.0\", \"~1.4.2\", \"=1.2.0\", \"*\") ; comparaison SemVer\ncomplète (une bêta 1.3.0-beta.2 satisfait \">=1.2\" mais pas \">=1.3.0\"). ArgumentError si mal formée.","line":291},{"kind":"fonction","name":"version","signature":"func version()","doc":"Version / release de l'OS (\"6.8.0-45-generic\", \"23.5.0\" (Darwin), \"10.0.22631\").","line":295},{"kind":"fonction","name":"hostname","signature":"func hostname()","doc":"","line":298},{"kind":"fonction","name":"username","signature":"func username()","doc":"Nom de l'utilisateur effectif, ou null s'il est indéterminable.","line":302},{"kind":"fonction","name":"user_id","signature":"func user_id()","doc":"uid / gid effectifs. null sous Windows (pas de notion équivalente).","line":306},{"kind":"fonction","name":"group_id","signature":"func group_id()","doc":"","line":309},{"kind":"fonction","name":"home","signature":"func home()","doc":"Dossier personnel de l'utilisateur, ou null s'il est indéterminable.","line":313},{"kind":"fonction","name":"tmp_dir","signature":"func tmp_dir()","doc":"","line":316},{"kind":"fonction","name":"cwd","signature":"func cwd()","doc":"","line":319},{"kind":"fonction","name":"chdir","signature":"func chdir(path)","doc":"Change le répertoire de travail du processus (et de ses futurs fils).","line":323},{"kind":"fonction","name":"cpu_count","signature":"func cpu_count()","doc":"Nombre de processeurs logiques utilisables par ce processus (>= 1).","line":328},{"kind":"fonction","name":"pid","signature":"func pid()","doc":"","line":331},{"kind":"fonction","name":"parent_pid","signature":"func parent_pid()","doc":"","line":334},{"kind":"fonction","name":"system_info","signature":"func system_info()","doc":"Dictionnaire récapitulatif. Une information indisponible vaut null.","line":338},{"kind":"fonction","name":"argv","signature":"func argv()","doc":"","line":368},{"kind":"fonction","name":"argc","signature":"func argc()","doc":"","line":371},{"kind":"fonction","name":"exit","signature":"func exit(code=0)","doc":"exit(code=0) : termine le programme immédiatement avec ce code de sortie (0..255).\nLes blocs `finally` en cours ne sont pas exécutés ; les sorties sont vidées.","line":376},{"kind":"fonction","name":"args","signature":"func args()","doc":"","line":379},{"kind":"fonction","name":"getenv","signature":"func getenv(name_, fallback=null)","doc":"Valeur de la variable, ou `fallback` (null par défaut) si elle est absente.","line":395},{"kind":"fonction","name":"setenv","signature":"func setenv(name_, value)","doc":"","line":398},{"kind":"fonction","name":"unsetenv","signature":"func unsetenv(name_)","doc":"Supprimer une variable absente n'est pas une erreur.","line":403},{"kind":"fonction","name":"hasenv","signature":"func hasenv(name_)","doc":"Vrai même si la variable est définie à la chaîne vide.","line":408},{"kind":"fonction","name":"env","signature":"func env()","doc":"Copie de tout l'environnement : dict nom -> valeur.","line":412},{"kind":"fonction","name":"join","signature":"func join(first, second=null, third=null, fourth=null, fifth=null, sixth=null, seventh=null, eighth=null)","doc":"Concatène des segments avec le séparateur de la plateforme :\njoin(\"a\", \"b\", \"c\")  ou  join([\"a\", \"b\", \"c\"])   (jusqu'à 8 segments positionnels)\nUn segment vide est ignoré ; un segment absolu remplace tout ce qui précède.\nAucune normalisation : join(\"a\", \"../b\") == \"a/../b\" (voir normalize).","line":427},{"kind":"fonction","name":"basename","signature":"func basename(path)","doc":"Dernier composant. Les séparateurs finaux sont ignorés : basename(\"a/b/\") == \"b\".","line":440},{"kind":"fonction","name":"dirname","signature":"func dirname(path)","doc":"Tout sauf le dernier composant ; \"\" pour un chemin relatif sans séparateur\n(comme os.path.dirname de Python), la racine pour \"/x\".","line":446},{"kind":"fonction","name":"extension","signature":"func extension(path)","doc":"Dernière extension avec son point : extension(\"a/b.tar.gz\") == \".gz\".\n\"\" s'il n'y en a pas (\".bashrc\" n'a pas d'extension).","line":452},{"kind":"fonction","name":"stem","signature":"func stem(path)","doc":"Nom de fichier sans sa dernière extension : stem(\"a/b.tar.gz\") == \"b.tar\".","line":461},{"kind":"fonction","name":"normalize","signature":"func normalize(path)","doc":"Normalise LEXICALEMENT : retire \".\" et les séparateurs en double, résout\n\"..\". Ne touche pas au disque (peut différer de realpath en présence de\nliens symboliques). Retourne \".\" pour un chemin vide ou qui s'annule.","line":472},{"kind":"fonction","name":"absolute","signature":"func absolute(path)","doc":"Chemin absolu et normalisé, relatif au répertoire de travail courant.\nNe résout pas les liens symboliques et n'exige pas que le chemin existe.","line":478},{"kind":"fonction","name":"realpath","signature":"func realpath(path)","doc":"Chemin canonique : résout les liens symboliques de la partie existante.\nLe chemin n'a pas besoin d'exister en entier.","line":484},{"kind":"fonction","name":"is_absolute","signature":"func is_absolute(path)","doc":"Absolu = commence par \"/\" (POSIX) ; \"C:\\...\" ou \"\\\\serveur\\partage\\...\" ou\n\"\\...\" (Windows). \"C:x\" (relatif au lecteur) n'est pas absolu.","line":490},{"kind":"fonction","name":"exists","signature":"func exists(path)","doc":"","line":501},{"kind":"fonction","name":"isfile","signature":"func isfile(path)","doc":"","line":504},{"kind":"fonction","name":"isdir","signature":"func isdir(path)","doc":"","line":507},{"kind":"fonction","name":"islink","signature":"func islink(path)","doc":"","line":510},{"kind":"fonction","name":"size","signature":"func size(path)","doc":"Taille en octets d'un fichier régulier (IoError pour un dossier).","line":514},{"kind":"fonction","name":"mtime","signature":"func mtime(path)","doc":"Dernière modification du contenu (secondes epoch, float).","line":518},{"kind":"fonction","name":"atime","signature":"func atime(path)","doc":"Dernier accès (peut être désactivé par l'OS : noatime, relatime...).","line":522},{"kind":"fonction","name":"ctime","signature":"func ctime(path)","doc":"POSIX : dernier changement de métadonnées (inode). Windows : création.","line":526},{"kind":"fonction","name":"list_dir","signature":"func list_dir(path)","doc":"Noms (pas les chemins) des entrées d'un dossier, TRIÉS, sans \".\" ni \"..\".","line":530},{"kind":"fonction","name":"set_times","signature":"func set_times(path, atime=null, mtime=null)","doc":"Fixe les dates d'accès et de modification (secondes epoch, int ou float ; suit les liens symboliques).\nset_times(path)                  les deux à « maintenant » (comme `touch`)\nset_times(path, atime, mtime)    chacune est fixée si elle est donnée ; null = inchangée\nLe fichier doit exister (IoError sinon). Selon le système de fichiers, la précision peut être inférieure à la\nnanoseconde, et atime peut être ignorée (noatime).","line":542},{"kind":"fonction","name":"remove","signature":"func remove(path)","doc":"Supprime un fichier ou un lien symbolique (le lien, jamais sa cible).\nRefuse les dossiers : voir rmdir.","line":553},{"kind":"fonction","name":"mkdir","signature":"func mkdir(path)","doc":"Crée UN dossier ; son parent doit exister, lui-même ne doit pas exister.","line":558},{"kind":"fonction","name":"mkdir_all","signature":"func mkdir_all(path)","doc":"Crée un dossier et tous ses parents manquants (mkdir -p). Ne fait rien si le\ndossier existe déjà ; IoError si le chemin existe et n'est pas un dossier.","line":564},{"kind":"fonction","name":"rmdir","signature":"func rmdir(path, recursive=null)","doc":"Supprime un dossier. Par défaut il doit être VIDE ; rmdir(path, true) supprime\naussi tout son contenu.\nATTENTION : la suppression récursive est irréversible.","line":596},{"kind":"fonction","name":"copy","signature":"func copy(src, dst)","doc":"Copie un fichier ou un dossier (récursivement). Si `dst` est un dossier\nexistant, la copie est faite DANS ce dossier (comme `cp`). Écrase un fichier\nexistant. Retourne le chemin réellement écrit.","line":642},{"kind":"fonction","name":"move","signature":"func move(src, dst)","doc":"Déplace / renomme. Si `dst` est un dossier existant, la source est déplacée\nDANS ce dossier (comme `mv`). Sur volumes différents, bascule\nautomatiquement sur copie puis suppression. Retourne le chemin final.","line":658},{"kind":"fonction","name":"permissions","signature":"func permissions(path)","doc":"Bits de permission sous forme d'entier : 0o644 s'écrit 420, 0o755 s'écrit\n493 (ALEX n'a pas de littéral octal ; chmod accepte aussi \"644\" / \"0o755\").\nWindows : valeur approximée (lecture seule ou non ; exécutable selon l'extension).","line":687},{"kind":"fonction","name":"chmod","signature":"func chmod(path, mode)","doc":"mode : entier (0..4095) ou chaîne octale (\"755\", \"0644\", \"0o755\").\nWindows : seul le bit d'écriture du propriétaire (0o200) a un effet\n(attribut \"lecture seule\").","line":693},{"kind":"fonction","name":"access","signature":"func access(path, mode=null)","doc":"L'utilisateur courant peut-il accéder au chemin comme demandé ?\nmode : null (existence), \"r\", \"w\", \"x\" ou une combinaison (\"rw\", \"rwx\"),\nou un entier 0..7 (4 = lecture, 2 = écriture, 1 = exécution).","line":703},{"kind":"fonction","name":"spawn","signature":"func spawn(program, args=null)","doc":"Lance `program` SANS shell (recherche dans le PATH) et rend la main\nimmédiatement. Les flux standard sont hérités. Retourne le pid.\nAppeler wait(pid) pour récupérer le code de sortie et libérer le processus\n(un fils terminé mais non attendu reste un zombie sous POSIX).","line":744},{"kind":"fonction","name":"run","signature":"func run(program, args=null, input=null)","doc":"Lance `program` SANS shell, attend sa fin et CAPTURE sa sortie. Retourne\n{\"code\": int, \"stdout\": str, \"stderr\": str}\n`input` (str, optionnel) est envoyé sur l'entrée standard du fils.\nUn programme introuvable lève IoError ; un code de sortie non nul n'est\npas une erreur. code < 0 (POSIX) : tué par le signal -code.","line":752},{"kind":"fonction","name":"execute","signature":"func execute(command)","doc":"Exécute une ligne de commande par le SHELL du système (/bin/sh -c ;\ncmd.exe /c), flux hérités, attend la fin. Retourne le code de sortie.\nAttention : la commande est interprétée par le shell (pas d'échappement\nautomatique) — pour passer des arguments sûrs, préférer run / spawn.","line":759},{"kind":"fonction","name":"executable","signature":"func executable()","doc":"Chemin de l'exécutable alex qui exécute le programme (null s'il est inconnu).","line":763},{"kind":"fonction","name":"wait","signature":"func wait(pid, timeout=null)","doc":"Attend la fin du processus `pid` (lancé par spawn) et retourne son code de\nsortie. Avec `timeout` (secondes) : null si le délai expire d'abord.","line":768},{"kind":"fonction","name":"kill","signature":"func kill(pid, signal=null)","doc":"Envoie un signal. `signal` : nom (\"TERM\" par défaut, \"KILL\", \"INT\", \"HUP\",\n\"SIGKILL\"...) ou numéro. Windows : tout signal termine le processus de\nforce, sauf 0 qui teste seulement l'existence.","line":774},{"kind":"fonction","name":"process_exists","signature":"func process_exists(pid)","doc":"Vrai si le processus existe (un zombie non attendu compte comme existant).","line":782},{"kind":"fonction","name":"time","signature":"func time()","doc":"Heure murale : secondes depuis l'epoch Unix (float, précision sub-seconde).\nPeut sauter (NTP, changement d'heure manuel) : pour mesurer une durée,\nutiliser monotonic_time().","line":792},{"kind":"fonction","name":"system_time","signature":"func system_time()","doc":"Heure locale actuelle décomposée :\nyear, month (1-12), day, hour, minute, second, microsecond,\nweekday (0 = lundi ... 6 = dimanche), yearday (1-366),\nutc_offset (secondes à l'est de UTC), is_dst, timezone, timestamp.","line":799},{"kind":"fonction","name":"monotonic_time","signature":"func monotonic_time()","doc":"Horloge monotone : ne recule jamais, origine arbitraire (secondes, float).","line":803},{"kind":"fonction","name":"sleep","signature":"func sleep(seconds)","doc":"Suspend le processus `seconds` secondes (int ou float >= 0).","line":807},{"kind":"fonction","name":"terminal","signature":"func terminal()","doc":"{\"stdin\": bool, \"stdout\": bool, \"stderr\": bool   (flux reliés à un terminal)\n\"columns\": int|null, \"rows\": int|null           (taille, si connue)\n\"term\": str|null                                (variable TERM)\n\"color\": bool}                                  (couleurs raisonnables : sortie\nsur terminal, TERM != \"dumb\",\nNO_COLOR absent ou vide)","line":821},{"kind":"fonction","name":"get_env","signature":"func get_env(name_, fallback=null)","doc":"","line":833},{"kind":"fonction","name":"set_env","signature":"func set_env(name_, value)","doc":"","line":836},{"kind":"fonction","name":"is_dir","signature":"func is_dir(path)","doc":"","line":839}]}
 # string
 
 Public string API. Implementation is ALEX; UTF-8 primitives live in the runtime.
@@ -1654,42 +1955,52 @@ func byte_join(parts: list) -> str
 Concaténation de parts en une seule allocation (temps linéaire).
 
 {"module":"string","file":"stdlib/string/string.al","summary":"Public string API.","header":"Public string API. Implementation is ALEX; UTF-8 primitives live in the runtime.\nAnnotations (docs/TYPES.md) : scalaires précis ; conteneurs non paramétrés (pas de marquage des listes de l'appelant).","entries":[{"kind":"fonction","name":"upper","signature":"func upper(s: str) -> str","doc":"","line":7},{"kind":"fonction","name":"lower","signature":"func lower(s: str) -> str","doc":"","line":10},{"kind":"fonction","name":"capitalize","signature":"func capitalize(s: str) -> str","doc":"","line":13},{"kind":"fonction","name":"title","signature":"func title(s: str) -> str","doc":"","line":16},{"kind":"fonction","name":"trim","signature":"func trim(s: str) -> str","doc":"","line":19},{"kind":"fonction","name":"strip","signature":"func strip(s: str) -> str","doc":"","line":22},{"kind":"fonction","name":"count","signature":"func count(s: str, sub: str) -> int","doc":"","line":25},{"kind":"fonction","name":"repeat","signature":"func repeat(s: str, n: int) -> str","doc":"","line":28},{"kind":"fonction","name":"find","signature":"func find(s: str, sub: str) -> int","doc":"","line":31},{"kind":"fonction","name":"substring","signature":"func substring(s: str, start: int, end: int) -> str","doc":"","line":34},{"kind":"fonction","name":"split","signature":"func split(s: str, sep: str) -> list","doc":"","line":37},{"kind":"fonction","name":"join","signature":"func join(sep: str, values: list) -> str","doc":"","line":40},{"kind":"fonction","name":"replace","signature":"func replace(s: str, old: str, new: str) -> str","doc":"","line":43},{"kind":"fonction","name":"starts_with","signature":"func starts_with(s: str, prefix: str) -> bool","doc":"","line":46},{"kind":"fonction","name":"ends_with","signature":"func ends_with(s: str, suffix: str) -> bool","doc":"","line":49},{"kind":"fonction","name":"contains","signature":"func contains(s: str, sub: str) -> bool","doc":"","line":52},{"kind":"fonction","name":"chr","signature":"func chr(code: int) -> char","doc":"chr(code) -> char : le caractère de point de code `code` (0..0x10FFFF, hors substituts).","line":56},{"kind":"fonction","name":"ord","signature":"func ord(c) -> int","doc":"ord(c) -> int : point de code d'un char (ou d'une str d'un seul caractère).","line":60},{"kind":"fonction","name":"slice","signature":"func slice(s: str, start: int? = null, stop: int? = null, step: int = 1) -> str","doc":"slice(s, start=null, stop=null, step=1) : s[start:stop:step] en points de code.\nIndices négatifs acceptés, bornes hors limites ramenées dans la chaîne, pas négatif = à l'envers.","line":65},{"kind":"fonction","name":"byte_len","signature":"func byte_len(s: str) -> int","doc":"Nombre d'octets de s.","line":72},{"kind":"fonction","name":"byte_at","signature":"func byte_at(s: str, i: int) -> int","doc":"Octet n° i de s (0 à 255) ; IndexError hors limites.","line":76},{"kind":"fonction","name":"byte_slice","signature":"func byte_slice(s: str, start: int, end: int) -> str","doc":"Octets [start, end) de s (bornes ramenées dans la chaîne).","line":80},{"kind":"fonction","name":"byte_find","signature":"func byte_find(s: str, sub: str, start: int = 0) -> int","doc":"Position en octets de sub dans s à partir de l'octet start, ou -1.","line":84},{"kind":"fonction","name":"byte_char","signature":"func byte_char(n: int) -> str","doc":"Chaîne d'un seul octet de valeur n (0 à 255), y compris 0 et les valeurs supérieures à 127.","line":88},{"kind":"fonction","name":"byte_pack","signature":"func byte_pack(l: list) -> str","doc":"Chaîne dont les octets sont les valeurs de l (chacune ramenée à 0..255).","line":92},{"kind":"fonction","name":"byte_unpack","signature":"func byte_unpack(s: str) -> list","doc":"Liste des octets de s (valeurs 0 à 255).","line":96},{"kind":"fonction","name":"byte_join","signature":"func byte_join(parts: list) -> str","doc":"Concaténation de parts en une seule allocation (temps linéaire).","line":100}]}
-# compiler.bc_parser
+# compiler.parser
 
-Analyseur syntaxique de la chaîne de compilation vers bytecode : portage fidèle de src/Parser.cpp. Il produit
-l'arbre de compiler.bc_ast avec exactement les mêmes nœuds, positions et désucrages que le parser de
-référence : décorateurs (f = déco(f) après la définition), fonctions fléchées et lambdas ({ return expr }),
-tranches (__slice), ensembles (__make_set), déstructuration (__dN, __len, raise ValueError), for a, b in
-(__forN), with (__withN + try/finally), assert, del (__del_item), pass, extend, comparaisons chaînées.
-Les compteurs __forN / __dN / __withN sont globaux au processus, comme les « static int » du C++.
-
-```alex
-use compiler.bc_parser as bp
-prog := bp.parse_file("prog.al")               # Node « Program »
-prog2 := bp.parse_text("x := 1\nprint(x)\n", "essai.al")
-
-```
-Erreurs : SyntaxError (« fichier:ligne:colonne: message »), et celles du lexer (compiler.bc_lexer).
-
-## reset_counters *(fonction)*
+Analyseur syntaxique d'ALEX écrit en ALEX (descente récursive) : jetons de compiler.lexer -> arbre de
+compiler.ast. Même grammaire et mêmes priorités que le compilateur natif (src/Parser.cpp) : déclarations
+(func / async func / décorateurs / fonctions fléchées, class / struct / interface / enum, const), imports
+(use, from ... use), if / elif / else, while / for (+ else), try / catch / finally, match (motifs littéraux,
+intervalles, listes, tuples, variantes d'enum, gardes), with, assert, del, pass, extend, déstructuration,
+affectations composées ; expressions : lambdas (x => e, (a, b) => e, func(a) => e), conditionnelle x if c
+else y, intervalles a..b, or / and / not, comparaisons chaînées, in / not in, opérateurs binaires et unaires,
+await, appels (arguments nommés, *étalement), membres, index, tranches a[i:j:k], propagation « ? »,
+littéraux de liste / tuple / dict / ensemble, compréhensions, f-strings.
 
 ```alex
-func reset_counters()
-```
+use compiler.parser as ps
+use compiler.ast as ast
+prog := ps.parse("func carre(x) => x * x\nprint(carre(4))\n", "demo.al")
+print(ast.dump(prog))
+e := ps.parse_expression("a + b * 2")         # (Binary + (Name a) (Binary * (Name b) (Literal 2)))
+r := ps.try_parse(source, "f.al")             # [programme ou null, liste de diagnostics]
 
-Remet à zéro les compteurs de désucrage (__forN, __dN, __withN) : à appeler entre deux compilations
-indépendantes pour reproduire un processus de compilation neuf.
+```
+L'arbre n'est pas désucré : voir compiler.ast pour les genres de nœuds.
+Erreurs : ParseError (« fichier:ligne:col: message »), LexError (venue du lexer).
 
 ## COMPOUND *(constante)*
 
 ```alex
-const COMPOUND := {"PLUS_EQ": "Add", "MINUS_EQ": "Sub", "STAR_EQ": "Mul", "SLASH_EQ": "Div",
+const COMPOUND := {"PLUS_EQ": "+", "MINUS_EQ": "-", "STAR_EQ": "*", "SLASH_EQ": "/", "SLASH_SLASH_EQ": "//",
 ```
 
-## COMPARISON *(constante)*
+## COMPARE *(constante)*
 
 ```alex
-const COMPARISON := {"EQ_EQ": "Eq", "BANG_EQ": "Ne", "LT": "Lt", "LT_EQ": "Le", "GT": "Gt", "GT_EQ": "Ge"}
+const COMPARE := {"EQ_EQ": "==", "BANG_EQ": "!=", "LT": "<", "LT_EQ": "<=", "GT": ">", "GT_EQ": ">="}
+```
+
+## LITERALS *(constante)*
+
+```alex
+const LITERALS := ["INTEGER", "FLOAT", "STRING", "CHAR", "KW_TRUE", "KW_FALSE", "KW_NULL"]
+```
+
+## N *(fonction)*
+
+```alex
+func N(kind, tok, fields)
 ```
 
 ## Parser *(classe)*
@@ -1701,25 +2012,19 @@ class Parser
 ### init *(méthode)*
 
 ```alex
-func init(tokens, filename)
+func init(tokens, file="<source>")
 ```
 
-### tokens *(champ)*
+### toks *(champ)*
 
 ```alex
-self.tokens
+self.toks: list
 ```
 
-### n *(champ)*
+### file *(champ)*
 
 ```alex
-self.n
-```
-
-### filename *(champ)*
-
-```alex
-self.filename
+self.file
 ```
 
 ### pos *(champ)*
@@ -1728,37 +2033,13 @@ self.filename
 self.pos: int
 ```
 
-### pending *(champ)*
-
-```alex
-self.pending: list
-```
-
-### uses_set *(champ)*
-
-```alex
-self.uses_set: bool
-```
-
-### last_segment_keyword *(champ)*
-
-```alex
-self.last_segment_keyword: bool
-```
-
 ### peek *(méthode)*
 
 ```alex
 func peek(k=0)
 ```
 
------------------------------------------------------------------- flux de jetons
-
-### previous *(méthode)*
-
-```alex
-func previous()
-```
+---- primitives ----
 
 ### check *(méthode)*
 
@@ -1781,25 +2062,19 @@ func accept(t)
 ### expect *(méthode)*
 
 ```alex
-func expect(t, message)
+func expect(t, msg)
 ```
 
 ### error *(méthode)*
 
 ```alex
-func error(tok, message)
+func error(tok, msg)
 ```
 
-### error_at *(méthode)*
+### at_end *(méthode)*
 
 ```alex
-func error_at(line, column, message)
-```
-
-### drain *(méthode)*
-
-```alex
-func drain(into)
+func at_end()
 ```
 
 ### parse_program *(méthode)*
@@ -1808,365 +2083,337 @@ func drain(into)
 func parse_program()
 ```
 
------------------------------------------------------------------- programme
+---- programme / blocs ----
 
-### parse_expression *(méthode)*
-
-```alex
-func parse_expression()
-```
-
-### parse_statement *(méthode)*
+### block_body *(méthode)*
 
 ```alex
-func parse_statement()
+func block_body()
 ```
 
-### parse_block_body *(méthode)*
+### colon_block *(méthode)*
 
 ```alex
-func parse_block_body()
+func colon_block()
 ```
 
-### parse_colon_block *(méthode)*
+### statement *(méthode)*
 
 ```alex
-func parse_colon_block()
+func statement()
 ```
 
-### parse_module_path *(méthode)*
+---- instructions ----
+
+### word_token *(méthode)*
 
 ```alex
-func parse_module_path()
+func word_token(t)
 ```
 
------------------------------------------------------------------- imports
-
-### parse_import *(méthode)*
+### module_path *(méthode)*
 
 ```alex
-func parse_import()
+func module_path()
 ```
 
-### parse_type *(méthode)*
+### import_stmt *(méthode)*
 
 ```alex
-func parse_type()
+func import_stmt()
 ```
 
------------------------------------------------------------------- types, paramètres, arguments
-
-### mk_spread *(méthode)*
+### type_ref *(méthode)*
 
 ```alex
-func mk_spread(tok, op, operand)
+func type_ref()
 ```
 
-### parse_dict_entry *(méthode)*
+### params *(méthode)*
 
 ```alex
-func parse_dict_entry(d)
+func params()
 ```
 
-### parse_element *(méthode)*
+### arguments *(méthode)*
 
 ```alex
-func parse_element()
+func arguments()
 ```
 
-### parse_parameter_list *(méthode)*
+### func_decl *(méthode)*
 
 ```alex
-func parse_parameter_list()
+func func_decl(is_async)
 ```
 
-### parse_argument_list *(méthode)*
+### class_decl *(méthode)*
 
 ```alex
-func parse_argument_list()
+func class_decl()
 ```
 
-### parse_function_decl *(méthode)*
+### enum_decl *(méthode)*
 
 ```alex
-func parse_function_decl(is_async)
+func enum_decl()
 ```
 
------------------------------------------------------------------- déclarations
-
-### parse_struct *(méthode)*
+### if_stmt *(méthode)*
 
 ```alex
-func parse_struct()
+func if_stmt()
 ```
 
-### parse_class *(méthode)*
+### for_stmt *(méthode)*
 
 ```alex
-func parse_class()
+func for_stmt()
 ```
 
-### parse_interface *(méthode)*
+### try_stmt *(méthode)*
 
 ```alex
-func parse_interface()
+func try_stmt()
 ```
 
-### parse_enum *(méthode)*
+### pattern *(méthode)*
 
 ```alex
-func parse_enum()
+func pattern()
 ```
 
-### parse_const *(méthode)*
+### match_stmt *(méthode)*
 
 ```alex
-func parse_const()
+func match_stmt()
 ```
 
-### parse_if *(méthode)*
+### is_lvalue *(méthode)*
 
 ```alex
-func parse_if()
+func is_lvalue(e)
 ```
 
-### parse_while *(méthode)*
+### expr_or_tuple *(méthode)*
 
 ```alex
-func parse_while()
+func expr_or_tuple()
 ```
 
-### parse_for *(méthode)*
+### destructure *(méthode)*
 
 ```alex
-func parse_for()
+func destructure(first, st)
 ```
 
-### parse_try *(méthode)*
+### target_into *(méthode)*
 
 ```alex
-func parse_try()
+func target_into(targets)
 ```
 
-### parse_literal_pattern *(méthode)*
+### contextual *(méthode)*
 
 ```alex
-func parse_literal_pattern()
+func contextual(word)
 ```
 
------------------------------------------------------------------- match
-
-### parse_match_pattern *(méthode)*
+### simple_statement *(méthode)*
 
 ```alex
-func parse_match_pattern()
+func simple_statement()
 ```
 
-### parse_match *(méthode)*
+### expression *(méthode)*
 
 ```alex
-func parse_match()
+func expression()
 ```
 
-### parse_expr_or_tuple *(méthode)*
+---- expressions ----
+
+### element *(méthode)*
 
 ```alex
-func parse_expr_or_tuple()
+func element()
 ```
 
------------------------------------------------------------------- instructions simples
-
-### build_unpack *(méthode)*
+### conditional *(méthode)*
 
 ```alex
-func build_unpack(tmp, targets, declare, line, col, check_length)
+func conditional()
 ```
 
-targets : [[expr, étoile], ...]
-
-### parse_destructuring *(méthode)*
+### range_operand *(méthode)*
 
 ```alex
-func parse_destructuring(first, start_tok)
+func range_operand()
 ```
 
-### parse_simple_statement *(méthode)*
+### logical_or *(méthode)*
 
 ```alex
-func parse_simple_statement()
+func logical_or()
 ```
 
-### parse_range_operand *(méthode)*
+### logical_and *(méthode)*
 
 ```alex
-func parse_range_operand()
+func logical_and()
 ```
 
------------------------------------------------------------------- expressions
-
-### parse_conditional *(méthode)*
+### not_expr *(méthode)*
 
 ```alex
-func parse_conditional()
+func not_expr()
 ```
 
-### parse_comprehension_clauses *(méthode)*
+### is_cmp *(méthode)*
 
 ```alex
-func parse_comprehension_clauses()
+func is_cmp()
 ```
 
-### parse_logical_or *(méthode)*
+### comparison *(méthode)*
 
 ```alex
-func parse_logical_or()
+func comparison()
 ```
 
-### parse_not *(méthode)*
+### binary_level *(méthode)*
 
 ```alex
-func parse_not()
+func binary_level(ops, next)
 ```
 
-### parse_logical_and *(méthode)*
+### bit_or *(méthode)*
 
 ```alex
-func parse_logical_and()
+func bit_or()
 ```
 
-### parse_comparison *(méthode)*
+### bit_xor *(méthode)*
 
 ```alex
-func parse_comparison()
+func bit_xor()
 ```
 
-### parse_bitwise_or *(méthode)*
+### bit_and *(méthode)*
 
 ```alex
-func parse_bitwise_or()
+func bit_and()
 ```
 
-### parse_bitwise_xor *(méthode)*
+### shift *(méthode)*
 
 ```alex
-func parse_bitwise_xor()
+func shift()
 ```
 
-### parse_bitwise_and *(méthode)*
+### additive *(méthode)*
 
 ```alex
-func parse_bitwise_and()
+func additive()
 ```
 
-### parse_shift *(méthode)*
+### multiplicative *(méthode)*
 
 ```alex
-func parse_shift()
+func multiplicative()
 ```
 
-### parse_additive *(méthode)*
+### power *(méthode)*
 
 ```alex
-func parse_additive()
+func power()
 ```
 
-### parse_multiplicative *(méthode)*
+### unary *(méthode)*
 
 ```alex
-func parse_multiplicative()
+func unary()
 ```
 
-### parse_power *(méthode)*
+### postfix *(méthode)*
 
 ```alex
-func parse_power()
+func postfix()
 ```
 
-### parse_unary *(méthode)*
+### literal *(méthode)*
 
 ```alex
-func parse_unary()
+func literal()
 ```
 
-### parse_postfix *(méthode)*
+### fstring *(méthode)*
 
 ```alex
-func parse_postfix()
+func fstring(t)
 ```
 
-### parse_literal_from_token *(méthode)*
+### arrow_ahead *(méthode)*
 
 ```alex
-func parse_literal_from_token()
+func arrow_ahead()
 ```
 
-### parse_embedded *(méthode)*
+### lambda_rest *(méthode)*
 
 ```alex
-func parse_embedded(text, line, column)
+func lambda_rest(t, ps)
 ```
 
-### parse_fstring *(méthode)*
+### comp_clauses *(méthode)*
 
 ```alex
-func parse_fstring(tok)
+func comp_clauses()
 ```
 
-### finish_lambda *(méthode)*
+### primary *(méthode)*
 
 ```alex
-func finish_lambda(line, column, params)
+func primary()
 ```
 
-### parse_func_lambda *(méthode)*
+### dict_entry *(méthode)*
 
 ```alex
-func parse_func_lambda()
+func dict_entry()
 ```
 
-### paren_arrow_ahead *(méthode)*
+## parse *(fonction)*
 
 ```alex
-func paren_arrow_ahead()
+func parse(source, file="<source>")
 ```
 
-### parse_arrow_lambda *(méthode)*
-
-```alex
-func parse_arrow_lambda()
-```
-
-### parse_primary *(méthode)*
-
-```alex
-func parse_primary()
-```
+Programme (nœud Program) d'un texte source.
 
 ## parse_tokens *(fonction)*
 
 ```alex
-func parse_tokens(tokens, filename="<source>")
+func parse_tokens(tokens, file="<source>")
 ```
 
-## parse_bytes *(fonction)*
+## parse_expression *(fonction)*
 
 ```alex
-func parse_bytes(src_bytes, filename="<source>")
+func parse_expression(text, file="<expression>")
 ```
 
-## parse_text *(fonction)*
+Une seule expression (le texte entier doit être consommé).
+
+## try_parse *(fonction)*
 
 ```alex
-func parse_text(text, filename="<source>")
+func try_parse(source, file="<source>")
 ```
 
-## parse_file *(fonction)*
+[programme ou null, diagnostics] — ne lève pas.
 
-```alex
-func parse_file(path)
-```
-
-{"module":"compiler.bc_parser","file":"stdlib/compiler/bc_parser.al","summary":"Analyseur syntaxique de la chaîne de compilation vers bytecode : portage fidèle de src/Parser.cpp.","header":"Analyseur syntaxique de la chaîne de compilation vers bytecode : portage fidèle de src/Parser.cpp. Il produit\nl'arbre de compiler.bc_ast avec exactement les mêmes nœuds, positions et désucrages que le parser de\nréférence : décorateurs (f = déco(f) après la définition), fonctions fléchées et lambdas ({ return expr }),\ntranches (__slice), ensembles (__make_set), déstructuration (__dN, __len, raise ValueError), for a, b in\n(__forN), with (__withN + try/finally), assert, del (__del_item), pass, extend, comparaisons chaînées.\nLes compteurs __forN / __dN / __withN sont globaux au processus, comme les « static int » du C++.\n\n  use compiler.bc_parser as bp\n  prog := bp.parse_file(\"prog.al\")               # Node « Program »\n  prog2 := bp.parse_text(\"x := 1\\nprint(x)\\n\", \"essai.al\")\n\nErreurs : SyntaxError (« fichier:ligne:colonne: message »), et celles du lexer (compiler.bc_lexer).","entries":[{"kind":"fonction","name":"reset_counters","signature":"func reset_counters()","doc":"Remet à zéro les compteurs de désucrage (__forN, __dN, __withN) : à appeler entre deux compilations\nindépendantes pour reproduire un processus de compilation neuf.","line":32},{"kind":"constante","name":"COMPOUND","signature":"const COMPOUND := {\"PLUS_EQ\": \"Add\", \"MINUS_EQ\": \"Sub\", \"STAR_EQ\": \"Mul\", \"SLASH_EQ\": \"Div\",","doc":"","line":37},{"kind":"constante","name":"COMPARISON","signature":"const COMPARISON := {\"EQ_EQ\": \"Eq\", \"BANG_EQ\": \"Ne\", \"LT\": \"Lt\", \"LT_EQ\": \"Le\", \"GT\": \"Gt\", \"GT_EQ\": \"Ge\"}","doc":"","line":41},{"kind":"classe","name":"Parser","signature":"class Parser","doc":"","line":61,"members":[{"kind":"méthode","name":"init","signature":"func init(tokens, filename)","doc":"","line":62},{"kind":"champ","name":"tokens","signature":"self.tokens","doc":"","line":63},{"kind":"champ","name":"n","signature":"self.n","doc":"","line":64},{"kind":"champ","name":"filename","signature":"self.filename","doc":"","line":65},{"kind":"champ","name":"pos","signature":"self.pos: int","doc":"","line":66},{"kind":"champ","name":"pending","signature":"self.pending: list","doc":"","line":67},{"kind":"champ","name":"uses_set","signature":"self.uses_set: bool","doc":"","line":68},{"kind":"champ","name":"last_segment_keyword","signature":"self.last_segment_keyword: bool","doc":"","line":69},{"kind":"méthode","name":"peek","signature":"func peek(k=0)","doc":"------------------------------------------------------------------ flux de jetons","line":72},{"kind":"méthode","name":"previous","signature":"func previous()","doc":"","line":78},{"kind":"méthode","name":"check","signature":"func check(t)","doc":"","line":81},{"kind":"méthode","name":"advance","signature":"func advance()","doc":"","line":87},{"kind":"méthode","name":"accept","signature":"func accept(t)","doc":"","line":95},{"kind":"méthode","name":"expect","signature":"func expect(t, message)","doc":"","line":101},{"kind":"méthode","name":"error","signature":"func error(tok, message)","doc":"","line":107},{"kind":"méthode","name":"error_at","signature":"func error_at(line, column, message)","doc":"","line":110},{"kind":"méthode","name":"drain","signature":"func drain(into)","doc":"","line":113},{"kind":"méthode","name":"parse_program","signature":"func parse_program()","doc":"------------------------------------------------------------------ programme","line":119},{"kind":"méthode","name":"parse_expression","signature":"func parse_expression()","doc":"","line":128},{"kind":"méthode","name":"parse_statement","signature":"func parse_statement()","doc":"","line":131},{"kind":"méthode","name":"parse_block_body","signature":"func parse_block_body()","doc":"","line":207},{"kind":"méthode","name":"parse_colon_block","signature":"func parse_colon_block()","doc":"","line":219},{"kind":"méthode","name":"parse_module_path","signature":"func parse_module_path()","doc":"------------------------------------------------------------------ imports","line":224},{"kind":"méthode","name":"parse_import","signature":"func parse_import()","doc":"","line":241},{"kind":"méthode","name":"parse_type","signature":"func parse_type()","doc":"------------------------------------------------------------------ types, paramètres, arguments","line":267},{"kind":"méthode","name":"mk_spread","signature":"func mk_spread(tok, op, operand)","doc":"","line":301},{"kind":"méthode","name":"parse_dict_entry","signature":"func parse_dict_entry(d)","doc":"","line":307},{"kind":"méthode","name":"parse_element","signature":"func parse_element()","doc":"","line":319},{"kind":"méthode","name":"parse_parameter_list","signature":"func parse_parameter_list()","doc":"","line":325},{"kind":"méthode","name":"parse_argument_list","signature":"func parse_argument_list()","doc":"","line":354},{"kind":"méthode","name":"parse_function_decl","signature":"func parse_function_decl(is_async)","doc":"------------------------------------------------------------------ déclarations","line":375},{"kind":"méthode","name":"parse_struct","signature":"func parse_struct()","doc":"","line":401},{"kind":"méthode","name":"parse_class","signature":"func parse_class()","doc":"","line":408},{"kind":"méthode","name":"parse_interface","signature":"func parse_interface()","doc":"","line":424},{"kind":"méthode","name":"parse_enum","signature":"func parse_enum()","doc":"","line":431},{"kind":"méthode","name":"parse_const","signature":"func parse_const()","doc":"","line":460},{"kind":"méthode","name":"parse_if","signature":"func parse_if()","doc":"","line":472},{"kind":"méthode","name":"parse_while","signature":"func parse_while()","doc":"","line":489},{"kind":"méthode","name":"parse_for","signature":"func parse_for()","doc":"","line":499},{"kind":"méthode","name":"parse_try","signature":"func parse_try()","doc":"","line":524},{"kind":"méthode","name":"parse_literal_pattern","signature":"func parse_literal_pattern()","doc":"------------------------------------------------------------------ match","line":571},{"kind":"méthode","name":"parse_match_pattern","signature":"func parse_match_pattern()","doc":"","line":579},{"kind":"méthode","name":"parse_match","signature":"func parse_match()","doc":"","line":636},{"kind":"méthode","name":"parse_expr_or_tuple","signature":"func parse_expr_or_tuple()","doc":"------------------------------------------------------------------ instructions simples","line":657},{"kind":"méthode","name":"build_unpack","signature":"func build_unpack(tmp, targets, declare, line, col, check_length)","doc":"targets : [[expr, étoile], ...]","line":671},{"kind":"méthode","name":"parse_destructuring","signature":"func parse_destructuring(first, start_tok)","doc":"","line":725},{"kind":"méthode","name":"parse_simple_statement","signature":"func parse_simple_statement()","doc":"","line":775},{"kind":"méthode","name":"parse_range_operand","signature":"func parse_range_operand()","doc":"------------------------------------------------------------------ expressions","line":930},{"kind":"méthode","name":"parse_conditional","signature":"func parse_conditional()","doc":"","line":942},{"kind":"méthode","name":"parse_comprehension_clauses","signature":"func parse_comprehension_clauses()","doc":"","line":957},{"kind":"méthode","name":"parse_logical_or","signature":"func parse_logical_or()","doc":"","line":983},{"kind":"méthode","name":"parse_not","signature":"func parse_not()","doc":"","line":990},{"kind":"méthode","name":"parse_logical_and","signature":"func parse_logical_and()","doc":"","line":999},{"kind":"méthode","name":"parse_comparison","signature":"func parse_comparison()","doc":"","line":1010},{"kind":"méthode","name":"parse_bitwise_or","signature":"func parse_bitwise_or()","doc":"","line":1052},{"kind":"méthode","name":"parse_bitwise_xor","signature":"func parse_bitwise_xor()","doc":"","line":1059},{"kind":"méthode","name":"parse_bitwise_and","signature":"func parse_bitwise_and()","doc":"","line":1066},{"kind":"méthode","name":"parse_shift","signature":"func parse_shift()","doc":"","line":1073},{"kind":"méthode","name":"parse_additive","signature":"func parse_additive()","doc":"","line":1080},{"kind":"méthode","name":"parse_multiplicative","signature":"func parse_multiplicative()","doc":"","line":1087},{"kind":"méthode","name":"parse_power","signature":"func parse_power()","doc":"","line":1101},{"kind":"méthode","name":"parse_unary","signature":"func parse_unary()","doc":"","line":1110},{"kind":"méthode","name":"parse_postfix","signature":"func parse_postfix()","doc":"","line":1132},{"kind":"méthode","name":"parse_literal_from_token","signature":"func parse_literal_from_token()","doc":"","line":1190},{"kind":"méthode","name":"parse_embedded","signature":"func parse_embedded(text, line, column)","doc":"","line":1209},{"kind":"méthode","name":"parse_fstring","signature":"func parse_fstring(tok)","doc":"","line":1225},{"kind":"méthode","name":"finish_lambda","signature":"func finish_lambda(line, column, params)","doc":"","line":1262},{"kind":"méthode","name":"parse_func_lambda","signature":"func parse_func_lambda()","doc":"","line":1279},{"kind":"méthode","name":"paren_arrow_ahead","signature":"func paren_arrow_ahead()","doc":"","line":1288},{"kind":"méthode","name":"parse_arrow_lambda","signature":"func parse_arrow_lambda()","doc":"","line":1305},{"kind":"méthode","name":"parse_primary","signature":"func parse_primary()","doc":"","line":1322}]},{"kind":"fonction","name":"parse_tokens","signature":"func parse_tokens(tokens, filename=\"<source>\")","doc":"","line":1474},{"kind":"fonction","name":"parse_bytes","signature":"func parse_bytes(src_bytes, filename=\"<source>\")","doc":"","line":1477},{"kind":"fonction","name":"parse_text","signature":"func parse_text(text, filename=\"<source>\")","doc":"","line":1480},{"kind":"fonction","name":"parse_file","signature":"func parse_file(path)","doc":"","line":1483}]}
+{"module":"compiler.parser","file":"stdlib/compiler/parser.al","summary":"Analyseur syntaxique d'ALEX écrit en ALEX (descente récursive) : jetons de compiler.lexer -> arbre de compiler.ast.","header":"Analyseur syntaxique d'ALEX écrit en ALEX (descente récursive) : jetons de compiler.lexer -> arbre de\ncompiler.ast. Même grammaire et mêmes priorités que le compilateur natif (src/Parser.cpp) : déclarations\n(func / async func / décorateurs / fonctions fléchées, class / struct / interface / enum, const), imports\n(use, from ... use), if / elif / else, while / for (+ else), try / catch / finally, match (motifs littéraux,\nintervalles, listes, tuples, variantes d'enum, gardes), with, assert, del, pass, extend, déstructuration,\naffectations composées ; expressions : lambdas (x => e, (a, b) => e, func(a) => e), conditionnelle x if c\nelse y, intervalles a..b, or / and / not, comparaisons chaînées, in / not in, opérateurs binaires et unaires,\nawait, appels (arguments nommés, *étalement), membres, index, tranches a[i:j:k], propagation « ? »,\nlittéraux de liste / tuple / dict / ensemble, compréhensions, f-strings.\n\n  use compiler.parser as ps\n  use compiler.ast as ast\n  prog := ps.parse(\"func carre(x) => x * x\\nprint(carre(4))\\n\", \"demo.al\")\n  print(ast.dump(prog))\n  e := ps.parse_expression(\"a + b * 2\")         # (Binary + (Name a) (Binary * (Name b) (Literal 2)))\n  r := ps.try_parse(source, \"f.al\")             # [programme ou null, liste de diagnostics]\n\nL'arbre n'est pas désucré : voir compiler.ast pour les genres de nœuds.\nErreurs : ParseError (« fichier:ligne:col: message »), LexError (venue du lexer).","entries":[{"kind":"constante","name":"COMPOUND","signature":"const COMPOUND := {\"PLUS_EQ\": \"+\", \"MINUS_EQ\": \"-\", \"STAR_EQ\": \"*\", \"SLASH_EQ\": \"/\", \"SLASH_SLASH_EQ\": \"//\",","doc":"","line":30},{"kind":"constante","name":"COMPARE","signature":"const COMPARE := {\"EQ_EQ\": \"==\", \"BANG_EQ\": \"!=\", \"LT\": \"<\", \"LT_EQ\": \"<=\", \"GT\": \">\", \"GT_EQ\": \">=\"}","doc":"","line":33},{"kind":"constante","name":"LITERALS","signature":"const LITERALS := [\"INTEGER\", \"FLOAT\", \"STRING\", \"CHAR\", \"KW_TRUE\", \"KW_FALSE\", \"KW_NULL\"]","doc":"","line":34},{"kind":"fonction","name":"N","signature":"func N(kind, tok, fields)","doc":"","line":36},{"kind":"classe","name":"Parser","signature":"class Parser","doc":"","line":39,"members":[{"kind":"méthode","name":"init","signature":"func init(tokens, file=\"<source>\")","doc":"","line":40},{"kind":"champ","name":"toks","signature":"self.toks: list","doc":"","line":41},{"kind":"champ","name":"file","signature":"self.file","doc":"","line":42},{"kind":"champ","name":"pos","signature":"self.pos: int","doc":"","line":43},{"kind":"méthode","name":"peek","signature":"func peek(k=0)","doc":"---- primitives ----","line":46},{"kind":"méthode","name":"check","signature":"func check(t)","doc":"","line":52},{"kind":"méthode","name":"advance","signature":"func advance()","doc":"","line":55},{"kind":"méthode","name":"accept","signature":"func accept(t)","doc":"","line":61},{"kind":"méthode","name":"expect","signature":"func expect(t, msg)","doc":"","line":67},{"kind":"méthode","name":"error","signature":"func error(tok, msg)","doc":"","line":72},{"kind":"méthode","name":"at_end","signature":"func at_end()","doc":"","line":78},{"kind":"méthode","name":"parse_program","signature":"func parse_program()","doc":"---- programme / blocs ----","line":82},{"kind":"méthode","name":"block_body","signature":"func block_body()","doc":"","line":88},{"kind":"méthode","name":"colon_block","signature":"func colon_block()","doc":"","line":97},{"kind":"méthode","name":"statement","signature":"func statement()","doc":"---- instructions ----","line":102},{"kind":"méthode","name":"word_token","signature":"func word_token(t)","doc":"","line":183},{"kind":"méthode","name":"module_path","signature":"func module_path()","doc":"","line":192},{"kind":"méthode","name":"import_stmt","signature":"func import_stmt()","doc":"","line":209},{"kind":"méthode","name":"type_ref","signature":"func type_ref()","doc":"","line":229},{"kind":"méthode","name":"params","signature":"func params()","doc":"","line":257},{"kind":"méthode","name":"arguments","signature":"func arguments()","doc":"","line":281},{"kind":"méthode","name":"func_decl","signature":"func func_decl(is_async)","doc":"","line":302},{"kind":"méthode","name":"class_decl","signature":"func class_decl()","doc":"","line":327},{"kind":"méthode","name":"enum_decl","signature":"func enum_decl()","doc":"","line":341},{"kind":"méthode","name":"if_stmt","signature":"func if_stmt()","doc":"","line":367},{"kind":"méthode","name":"for_stmt","signature":"func for_stmt()","doc":"","line":381},{"kind":"méthode","name":"try_stmt","signature":"func try_stmt()","doc":"","line":402},{"kind":"méthode","name":"pattern","signature":"func pattern()","doc":"","line":441},{"kind":"méthode","name":"match_stmt","signature":"func match_stmt()","doc":"","line":491},{"kind":"méthode","name":"is_lvalue","signature":"func is_lvalue(e)","doc":"","line":509},{"kind":"méthode","name":"expr_or_tuple","signature":"func expr_or_tuple()","doc":"","line":512},{"kind":"méthode","name":"destructure","signature":"func destructure(first, st)","doc":"","line":524},{"kind":"méthode","name":"target_into","signature":"func target_into(targets)","doc":"","line":554},{"kind":"méthode","name":"contextual","signature":"func contextual(word)","doc":"","line":563},{"kind":"méthode","name":"simple_statement","signature":"func simple_statement()","doc":"","line":570},{"kind":"méthode","name":"expression","signature":"func expression()","doc":"---- expressions ----","line":655},{"kind":"méthode","name":"element","signature":"func element()","doc":"","line":658},{"kind":"méthode","name":"conditional","signature":"func conditional()","doc":"","line":664},{"kind":"méthode","name":"range_operand","signature":"func range_operand()","doc":"","line":674},{"kind":"méthode","name":"logical_or","signature":"func logical_or()","doc":"","line":682},{"kind":"méthode","name":"logical_and","signature":"func logical_and()","doc":"","line":689},{"kind":"méthode","name":"not_expr","signature":"func not_expr()","doc":"","line":696},{"kind":"méthode","name":"is_cmp","signature":"func is_cmp()","doc":"","line":702},{"kind":"méthode","name":"comparison","signature":"func comparison()","doc":"","line":706},{"kind":"méthode","name":"binary_level","signature":"func binary_level(ops, next)","doc":"","line":741},{"kind":"méthode","name":"bit_or","signature":"func bit_or()","doc":"","line":748},{"kind":"méthode","name":"bit_xor","signature":"func bit_xor()","doc":"","line":751},{"kind":"méthode","name":"bit_and","signature":"func bit_and()","doc":"","line":754},{"kind":"méthode","name":"shift","signature":"func shift()","doc":"","line":757},{"kind":"méthode","name":"additive","signature":"func additive()","doc":"","line":760},{"kind":"méthode","name":"multiplicative","signature":"func multiplicative()","doc":"","line":763},{"kind":"méthode","name":"power","signature":"func power()","doc":"","line":766},{"kind":"méthode","name":"unary","signature":"func unary()","doc":"","line":773},{"kind":"méthode","name":"postfix","signature":"func postfix()","doc":"","line":781},{"kind":"méthode","name":"literal","signature":"func literal()","doc":"","line":817},{"kind":"méthode","name":"fstring","signature":"func fstring(t)","doc":"","line":836},{"kind":"méthode","name":"arrow_ahead","signature":"func arrow_ahead()","doc":"","line":880},{"kind":"méthode","name":"lambda_rest","signature":"func lambda_rest(t, ps)","doc":"","line":897},{"kind":"méthode","name":"comp_clauses","signature":"func comp_clauses()","doc":"","line":901},{"kind":"méthode","name":"primary","signature":"func primary()","doc":"","line":915},{"kind":"méthode","name":"dict_entry","signature":"func dict_entry()","doc":"","line":1018}]},{"kind":"fonction","name":"parse","signature":"func parse(source, file=\"<source>\")","doc":"Programme (nœud Program) d'un texte source.","line":1027},{"kind":"fonction","name":"parse_tokens","signature":"func parse_tokens(tokens, file=\"<source>\")","doc":"","line":1030},{"kind":"fonction","name":"parse_expression","signature":"func parse_expression(text, file=\"<expression>\")","doc":"Une seule expression (le texte entier doit être consommé).","line":1034},{"kind":"fonction","name":"try_parse","signature":"func try_parse(source, file=\"<source>\")","doc":"[programme ou null, diagnostics] — ne lève pas.","line":1043}]}
 # ui.widgets
 
 ALEX UI V0.9 — Widgets public facade

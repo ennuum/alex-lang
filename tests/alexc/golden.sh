@@ -20,7 +20,16 @@ mkdir -p "$O"
 # normalisation : dossier temporaire, durées, version de la chaîne d'outils (et ce qui en dépend : longueur des
 # messages LSP, empreintes des paquets dont le manifeste porte l'exigence alex = ">=VERSION")
 V=$("$E" version --short)
-norm() { sed -E "s#$W#W#g; s#$V#VERSION#g" "$1" | sed -E 's/[0-9]+\.[0-9]+ (ms|s)\b/D/g; s/"duration":[0-9.e+-]+/"duration":D/g; s/^Content-Length: [0-9]+/Content-Length: N/; s/\}Content-Length: [0-9]+/}Content-Length: N/g; s/sha256:[0-9a-f]{64}/sha256:H/g'; }
+# Les valeurs substituées sont des chaînes littérales, pas des expressions : on échappe les métacaractères
+# (le « . » de « 1.4.0 » accepterait n'importe quel caractère et prendrait des durées comme « 1.4000 ms »).
+lit() { printf '%s' "$1" | sed -E 's/[][\.*^$+?(){}|#]/\\&/g'; }
+VR=$(lit "$V"); WR=$(lit "$W"); RR=$(lit "$REPO")
+# Ordre : durées d'abord (avant qu'un motif de version puisse en manger une partie), puis dossiers et version.
+# Canal : le suffixe « (bêta) » que la chaîne bêta ajoute après sa version est retiré, pour que les mêmes
+# références valent dans les deux canaux. Empreintes de modules ($mod…) : hachage du chemin absolu du module.
+norm() { sed -E 's/[0-9]+\.[0-9]+ (ms|s)\b/D/g; s/"duration":[0-9.e+-]+/"duration":D/g' "$1" \
+    | sed -E "s#$WR#W#g; s#$RR#REPO#g; s#$VR( \(bêta\))?#VERSION#g" \
+    | sed -E 's/^Content-Length: [0-9]+/Content-Length: N/; s/\}Content-Length: [0-9]+/}Content-Length: N/g; s/sha256:[0-9a-f]{64}/sha256:H/g; s/\$mod[0-9a-f]{16}/$modH/g'; }
 put() { norm "$2" > "$O/$1.txt"; }
 # repl
 "$E" repl < tests/alexc/repl.in > "$W/x" 2>&1; echo "rc=$?" >> "$W/x"
@@ -78,7 +87,9 @@ for m in 2 1; do
     put debug$m "$W/x"
 done
 # lsp : la session de tests/tooling/lsp_test.py, messages du serveur octet pour octet
-REAL="$E" LOG="$W/lsp" python3 tests/tooling/lsp_test.py tests/alexc/lsp_tee.sh > /dev/null 2>&1
+# (copie exécutable : le bit x de lsp_tee.sh ne survit pas à toutes les extractions / checkouts)
+cp tests/alexc/lsp_tee.sh "$W/lsp_tee.sh" && chmod +x "$W/lsp_tee.sh"
+REAL="$E" LOG="$W/lsp" python3 tests/tooling/lsp_test.py "$W/lsp_tee.sh" > /dev/null 2>&1
 put lsp "$W/lsp"
 
 if [ $RECORD -eq 1 ]; then

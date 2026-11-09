@@ -89,5 +89,5 @@ $ pkg list
 PackageError: ./alex.toml: version invalide `x` (attendu MAJOR.MINOR.PATCH)
 rc=1
 $ pkg install
-PackageError: ./alex.toml : le package `app` exige le compilateur ALEX >=99.0, or ce compilateur est en version VERSION (bêta) — mettez alex à jour (alex --version)
+PackageError: ./alex.toml : le package `app` exige le compilateur ALEX >=99.0, or ce compilateur est en version VERSION — mettez alex à jour (alex --version)
 rc=1
