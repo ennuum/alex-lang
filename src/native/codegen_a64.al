@@ -1220,7 +1220,7 @@ class GenA64:
                 a.add_imm(A.SP, A.SP, area)
             self.st(ins.dst, A.X0)
             return
-        if op == ir.PORT_OUT or op == ir.PORT_IN or op == ir.ENTER_USER or op == ir.LEAVE_USER or op == ir.RAW_CODE or op == ir.SYSV_CALL:
+        if op == ir.PORT_OUT or op == ir.PORT_IN or op == ir.PORT_INS or op == ir.PORT_OUTS or op == ir.ENTER_USER or op == ir.LEAVE_USER or op == ir.RAW_CODE or op == ir.SYSV_CALL:
             raise("RuntimeError", "instruction de l'IR sans équivalent sur AArch64 (ports d'E/S, anneau 3 ou code x86 en ligne)")
         raise("RuntimeError", "AArch64 : opération de l'IR inconnue (" + ir.op_name(op) + ")")
 

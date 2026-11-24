@@ -406,6 +406,17 @@ class Assembler:
     func load_idx(dst, base, index):
         self.sib8(0x8B, dst, base, index)
 
+    # movsd xmm, [base + index*8]
+    func movsd_load_idx(xmm, base, index):
+        if (base & 7) == 5 or index == RSP:
+            raise("RuntimeError", "assembleur : adressage indexé non pris en charge")
+        self.byte(0xF2)
+        self.rex(false, xmm, index, base)
+        self.byte(0x0F)
+        self.byte(0x10)
+        self.byte(0x04 | ((xmm & 7) << 3))
+        self.byte(0xC0 | ((index & 7) << 3) | (base & 7))
+
     func store_idx(base, index, src):
         self.sib8(0x89, src, base, index)
 
@@ -1007,7 +1018,7 @@ func ap_trampoline():
 
 # Image Multiboot (liste d'octets) ; mb_info / tables : décalages dans le bss (informations Multiboot écrites par
 # l'amorçage, tables de pages alignées sur 4 Kio).
-func build_multiboot(image, mb_info, tables, path=null):
+func build_multiboot(image, mb_info, tables, path=null, kbase=KERNEL_BASE):
     a := image.code
     a.resolve()
     stub_off := 40
@@ -1017,14 +1028,14 @@ func build_multiboot(image, mb_info, tables, path=null):
     code_off := (gdtr_off + 6 + 15) & ~15
     rodata_off := (code_off + len(a.code) + 4095) & ~4095
     file_size := rodata_off + len(image.rodata)
-    bss_addr := (KERNEL_BASE + file_size + PAGE - 1) // PAGE * PAGE
+    bss_addr := (kbase + file_size + PAGE - 1) // PAGE * PAGE
     bss_end := bss_addr + image.bss_size
     if bss_end > 0x40000000:
         raise("RuntimeError", "image sans OS : plus de 1 Gio")
     if path != null:
-        write_map(image, KERNEL_BASE + code_off, path)
+        write_map(image, kbase + code_off, path)
     for r in a.relocs:
-        base := KERNEL_BASE + rodata_off if r[1] == S_RODATA else KERNEL_BASE + code_off if r[1] == S_CODE else bss_addr
+        base := kbase + rodata_off if r[1] == S_RODATA else kbase + code_off if r[1] == S_CODE else bss_addr
         addr := base + r[2] + r[3]
         i := 0
         while i < 4:
@@ -1036,27 +1047,70 @@ func build_multiboot(image, mb_info, tables, path=null):
     _put32(out, magic)
     _put32(out, flags)
     _put32(out, 0 - magic - flags)
-    _put32(out, KERNEL_BASE)
-    _put32(out, KERNEL_BASE)
-    _put32(out, KERNEL_BASE + file_size)
+    _put32(out, kbase)
+    _put32(out, kbase)
+    _put32(out, kbase + file_size)
     _put32(out, bss_end)
-    _put32(out, KERNEL_BASE + stub_off)
-    put(out, KERNEL_BASE + rodata_off, 8)
-    _add(out, boot32(bss_addr + mb_info, bss_addr + tables, KERNEL_BASE + gdtr_off, KERNEL_BASE + code_off + image.entry_offset))
+    _put32(out, kbase + stub_off)
+    put(out, kbase + rodata_off, 8)
+    _add(out, boot32(bss_addr + mb_info, bss_addr + tables, kbase + gdtr_off, kbase + code_off + image.entry_offset))
     align(out, 8)
     put(out, 0, 8)
     put(out, 0x00AF9A000000FFFF, 8)
     put(out, 0x00CF92000000FFFF, 8)
     put(out, 23, 2)
-    _put32(out, KERNEL_BASE + gdt_off)
+    _put32(out, kbase + gdt_off)
     align(out, 16)
     _add(out, a.code)
     align(out, 4096)
     _add(out, image.rodata)
     return out
 
+# Table de relocation (Alex OS 0.12.1) : AlexBoot peut charger le noyau ailleurs qu'à 1 Mio quand le micrologiciel
+# occupe cette zone. L'image est liée une seconde fois 16 Mio plus haut ; chaque mot de 32 bits qui diffère
+# exactement de 16 Mio est une adresse absolue. La table suit l'image (après load_end_addr : GRUB et QEMU ne la
+# chargent pas) : « ALEXRELO », nombre d'entrées (u32), adresse de liaison (u32), puis les décalages dans l'image,
+# croissants, codés en écarts LEB128. Toute autre différence est une erreur de construction.
+const RELOC_DELTA := 0x1000000
+
+func reloc_table(lo, hi):
+    if len(lo) != len(hi):
+        raise("RuntimeError", "table de relocation : tailles différentes")
+    offs := []
+    n := len(lo)
+    i := 0
+    while i < n:
+        if lo[i] != hi[i]:
+            p := i - 3
+            if p < 0:
+                raise("RuntimeError", "table de relocation : différence en tête d'image")
+            a := lo[p] | (lo[p + 1] << 8) | (lo[p + 2] << 16) | (lo[p + 3] << 24)
+            b := hi[p] | (hi[p + 1] << 8) | (hi[p + 2] << 16) | (hi[p + 3] << 24)
+            if b - a != RELOC_DELTA or (len(offs) > 0 and p < offs[len(offs) - 1] + 4):
+                raise("RuntimeError", "table de relocation : différence inattendue au décalage " + str(i))
+            append(offs, p)
+            i = p + 4
+        else:
+            i += 1
+    out := []
+    _add(out, [0x41, 0x4C, 0x45, 0x58, 0x52, 0x45, 0x4C, 0x4F])
+    _put32(out, len(offs))
+    _put32(out, KERNEL_BASE)
+    prev := 0
+    for o in offs:
+        d := o - prev
+        prev = o
+        while d >= 128:
+            append(out, (d & 127) | 128)
+            d = d >> 7
+        append(out, d)
+    return out
+
 func write_multiboot(image, mb_info, tables, path):
-    _io.write_bytes(path, build_multiboot(image, mb_info, tables, path))
+    hi := build_multiboot(image, mb_info, tables, null, KERNEL_BASE + RELOC_DELTA)
+    lo := build_multiboot(image, mb_info, tables, path)
+    out := lo + reloc_table(lo, hi)
+    _io.write_bytes(path, out)
 
 # ---------------------------------------------------------------------------------------------- PE32+
 # Cible Windows (`windows` non nul) : exécutable console (sous-système 3) ou graphique (2, manifeste en ressource),

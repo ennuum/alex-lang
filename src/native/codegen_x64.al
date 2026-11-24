@@ -106,6 +106,21 @@ const FIRST_LOAD := {2: true, 3: true, 5: true, 6: true, 7: true, 4: true, 16: t
 
 const FLOAT_SLOT_OPS := {22: true, 23: true, 24: true, 25: true, 95: true, 26: true, 27: true, 28: true, 29: true,
     30: true, 31: true, 33: true}
+# Flottants en registres xmm (cible Linux) : registres xmm2..xmm15 (xmm0 et xmm1 restent les registres de travail).
+# Une instruction hors de XMM_SAFE peut appeler du code qui ne préserve aucun xmm : les registres alloués sont
+# rangés dans leurs cases avant elle et relus après.
+const XMM_POOL := [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+# Registres entiers non préservés ajoutés à rbx / r12..r14 (cible Linux) : r9, r10, rsi, rdi — aucune instruction
+# de XMM_SAFE ne s'en sert implicitement. Même discipline que les xmm autour des autres instructions.
+const CALLER_POOL := [9, 10, 6, 7]
+const XMM_SAFE := {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: true,
+    10: true, 11: true, 13: true, 14: true, 15: true, 16: true, 17: true, 18: true, 19: true, 20: true, 21: true,
+    22: true, 23: true, 24: true, 25: true, 26: true, 27: true, 28: true, 29: true, 30: true, 31: true, 32: true,
+    33: true, 34: true, 35: true, 36: true, 37: true, 39: true, 40: true, 41: true, 42: true, 43: true, 44: true,
+    45: true, 46: true, 47: true, 48: true, 50: true, 55: true, 88: true, 89: true, 90: true, 91: true, 95: true}
+# Opérations flottantes : un registre virtuel qui y apparaît est candidat à un registre xmm.
+const XMM_FLOAT_OPS := {22: true, 23: true, 24: true, 25: true, 26: true, 27: true, 28: true, 29: true, 30: true,
+    31: true, 32: true, 33: true, 95: true}
 
 func bss(off):
     return x.data(x.S_BSS, off)
@@ -144,6 +159,13 @@ class Gen:
         self.lines = []
         self.fn_range = []
         self.reg_of = []
+        self.xmm_of = []
+        self.xmm_vregs = []
+        self.xmm_spill = {}
+        self.xmm_shared = false
+        self.caller_vregs = []
+        self.unsafe_mode = false
+        self.label_refs = []
         self.uses = []
         self.is_const = []
         self.need_slot = []
@@ -1096,9 +1118,13 @@ class Gen:
         a.raw([0x0F, 0x32])
         a.alu_ri(x.ALU_OR, x.RAX, 1)
         a.raw([0x0F, 0x30])
+        # STAR : syscall -> cs 0x08, ss 0x10 ; sysret -> cs = base + 16, ss = base + 8, avec base = 0x13 (0x10 | 3) :
+        # cs 0x23 et ss 0x1B. Les processeurs AMD ne forcent pas le niveau 3 du sélecteur ss : avec une base 0x10, le
+        # programme tournait avec ss = 0x18 (niveau 0), que le retour d'interruption suivant (iretq) refusait (#GP)
+        # sur un vrai processeur (QEMU sans KVM l'acceptait).
         a.mov_imm(x.RCX, 0xC0000081)
         a.mov_imm(x.RAX, 0)
-        a.mov_imm(x.RDX, 0x00100008)
+        a.mov_imm(x.RDX, 0x00130008)
         a.raw([0x0F, 0x30])
         a.mov_imm(x.RCX, 0xC0000082)
         a.mov_label_addr(x.RAX, L["syscall_entry"])
@@ -1669,10 +1695,37 @@ class Gen:
             return null
         return c
 
+    # Pendant une instruction hors de XMM_SAFE (unsafe_mode), les registres virtuels placés dans un registre non
+    # préservé (xmm ou CALLER_POOL) sont lus et écrits dans leur case : ils y ont été rangés juste avant.
     func in_reg(v):
         if v < 0 or self.reg_of[v] < 0:
             return -1
+        if self.unsafe_mode and self.reg_of[v] in CALLER_POOL:
+            return -1
         return self.reg_of[v]
+
+    func in_xmm(v):
+        if v < 0 or v >= len(self.xmm_of) or self.unsafe_mode:
+            return -1
+        return self.xmm_of[v]
+
+    # Range les registres non préservés alloués (xmm, r9, r10, rsi, rdi) dans leurs cases, avant une instruction
+    # qui peut appeler du code.
+    func volatile_spill(k):
+        for v in (self.xmm_spill[k][0] if self.xmm_shared else self.xmm_vregs):
+            # un candidat sans couleur vit déjà dans sa case
+            if self.xmm_of[v] >= 0:
+                self.a.movsd_store(self.slot(v), self.xmm_of[v])
+        for v in self.caller_vregs:
+            self.a.store(self.slot(v), self.reg_of[v])
+
+    # Les relit après l'instruction (son résultat éventuel a été écrit dans sa case).
+    func volatile_reload(k):
+        for v in (self.xmm_spill[k][1] if self.xmm_shared else self.xmm_vregs):
+            if self.xmm_of[v] >= 0:
+                self.a.movsd_load(self.xmm_of[v], self.slot(v))
+        for v in self.caller_vregs:
+            self.a.load(self.reg_of[v], self.slot(v))
 
     func save_slot(k):
         return -8 * (self.frame_slots + k + 1)
@@ -1687,6 +1740,10 @@ class Gen:
         if r >= 0:
             self.a.mov(dst, r)
             return
+        xr := self.in_xmm(v)
+        if xr >= 0:
+            self.a.movq_from_xmm(dst, xr)
+            return
         c := self.imm32(v)
         if c != null:
             self.a.mov_imm(dst, c)
@@ -1697,6 +1754,10 @@ class Gen:
         r := self.in_reg(v)
         if r >= 0:
             self.a.mov(r, src)
+            return
+        xr := self.in_xmm(v)
+        if xr >= 0:
+            self.a.movq_to_xmm(xr, src)
             return
         if src == x.RAX:
             self.forward = v
@@ -1709,6 +1770,11 @@ class Gen:
         if r >= 0:
             self.a.alu_rr(op, dst, r)
             return
+        xr := self.in_xmm(v)
+        if xr >= 0:
+            self.a.movq_from_xmm(x.R11, xr)
+            self.a.alu_rr(op, dst, x.R11)
+            return
         c := self.imm32(v)
         if c != null:
             self.a.alu_ri(op, dst, c)
@@ -1716,6 +1782,11 @@ class Gen:
             self.a.alu_rm(op, dst, self.slot(v))
 
     func fld(xmm, v):
+        xr := self.in_xmm(v)
+        if xr >= 0:
+            if xr != xmm:
+                self.a.sse_op_rr(0x10, xmm, xr)
+            return
         r := self.in_reg(v)
         if r >= 0:
             self.a.movq_to_xmm(xmm, r)
@@ -1723,6 +1794,11 @@ class Gen:
             self.a.movsd_load(xmm, self.slot(v))
 
     func fst(v, xmm):
+        xr := self.in_xmm(v)
+        if xr >= 0:
+            if xr != xmm:
+                self.a.sse_op_rr(0x10, xr, xmm)
+            return
         r := self.in_reg(v)
         if r >= 0:
             self.a.movq_from_xmm(r, xmm)
@@ -1750,7 +1826,11 @@ class Gen:
 
     func push_v(v):
         r := self.in_reg(v)
-        if r >= 0:
+        xr := self.in_xmm(v)
+        if xr >= 0:
+            self.a.movq_from_xmm(x.R11, xr)
+            self.a.push(x.R11)
+        elif r >= 0:
             self.a.push(r)
         else:
             self.a.push_m(self.slot(v))
@@ -1785,9 +1865,38 @@ class Gen:
         self.st(ins.dst, x.RAX)
 
     func _fop(ins, code):
+        d := self.in_xmm(ins.dst)
+        if d >= 0:
+            # résultat calculé directement dans son registre xmm (sans passer par xmm0)
+            xa := self.in_xmm(ins.a)
+            xb := self.in_xmm(ins.b)
+            if xb == d and xa != d:
+                if code != 0x58 and code != 0x59:
+                    self.fld(XMM1, ins.b)
+                    self.fld(d, ins.a)
+                    self.a.sse_op_rr(code, d, XMM1)
+                    return
+                # addition et multiplication commutatives (exactement, en IEEE 754)
+                if xa >= 0:
+                    self.a.sse_op_rr(code, d, xa)
+                else:
+                    self.fld(XMM1, ins.a)
+                    self.a.sse_op_rr(code, d, XMM1)
+                return
+            self.fld(d, ins.a)
+            if xb >= 0:
+                self.a.sse_op_rr(code, d, xb)
+            else:
+                self.fld(XMM1, ins.b)
+                self.a.sse_op_rr(code, d, XMM1)
+            return
         self.fld(XMM0, ins.a)
-        self.fld(XMM1, ins.b)
-        self.a.sse_op_rr(code, XMM0, XMM1)
+        xb := self.in_xmm(ins.b)
+        if xb >= 0:
+            self.a.sse_op_rr(code, XMM0, xb)
+        else:
+            self.fld(XMM1, ins.b)
+            self.a.sse_op_rr(code, XMM0, XMM1)
         self.fst(ins.dst, XMM0)
 
     func _compare(ins, c):
@@ -1820,6 +1929,11 @@ class Gen:
             return
         if op == ir.COPY:
             if ins.dst == ins.a:
+                return
+            xd := self.in_xmm(ins.dst)
+            if xd >= 0 and self.in_xmm(ins.a) >= 0:
+                if xd != self.in_xmm(ins.a):
+                    a.sse_op_rr(0x10, xd, self.in_xmm(ins.a))
                 return
             r := self.in_reg(ins.dst)
             if r >= 0:
@@ -2332,6 +2446,16 @@ class Gen:
                 a.raw([0xED])
             self.st(ins.dst, x.RAX)
             return
+        if op == ir.PORT_INS or op == ir.PORT_OUTS:
+            self.ld(x.RDX, ins.a)
+            self.ld(x.RCX, ins.args[0])
+            if op == ir.PORT_INS:
+                self.ld(x.RDI, ins.b)
+                a.raw([0xF3, 0x66, 0x6D])    # rep insw
+            else:
+                self.ld(x.RSI, ins.b)
+                a.raw([0xF3, 0x66, 0x6F])    # rep outsw
+            return
         if op == ir.CPU_OP:
             self.cpu_op(ins)
             return
@@ -2519,6 +2643,165 @@ class Gen:
                 self.gs_load(x.RCX, K_CPU_TSS)
                 a.store(x.at(x.RCX, 4), x.RAX)
 
+    # Écrit v depuis le registre src, toujours dans sa place réelle (jamais par simple relais de rax).
+    func st_force(v, src):
+        r := self.in_reg(v)
+        if r >= 0:
+            self.a.mov(r, src)
+            return
+        xr := self.in_xmm(v)
+        if xr >= 0:
+            self.a.movq_to_xmm(xr, src)
+            return
+        self.a.store(self.slot(v), src)
+
+    # Indice de liste normalisé puis vérifié (motif émis par lower.norm_index + bounds_check) :
+    #   COPY r, i ; LT n, i, 0 ; JMP_IF_ZERO L, n ; ADD r, i, len ; LABEL L ; BOUNDS_CHECK r, len
+    # Cas courant 0 <= i < len : une seule comparaison non signée. Sinon chemin lent : indice négatif ramené par
+    # + len, puis même site d'erreur (mêmes arguments) que BOUNDS_CHECK.
+    # Renvoie le nombre d'instructions consommées (0 : motif absent). Le CONST de la constante 0 peut précéder le
+    # LT : accepté s'il n'émet rien ou seulement un chargement dans son registre (rax n'est pas touché).
+    # Reconnaît le motif d'indice à partir de code[k] (le COPY) ; renvoie la position du LT, ou -1.
+    func index_match(code, k):
+        j := k + 1
+        if j < len(code) and code[j].op == ir.CONST:
+            j += 1
+        if j + 4 >= len(code):
+            return -1
+        c0 := code[k]
+        c1 := code[j]
+        c2 := code[j + 1]
+        c3 := code[j + 2]
+        c4 := code[j + 3]
+        c5 := code[j + 4]
+        if c0.op != ir.COPY or c1.op != ir.LT or c2.op != ir.JMP_IF_ZERO or c3.op != ir.ADD or c4.op != ir.LABEL or c5.op != ir.BOUNDS_CHECK:
+            return -1
+        r := c0.dst
+        i := c0.a
+        ln := c3.b
+        if r == i or c1.a != i or c2.a != c1.dst or c2.label != c4.label or c3.dst != r or c3.a != i or c5.a != r or c5.b != ln:
+            return -1
+        if not (c1.b >= 0 and self.is_const[c1.b] and self.const_val[c1.b] == 0) or self.uses[c1.dst] != 1:
+            return -1
+        if self.label_refs[c4.label] != 1 or ln == r or ln == i:
+            return -1
+        if j == k + 2:
+            # le CONST ne doit pas toucher rax (relais de la valeur précédente) : rien à émettre, ou un registre
+            d := code[k + 1].dst
+            if d == r or d == i or d == ln:
+                return -1
+            if self.in_reg(d) < 0 and not (self.is_const[d] and not self.need_slot[d]):
+                return -1
+        return j
+
+    # Émet le CONST intercalé du motif d'indice (dans son registre, ou rien).
+    func index_const(code, k, j):
+        if j == k + 2 and self.in_reg(code[k + 1].dst) >= 0:
+            self.a.mov_imm(self.in_reg(code[k + 1].dst), code[k + 1].imm)
+
+    # Lecture d'élément de liste complète (motif de lower pour l[i]) :
+    #   LOAD64 len, l, 0 ; <motif d'indice> ; LOAD64 data, l, 16 ; LOAD_ELEM x, data, r
+    # Quand len, r et data ne servent qu'au motif, rien ne passe par la pile :
+    #   rax = l ; rcx = i ; cmp rcx, [rax] ; jb ok ; (chemin lent) ; ok: mov rax, [rax+16] ; x = [rax+rcx*8]
+    # Sans le LOAD_ELEM (affectation l[i] = …), seul r est écrit. Renvoie le nombre d'instructions consommées.
+    func fuse_read(code, k, labels):
+        c := code[k]
+        if c.op != ir.LOAD64 or c.imm != 0 or c.dst < 0 or k + 1 >= len(code):
+            return 0
+        ln := c.dst
+        lst := c.a
+        if self.uses[ln] != 2 or lst < 0 or lst == ln:
+            return 0
+        j := self.index_match(code, k + 1)
+        if j < 0 or code[k + 1].a == lst:
+            return 0
+        if code[j + 2].b != ln:
+            return 0
+        bc := code[j + 4]
+        r := bc.a
+        i := code[k + 1].a
+        n := j + 5 - k
+        dst := -1
+        if j + 6 < len(code):
+            d := code[j + 5]
+            e := code[j + 6]
+            if d.op == ir.LOAD64 and d.imm == 16 and d.a == lst and d.dst >= 0 and self.uses[d.dst] == 1 and e.op == ir.LOAD_ELEM and e.a == d.dst and e.b == r and self.uses[r] == 2 and e.dst >= 0 and e.dst != r and e.dst != ln:
+                dst = e.dst
+                n += 2
+        a := self.a
+        self.mark_line(bc.line)
+        self.cur_line = bc.line
+        self.pending = self.forward
+        self.forward = -1
+        self.index_const(code, k + 1, j)
+        s := Site(a.new_label(), bc.line, -1, bc)
+        append(self.sites, s)
+        ok := a.new_label()
+        err := a.new_label()
+        self.ld(x.RAX, lst)
+        self.ld(x.RCX, i)
+        a.alu_rm(x.ALU_CMP, x.RCX, x.at(x.RAX, 0))
+        a.jcc(x.C_B, ok)
+        a.test(x.RCX, x.RCX)
+        a.jcc(x.C_NS, err)
+        a.alu_rm(x.ALU_ADD, x.RCX, x.at(x.RAX, 0))
+        a.alu_rm(x.ALU_CMP, x.RCX, x.at(x.RAX, 0))
+        a.jcc(x.C_B, ok)
+        a.bind(err)
+        a.load(x.R11, x.at(x.RAX, 0))
+        self.st_force(ln, x.R11)
+        self.st_force(r, x.RCX)
+        a.jmp(s.label)
+        a.bind(ok)
+        self.pending = -1
+        if dst < 0:
+            self.st_force(r, x.RCX)
+            return n
+        a.load(x.RAX, x.at(x.RAX, 16))
+        xr := self.in_xmm(dst)
+        if xr >= 0:
+            a.movsd_load_idx(xr, x.RAX, x.RCX)
+            return n
+        a.load_idx(x.RAX, x.RAX, x.RCX)
+        self.next_ = code[k + n] if k + n < len(code) else null
+        self.st(dst, x.RAX)
+        self.next_ = null
+        return n
+
+    func fuse_index(code, k, labels):
+        j := self.index_match(code, k)
+        if j < 0:
+            return 0
+        c5 := code[j + 4]
+        r := c5.a
+        i := code[k].a
+        ln := c5.b
+        a := self.a
+        self.index_const(code, k, j)
+        self.mark_line(c5.line)
+        self.cur_line = c5.line
+        self.pending = self.forward
+        self.forward = -1
+        s := Site(a.new_label(), c5.line, -1, c5)
+        append(self.sites, s)
+        ok := a.new_label()
+        err := a.new_label()
+        self.ld(x.RAX, i)
+        self.alu_v(x.ALU_CMP, x.RAX, ln)
+        a.jcc(x.C_B, ok)
+        a.test(x.RAX, x.RAX)
+        a.jcc(x.C_NS, err)
+        self.alu_v(x.ALU_ADD, x.RAX, ln)
+        self.alu_v(x.ALU_CMP, x.RAX, ln)
+        a.jcc(x.C_B, ok)
+        a.bind(err)
+        self.st_force(r, x.RAX)
+        a.jmp(s.label)
+        a.bind(ok)
+        self.st_force(r, x.RAX)
+        self.pending = -1
+        return j + 5 - k
+
     func fuse_compare_jump(cmp, jump, labels):
         conds := {16: x.C_E, 17: x.C_NE, 18: x.C_L, 19: x.C_LE, 20: x.C_G, 21: x.C_GE}
         if not (cmp.op in conds):
@@ -2564,10 +2847,13 @@ class Gen:
         code := f.code
         nc := len(code)
         label_pos := [0 for i in 0..f.labels]
+        self.label_refs = [0 for i in 0..f.labels]
         k := 0
         while k < nc:
             if code[k].op == ir.LABEL:
                 label_pos[code[k].label] = k
+            elif code[k].label >= 0:
+                self.label_refs[code[k].label] += 1
             k += 1
         # profondeur de boucle : différence de compteurs (+1 au début d'un saut arrière, -1 après sa fin)
         delta := [0 for i in 0..(nc + 1)]
@@ -2642,6 +2928,246 @@ class Gen:
             self.reg_of[cand[k]] = pool[k]
             append(self.saved_regs, pool[k])
             k += 1
+        self.caller_vregs = []
+        if not (self.fs or self.uefi or self.win or _alexos_out[0] or f.runtime):
+            j := 0
+            while k < len(cand) and j < len(CALLER_POOL):
+                if cand[k] >= f.params:
+                    self.reg_of[cand[k]] = CALLER_POOL[j]
+                    append(self.caller_vregs, cand[k])
+                    j += 1
+                k += 1
+        self.allocate_xmm(f, weight)
+
+    # Flottants en registres xmm (exécutables Linux seulement : sans OS et sous Alex OS (--alexos), les entrées du
+    # noyau ne préservent que xmm0 / xmm1 ; sous Windows, xmm6..xmm15 doivent être préservés pour les rappels du système). Un registre virtuel est
+    # candidat s'il apparaît dans une opération flottante et seulement à des places lues ou écrites par ld / st /
+    # fld / fst / push_v (jamais une constante, un paramètre, une condition de saut ni une case dont on prend
+    # l'adresse) ; les plus pondérés par la profondeur de boucle reçoivent xmm2..xmm15.
+    func allocate_xmm(f, weight):
+        n := f.vregs
+        self.xmm_of = [-1 for i in 0..n]
+        self.xmm_vregs = []
+        self.xmm_spill = {}
+        self.xmm_shared = false
+        if self.fs or self.uefi or self.win or _alexos_out[0] or f.has_try or f.runtime:
+            return
+        flottant := [false for i in 0..n]
+        exclu := [false for i in 0..n]
+        for ins in f.code:
+            op := ins.op
+            if op in XMM_FLOAT_OPS:
+                for r in [ins.dst, ins.a, ins.b]:
+                    if r >= 0:
+                        flottant[r] = true
+                if op >= ir.FEQ and op <= ir.FGE and ins.dst >= 0:
+                    exclu[ins.dst] = true
+                if op == ir.INT_TO_FLOAT and ins.a >= 0:
+                    exclu[ins.a] = true
+                if op == ir.FLOAT_TO_INT and ins.dst >= 0:
+                    exclu[ins.dst] = true
+            elif op == ir.COPY or op == ir.RET or op == ir.LOAD_GLOBAL or op == ir.STORE_GLOBAL:
+                pass_ := 0
+            elif op == ir.LOAD_ELEM or op == ir.LOAD64:
+                if ins.a >= 0:
+                    exclu[ins.a] = true
+                if ins.b >= 0:
+                    exclu[ins.b] = true
+            elif op == ir.STORE_ELEM or op == ir.STORE64:
+                if ins.a >= 0:
+                    exclu[ins.a] = true
+                if op == ir.STORE_ELEM and ins.b >= 0:
+                    exclu[ins.b] = true
+            elif op == ir.CALL:
+                pass_ := 0
+            else:
+                for r in [ins.dst, ins.a, ins.b]:
+                    if r >= 0:
+                        exclu[r] = true
+                for r in ins.args:
+                    if r >= 0:
+                        exclu[r] = true
+        cand := []
+        v := 0
+        while v < n:
+            if flottant[v] and not exclu[v] and v >= f.params and self.reg_of[v] < 0 and not self.is_const[v] and weight[v] > 4.0:
+                append(cand, v)
+            v += 1
+        cand = _stable_by_weight(cand, weight)
+        if len(cand) > len(XMM_POOL) and len(cand) <= 400 and _liveness_ok(f.code):
+            self.color_xmm(f, cand)
+            return
+        k := 0
+        while k < len(cand) and k < len(XMM_POOL):
+            self.xmm_of[cand[k]] = XMM_POOL[k]
+            append(self.xmm_vregs, cand[k])
+            k += 1
+
+    # Plus de candidats que de registres : allocation par durée de vie. Vivacité exacte (flot de données arrière
+    # sur les blocs de base, restreinte aux candidats), graphe d'interférence, coloration gloutonne par poids
+    # décroissant (cand est déjà trié), en préférant la couleur d'un partenaire de COPY (s = s + t ne coûte rien).
+    # Autour d'une instruction non sûre, seuls les registres vivants sont rangés (avant) et relus (après).
+    func color_xmm(f, cand):
+        n := f.vregs
+        m := len(cand)
+        cid := [-1 for i in 0..n]
+        q := 0
+        while q < m:
+            cid[cand[q]] = q
+            q += 1
+        code := f.code
+        nc := len(code)
+        if nc == 0:
+            return
+        lpos := [-1 for i in 0..f.labels]
+        leader := [false for i in 0..(nc + 1)]
+        leader[0] = true
+        k := 0
+        while k < nc:
+            ins := code[k]
+            if ins.op == ir.LABEL:
+                lpos[ins.label] = k
+                leader[k] = true
+            elif ins.label >= 0 or ins.op == ir.RET:
+                leader[k + 1] = true
+            k += 1
+        starts := []
+        bof := [0 for i in 0..nc]
+        k = 0
+        while k < nc:
+            if leader[k]:
+                append(starts, k)
+            bof[k] = len(starts) - 1
+            k += 1
+        nb := len(starts)
+        ends := [nc for i in 0..nb]
+        b := 0
+        while b + 1 < nb:
+            ends[b] = starts[b + 1]
+            b += 1
+        succ := []
+        b = 0
+        while b < nb:
+            last := code[ends[b] - 1]
+            s := []
+            if last.op == ir.LABEL:
+                if b + 1 < nb:
+                    append(s, b + 1)
+            elif last.op == ir.RET:
+                pass_ := 0
+            elif last.label >= 0:
+                if lpos[last.label] >= 0:
+                    append(s, bof[lpos[last.label]])
+                if last.op != ir.JMP and b + 1 < nb:
+                    append(s, b + 1)
+            elif b + 1 < nb:
+                append(s, b + 1)
+            append(succ, s)
+            b += 1
+        live_in := [[false for i in 0..m] for j in 0..nb]
+        live_out := [[false for i in 0..m] for j in 0..nb]
+        changed := true
+        while changed:
+            changed = false
+            b = nb - 1
+            while b >= 0:
+                out := [false for i in 0..m]
+                for sb in succ[b]:
+                    li := live_in[sb]
+                    q = 0
+                    while q < m:
+                        if li[q]:
+                            out[q] = true
+                        q += 1
+                live_out[b] = out
+                live := [z for z in out]
+                k = ends[b] - 1
+                while k >= starts[b]:
+                    _live_step(code[k], live, cid)
+                    k -= 1
+                old := live_in[b]
+                q = 0
+                while q < m:
+                    if old[q] != live[q]:
+                        changed = true
+                        q = m
+                    q += 1
+                live_in[b] = live
+                b -= 1
+        adj := [false for i in 0..(m * m)]
+        hint := [-1 for i in 0..m]
+        b = 0
+        while b < nb:
+            live := [z for z in live_out[b]]
+            k = ends[b] - 1
+            while k >= starts[b]:
+                ins := code[k]
+                garde := not (ins.op in XMM_SAFE)
+                apres := []
+                if garde:
+                    q = 0
+                    while q < m:
+                        if live[q]:
+                            append(apres, cand[q])
+                        q += 1
+                d := cid[ins.dst] if ins.dst >= 0 else -1
+                src := cid[ins.a] if ins.op == ir.COPY and ins.a >= 0 else -1
+                if d >= 0:
+                    if src >= 0:
+                        hint[d] = src
+                        hint[src] = d
+                    q = 0
+                    while q < m:
+                        if live[q] and q != d and q != src:
+                            adj[d * m + q] = true
+                            adj[q * m + d] = true
+                        q += 1
+                _live_step(ins, live, cid)
+                if garde:
+                    avant := []
+                    q = 0
+                    while q < m:
+                        if live[q]:
+                            append(avant, cand[q])
+                        q += 1
+                    self.xmm_spill[k] = [avant, apres]
+                k -= 1
+            b += 1
+        # vivants à l'entrée (jamais définis avant) : interfèrent entre eux
+        e0 := live_in[0]
+        q = 0
+        while q < m:
+            if e0[q]:
+                r := q + 1
+                while r < m:
+                    if e0[r]:
+                        adj[q * m + r] = true
+                        adj[r * m + q] = true
+                    r += 1
+            q += 1
+        color := [-1 for i in 0..m]
+        q = 0
+        while q < m:
+            pris := [false for i in 0..16]
+            r := 0
+            while r < m:
+                if adj[q * m + r] and color[r] >= 0:
+                    pris[color[r]] = true
+                r += 1
+            c := -1
+            h := hint[q]
+            if h >= 0 and color[h] >= 0 and not pris[color[h]]:
+                c = color[h]
+            else:
+                for xr in XMM_POOL:
+                    if c < 0 and not pris[xr]:
+                        c = xr
+            if c >= 0:
+                color[q] = c
+                self.xmm_of[cand[q]] = c
+                append(self.xmm_vregs, cand[q])
+            q += 1
+        self.xmm_shared = true
 
     func function(index):
         f := self.p.functions[index]
@@ -2696,6 +3222,11 @@ class Gen:
             elif r >= 0:
                 a.load(r, self.slot(p))
             p += 1
+        self.unsafe_mode = false
+        if len(self.xmm_vregs) > 0:
+            a.mov_imm(x.RAX, 0)
+            for v in self.xmm_vregs:
+                a.movq_to_xmm(self.xmm_of[v], x.RAX)
         self.forward = -1
         self.pending = -1
         code := f.code
@@ -2703,11 +3234,24 @@ class Gen:
         k = 0
         while k < nc:
             ins := code[k]
+            fi := self.fuse_read(code, k, labels)
+            if fi == 0:
+                fi = self.fuse_index(code, k, labels)
+            if fi > 0:
+                k += fi
+                continue
             if k + 1 < nc and self.fuse_compare_jump(ins, code[k + 1], labels):
                 k += 2
                 continue
             self.next_ = code[k + 1] if k + 1 < nc else null
+            garde := (len(self.xmm_vregs) > 0 or len(self.caller_vregs) > 0) and not (ins.op in XMM_SAFE)
+            if garde:
+                self.volatile_spill(k)
+                self.unsafe_mode = true
             self.instruction(ins, labels)
+            if garde:
+                self.unsafe_mode = false
+                self.volatile_reload(k)
             k += 1
         self.next_ = null
         self.forward = -1
@@ -2716,7 +3260,12 @@ class Gen:
             a.bind(s.label)
             append(self.lines, [a.size(), s.line])
             if s.bounds != null:
-                self.call_args([s.bounds.a, s.bounds.b], -1)
+                # par rax / rcx : un argument peut vivre dans rdi ou rsi (CALLER_POOL)
+                self.pending = -1
+                self.ld(x.RAX, s.bounds.a)
+                self.ld(x.RCX, s.bounds.b)
+                a.mov(ARG_REGS[0], x.RAX)
+                a.mov(ARG_REGS[1], x.RCX)
                 a.call(self.fn_label[s.bounds.callee])
             else:
                 a.call(self.msg_stub(s.msg))
@@ -2872,6 +3421,26 @@ class Gen:
         a.call(self.labels_["flush"])
         a.mov_imm(x.RDI, 0)
         self.exit_with(x.RDI)
+
+# Le partage des registres xmm exige une vivacité exacte : seulement si chaque opération ne lit que a, b et args
+# (opérations sûres et appels).
+func _liveness_ok(code):
+    for ins in code:
+        if not (ins.op in XMM_SAFE) and ins.op != ir.CALL:
+            return false
+    return true
+
+# Pas arrière de vivacité : la destination meurt, les opérandes naissent.
+func _live_step(ins, live, cid):
+    if ins.dst >= 0 and cid[ins.dst] >= 0:
+        live[cid[ins.dst]] = false
+    if ins.a >= 0 and cid[ins.a] >= 0:
+        live[cid[ins.a]] = true
+    if ins.b >= 0 and cid[ins.b] >= 0:
+        live[cid[ins.b]] = true
+    for r in ins.args:
+        if r >= 0 and cid[r] >= 0:
+            live[cid[r]] = true
 
 func _first_load(ins):
     return ins.a if ins.op in FIRST_LOAD else -1

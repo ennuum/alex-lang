@@ -1988,6 +1988,15 @@ class Lowerer:
             i.imm = PORTS_OUT[name]
             self.emit(i)
             return Val(-1, TVOID)
+        if name == "__insw" or name == "__outsw":
+            if not self._take(c, name, args, 3) or not self._want(c, name, args, 0, TINT) or not self._want(c, name, args, 1, TINT) or not self._want(c, name, args, 2, TINT):
+                return self.bad()
+            i := ir.Ins(ir.PORT_INS if name == "__insw" else ir.PORT_OUTS)
+            i.a = args[0].reg
+            i.b = args[1].reg
+            i.args = [args[2].reg]
+            self.emit(i)
+            return Val(-1, TVOID)
         if name in PORTS_IN:
             if not self._take(c, name, args, 1) or not self._want(c, name, args, 0, TINT):
                 return self.bad()

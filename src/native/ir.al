@@ -25,7 +25,7 @@ const OP_NAMES := ["const", "copy", "add", "sub", "mul", "and", "or", "xor", "sh
     "mmap", "munmap", "sp", "stack_top", "save_regs", "globals_start", "globals_end", "memzero", "try_begin",
     "try_end", "landing", "unwind", "handler_top", "frame", "flush", "exit", "func_addr", "call_ind", "syscall",
     "port_out", "port_in", "cpu", "fiber_entry", "ctx_switch", "enter_user", "leave_user", "load16", "load32",
-    "store16", "store32", "raw_code", "ms_call", "import_addr", "fsqrt", "win_thunk", "sysv_call"]
+    "store16", "store32", "raw_code", "ms_call", "import_addr", "fsqrt", "win_thunk", "sysv_call", "port_ins", "port_outs"]
 
 const CONST := 0
 const COPY := 1
@@ -127,6 +127,10 @@ const WIN_THUNK := 96
 # Appel d'une fonction C (convention System V x86-64) : a = adresse, b = cadre d'appel (voir nt_codegen) ; VM
 # écrite en ALEX seulement (ffi, bibliothèques chargées par dlopen).
 const SYSV_CALL := 97
+# Entrée-sortie en chaîne sur un port (rep insw / rep outsw) : a = port, b = adresse, args[0] = nombre de mots de
+# 16 bits. Un secteur ATA en une seule instruction (sous un hyperviseur : une sortie au lieu de 256).
+const PORT_INS := 98
+const PORT_OUTS := 99
 
 # Messages d'exécution prédéfinis (IrProgram.messages, dans cet ordre) : enum Msg du C++.
 const MSG_FLOOR_DIV_ZERO := 0
